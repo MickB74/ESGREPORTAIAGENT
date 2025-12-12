@@ -51,6 +51,38 @@ def clean_title(text):
         
     return text
 
+# --- Saved Links Logic ---
+LINKS_FILE = "saved_links.json"
+
+def load_links():
+    if not os.path.exists(LINKS_FILE):
+        return []
+    try:
+        with open(LINKS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
+
+def save_link_to_file(title, url):
+    links = load_links()
+    # Check if exists
+    for link in links:
+        if link['href'] == url:
+            return False # Already saved
+    links.append({"title": title, "href": url})
+    with open(LINKS_FILE, "w") as f:
+        json.dump(links, f)
+    return True
+
+def delete_link(index):
+    links = load_links()
+    if 0 <= index < len(links):
+        removed = links.pop(index)
+        with open(LINKS_FILE, "w") as f:
+            json.dump(links, f)
+        return True
+    return False
+
 # Function to perform searches
 def search_esg_info(company_name):
     import concurrent.futures
@@ -536,37 +568,6 @@ if 'esg_data' in st.session_state and st.session_state.esg_data:
 st.markdown("---")
 st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
 
-# --- Saved Links Logic ---
-LINKS_FILE = "saved_links.json"
-
-def load_links():
-    if not os.path.exists(LINKS_FILE):
-        return []
-    try:
-        with open(LINKS_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_link_to_file(title, url):
-    links = load_links()
-    # Check if exists
-    for link in links:
-        if link['href'] == url:
-            return False # Already saved
-    links.append({"title": title, "href": url})
-    with open(LINKS_FILE, "w") as f:
-        json.dump(links, f)
-    return True
-
-def delete_link(index):
-    links = load_links()
-    if 0 <= index < len(links):
-        removed = links.pop(index)
-        with open(LINKS_FILE, "w") as f:
-            json.dump(links, f)
-        return True
-    return False
 
 # --- Sidebar: Saved Links ---
 with st.sidebar:
