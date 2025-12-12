@@ -740,14 +740,16 @@ with tab1:
             if data["reports"]:
                 for idx, report in enumerate(data["reports"]):
                     # 3 Columns: Info, Save, Chat
-                    r_col, r_save, r_chat = st.columns([0.65, 0.15, 0.2])
+                    # Adjusted ratios to prevent button text wrapping
+                    r_col, r_save, r_chat = st.columns([0.5, 0.25, 0.25])
                     
                     with r_col:
                         st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
                         st.caption(report['body'])
                     
                     with r_save:
-                        if st.button("Save", key=f"save_rep_{idx}"):
+                        # use_container_width=True ensures button expands to fill column
+                        if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
                             if save_link_to_file(report['title'], report['href']):
                                 st.success("Saved")
                                 time.sleep(0.5)
@@ -758,7 +760,7 @@ with tab1:
                     with r_chat:
                         if RAG_AVAILABLE:
                             # Unique key for every button
-                            if st.button("🧠 Chat", key=f"rag_rep_{idx}", help="Download & Index this report for Chat"):
+                            if st.button("🧠 Chat", key=f"rag_rep_{idx}", help="Download & Index this report for Chat", use_container_width=True):
                                 with st.spinner("Processing PDF..."):
                                     success, msg = process_one_report(report['href'], report['title'], st.session_state.current_company)
                                     if success:
@@ -767,7 +769,7 @@ with tab1:
                                     else:
                                         st.error(f"Failed: {msg}")
                         else:
-                            st.button("🧠", key=f"no_rag_{idx}", disabled=True)
+                            st.button("🧠", key=f"no_rag_{idx}", disabled=True, use_container_width=True)
                             
             else:
                 st.info("No PDF reports found immediately.")
