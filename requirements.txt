@@ -1,4 +1,4 @@
-ddgs==0.1.2
+duckduckgo-search
 streamlit
 beautifulsoup4
 requests
