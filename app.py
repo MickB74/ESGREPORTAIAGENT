@@ -111,15 +111,7 @@ def search_esg_info(company_name):
         # --- 0. Shared Helpers ---
         
         def is_report_link(text, url):
-            url_lower = url.lower()
             text_lower = text.lower()
-            
-            if '.pdf' not in url_lower:
-                return False
-                
-            # NEGATIVE KEYWORDS (Strict Filtering)
-            negative_terms = [
-                'policy', 'guideline', 'charter', 'code of conduct', 'code-of-conduct',
             url_lower = url.lower()
             
             # 1. Negative Filters (Strong Rejection)
