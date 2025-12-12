@@ -94,6 +94,9 @@ def search_esg_info(company_name):
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
 
     results = {
+        "company": company_name,
+        "description": None,
+        "timestamp": datetime.datetime.now().isoformat(),
         "website": None,
         "reports": [],
         "cdp": []
@@ -253,6 +256,15 @@ def search_esg_info(company_name):
         except Exception as e:
             print(f"Website search error: {e}")
             
+        # --- 2.5 Find Company Description ---
+        try:
+            desc_query = f"{company_name} company description summary"
+            desc_results = list(ddgs.text(desc_query, max_results=1, region='us-en'))
+            if desc_results:
+                results['description'] = desc_results[0]['body']
+        except Exception as e:
+            log(f"Description search error: {e}")
+
         # --- 3. Report Discovery Strategy ---
         print("Starting Report Discovery...")
 
@@ -489,7 +501,20 @@ if st.button("Find Reports", type="primary"):
 if 'esg_data' in st.session_state and st.session_state.esg_data:
     data = st.session_state.esg_data
     
+    # Export Button
+    json_str = json.dumps(data, indent=4)
+    st.download_button(
+        label="Download Analysis (JSON)",
+        data=json_str,
+        file_name=f"{st.session_state.current_company}_esg_data.json",
+        mime="application/json"
+    )
+
     st.divider()
+    
+    if data.get('description'):
+        st.caption("COMPANY PROFILE")
+        st.info(data['description'])
     
     # Display Website
     st.subheader("🌐 ESG / Sustainability Website")
