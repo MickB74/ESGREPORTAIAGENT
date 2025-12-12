@@ -278,8 +278,7 @@ def search_esg_info(company_name):
                      official_domain = domain_str
                      log(f"Identified official domain: {official_domain}")
                      break
-        except Exception as e:
-            log(f"Domain identification error: {e}")
+
 
         # --- 2. Find ESG Website ---
         if official_domain:
