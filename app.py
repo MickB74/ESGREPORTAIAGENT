@@ -229,13 +229,34 @@ def search_esg_info(company_name):
             return True
 
 
+        # --- 0.5 Load Company Map (Knwon Hubs) ---
+        known_url = None
+        try:
+            with open("company_map.json", "r") as f:
+                cmap = json.load(f)
+                if company_name.lower() in cmap:
+                    known_url = cmap[company_name.lower()]
+                    log(f"Found known sustainability hub: {known_url}")
+        except:
+             pass
+
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
-        log(f"Searching for domain: {domain_query}")
         
-        try:
-            domain_results = list(ddgs.text(domain_query, max_results=5, region='us-en'))
-            for res in domain_results:
+        if known_url:
+             # Fast Path: Use known URL as the "official domain" for hub scanning
+             official_domain = known_url
+             # Add to domain results to ensure it gets processed in hub scan
+             domain_results = [{'href': known_url, 'title': f"{company_name} Sustainability Hub"}]
+        else:
+            log(f"Searching for domain: {domain_query}")
+            try:
+                domain_results = list(ddgs.text(domain_query, max_results=5, region='us-en'))
+            except:
+                domain_results = []
+        
+        # Process domain results (either from Search or Fast Path)
+        for res in domain_results:
                 url = res['href']
                 title = res['title']
                 
@@ -498,10 +519,17 @@ def search_esg_info(company_name):
     def extract_year(text):
         if not text: return 0
         import re
-        # Find 202x or 201x
+        
+        # 1. Full Year (e.g. 2023, 2024)
         match = re.search(r'20[12][0-9]', text)
         if match:
             return int(match.group(0))
+            
+        # 2. Fiscal Year Short (e.g. FY23, FY24)
+        match_fy = re.search(r'FY([2-9][0-9])', text, re.IGNORECASE)
+        if match_fy:
+            return 2000 + int(match_fy.group(1))
+            
         return 0
     
     # Sort reports by year descending (newest on top)
