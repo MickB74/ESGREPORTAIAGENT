@@ -456,31 +456,35 @@ companies_options = []
 if companies_data:
     companies_options = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
 
-# Sort alphabetically
-companies_options.sort()
+# --- Company Selection UI ---
 
-# Add special options
-CUSTOM_OPTION = "Enter Custom Company Name..."
-SELECT_OPTION = "Select a company..."
-companies_options.insert(0, CUSTOM_OPTION)
-companies_options.insert(0, SELECT_OPTION)
+if 'company_input' not in st.session_state:
+    st.session_state.company_input = ""
 
-st.title("🌿 ESG Report Finder Agent")
-st.markdown("Enter a company name below to find their recent ESG reports, sustainability website, and CDP submissions.")
+def update_input_from_select():
+    selection = st.session_state.sp500_selector
+    if selection and selection != "Select from S&P 500 (Optional)...":
+        # Extract name part: "Apple Inc. (AAPL)" -> "Apple Inc."
+        name = selection.split('(')[0].strip()
+        st.session_state.company_input = name
 
-# Selection UI
-selected_option = st.selectbox("Choose a company from S&P 500 or enter custom:", companies_options)
+# 1. Main Text Input (Free Text)
+company_name = st.text_input(
+    "Enter Company Name (Type anything):", 
+    key="company_input"
+)
 
-company_name = ""
+# 2. Helper Selectbox (S&P 500)
+companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+companies_options_clean.sort()
+companies_options_clean.insert(0, "Select from S&P 500 (Optional)...")
 
-if selected_option == CUSTOM_OPTION:
-    company_name = st.text_input("Enter Company Name", placeholder="e.g., Apple, Microsoft, ExxonMobil")
-elif selected_option != SELECT_OPTION:
-    # Extract company name from "Name (Ticker)" format
-    # We'll just use the full string for search as it usually works well, 
-    # or we can split it. Let's try using the name part.
-    # Format: "3M (MMM)" -> split by " (" -> take first part
-    company_name = selected_option.split(" (")[0]
+st.selectbox(
+    "Or pick from S&P 500 list to auto-fill:", 
+    options=companies_options_clean, 
+    key="sp500_selector",
+    on_change=update_input_from_select
+)
 
 if st.button("Find Reports", type="primary"):
     if not company_name:
