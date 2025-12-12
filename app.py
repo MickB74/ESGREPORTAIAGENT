@@ -918,6 +918,17 @@ with tab2:
                  # Rename for display
                  rename_map = {ticker_col: "Ticker"}
                  final_df = final_df.rename(columns=rename_map)
+            
+            # Multi-select search filter
+            all_companies = final_df["Company Name"].unique().tolist()
+            selected_companies = st.multiselect(
+                "Filter by Company:",
+                options=all_companies,
+                placeholder="Select companies to view..."
+            )
+            
+            if selected_companies:
+                final_df = final_df[final_df["Company Name"].isin(selected_companies)]
 
             st.dataframe(
                 final_df, 
