@@ -23,6 +23,68 @@ except ImportError:
     RAG_AVAILABLE = False
     print("RAG libraries not found. Chat feature disabled.")
 
+def process_one_report(url, title, company_name):
+    """
+    Downloads and indexes a single report on-demand.
+    Returns: (Success (bool), Message (str))
+    """
+    if not RAG_AVAILABLE:
+        return False, "RAG libraries missing."
+
+    try:
+        # 1. Download
+        import requests
+        import re
+        
+        output_dir = "rag_docs"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        safe_title = re.sub(r'[^a-zA-Z0-9 \-]', '', title).strip()[:100]
+        safe_company = re.sub(r'[^a-zA-Z0-9 \-]', '', company_name).strip()
+        filename = f"{safe_company}_{safe_title}.pdf"
+        filepath = os.path.join(output_dir, filename)
+        
+        # Download if not exists
+        if not os.path.exists(filepath):
+            headers = {"User-Agent": "Mozilla/5.0"}
+            resp = requests.get(url, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                with open(filepath, 'wb') as f:
+                    f.write(resp.content)
+            else:
+                return False, f"Download failed: {resp.status_code}"
+                
+        # 2. Index
+        from langchain_community.document_loaders import PyMuPDFLoader
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        # from langchain_community.embeddings import HuggingFaceEmbeddings # Already imported if RAG_AVAILABLE
+        # from langchain_community.vectorstores import Chroma # Already imported
+        
+        loader = PyMuPDFLoader(filepath)
+        docs = loader.load()
+        if not docs:
+            return False, "PDF loaded but no text found (maybe scanned image?)"
+            
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        chunks = text_splitter.split_documents(docs)
+        
+        # Update metadata to ensure source is clear
+        for chunk in chunks:
+            chunk.metadata['source'] = filename
+            chunk.metadata['title'] = title
+            
+        # Add to DB
+        emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        db = Chroma(persist_directory="chroma_db", embedding_function=emb)
+        db.add_documents(chunks)
+        # db.persist() # Auto-persists
+        
+        return True, f"Indexed {len(chunks)} chunks."
+
+    except Exception as e:
+        return False, str(e)
+
+
 # Helper to checking if domain is likely an official site (heuristic)
 def is_likely_official_domain(url, company_name):
     try:
@@ -677,18 +739,36 @@ with tab1:
             st.subheader("📄 Recent ESG Reports")
             if data["reports"]:
                 for idx, report in enumerate(data["reports"]):
-                    r_col, r_save = st.columns([0.8, 0.2])
+                    # 3 Columns: Info, Save, Chat
+                    r_col, r_save, r_chat = st.columns([0.65, 0.15, 0.2])
+                    
                     with r_col:
                         st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
                         st.caption(report['body'])
+                    
                     with r_save:
                         if st.button("Save", key=f"save_rep_{idx}"):
                             if save_link_to_file(report['title'], report['href']):
-                                st.success("Saved!")
+                                st.success("Saved")
                                 time.sleep(0.5)
                                 st.rerun()
                             else:
                                 st.warning("Exists")
+                                
+                    with r_chat:
+                        if RAG_AVAILABLE:
+                            # Unique key for every button
+                            if st.button("🧠 Chat", key=f"rag_rep_{idx}", help="Download & Index this report for Chat"):
+                                with st.spinner("Processing PDF..."):
+                                    success, msg = process_one_report(report['href'], report['title'], st.session_state.current_company)
+                                    if success:
+                                        st.toast(f"✅ Indexed! {msg}", icon="🧠")
+                                        time.sleep(1)
+                                    else:
+                                        st.error(f"Failed: {msg}")
+                        else:
+                            st.button("🧠", key=f"no_rag_{idx}", disabled=True)
+                            
             else:
                 st.info("No PDF reports found immediately.")
 
@@ -781,8 +861,22 @@ with tab2:
 
 # --- TAB 3: Chat with Reports ---
 with tab3:
-    st.header("💬 Chat with Reports")
-    st.markdown("Ask questions about the downloaded ESG reports using local RAG (Retrieval Augmented Generation).")
+    col_head, col_reset = st.columns([0.8, 0.2])
+    with col_head:
+        st.header("💬 Chat with Reports")
+        st.markdown("Ask questions about the downloaded ESG reports using local RAG.")
+    with col_reset:
+        if st.button("🗑️ Reset DB", help="Clear all indexed reports and start fresh"):
+            import shutil
+            try:
+                if os.path.exists("chroma_db"): shutil.rmtree("chroma_db")
+                if os.path.exists("rag_docs"): shutil.rmtree("rag_docs")
+                st.cache_resource.clear()
+                st.success("Cleared!")
+                time.sleep(1)
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
     
     if not RAG_AVAILABLE:
         st.error("❌ RAG libraries (langchain, chromadb, etc.) are not installed. Chat is disabled.")
