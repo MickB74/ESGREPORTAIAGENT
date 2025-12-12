@@ -13,113 +13,65 @@ import pandas as pd
 
 
 import pandas as pd
-
-# RAG Imports (Optional failure)
 try:
-    from langchain_community.embeddings import HuggingFaceEmbeddings
-    from langchain_community.vectorstores import Chroma
-    RAG_AVAILABLE = True
+    from googlesearch import search as google_search
 except ImportError:
-    RAG_AVAILABLE = False
-    print("RAG libraries not found. Chat feature disabled.")
+    google_search = None
 
-def process_one_report(url, title, company_name):
-    """
-    Downloads and indexes a single report on-demand.
-    Returns: (Success (bool), Message (str))
-    """
-    if not RAG_AVAILABLE:
-        return False, "RAG libraries missing."
 
-    # 1. DOWNLOAD PHASE
-    try:
-        import requests
-        import re
-        from urllib3.exceptions import InsecureRequestWarning
-        requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+def search_web(query, max_results, provider, ddgs_instance=None):
+    """
+    Generic search wrapper for Google (via library or API) and DuckDuckGo.
+    Returns list of dicts: {'title': str, 'href': str, 'body': str}
+    """
+    results = []
+    
+    if provider == "Google":
+        # 1. Try Google Custom Search API (Robust)
+        api_key = os.environ.get("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        cx = os.environ.get("GOOGLE_CX") or st.secrets.get("GOOGLE_CX")
         
-        output_dir = "rag_docs"
-        os.makedirs(output_dir, exist_ok=True)
-        
-        safe_title = re.sub(r'[^a-zA-Z0-9 \-]', '', title).strip()[:100]
-        safe_company = re.sub(r'[^a-zA-Z0-9 \-]', '', company_name).strip()
-        filename = f"{safe_company}_{safe_title}.pdf"
-        filepath = os.path.join(output_dir, filename)
-        
-        # Download if not exists
-        if not os.path.exists(filepath):
-            # Robust headers to mimic browser
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                "Referer": "https://www.google.com/"
-            }
+        if api_key and cx:
             try:
-                resp = requests.get(url, headers=headers, timeout=30)
-                resp.raise_for_status()
-            except requests.exceptions.RequestException:
-                # Retry with verification disabled (common for some corp sites)
-                resp = requests.get(url, headers=headers, timeout=30, verify=False)
+                # Custom Search JSON API
+                url = "https://www.googleapis.com/customsearch/v1"
+                params = {
+                    "key": api_key,
+                    "cx": cx,
+                    "q": query,
+                    "num": min(max_results, 10) # API max is 10
+                }
+                resp = requests.get(url, params=params, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    items = data.get('items', [])
+                    for item in items:
+                        results.append({
+                            "title": item.get('title', 'No Title'),
+                            "href": item.get('link', ''),
+                            "body": item.get('snippet', '')
+                        })
+                    return results
+                else:
+                    print(f"Google API Error: {resp.status_code} - {resp.text}")
+            except Exception as e:
+                print(f"Google API Exception: {e}")
+        
+        # 2. Use Custom Scraper (No API) - Replaces library
+        print(f"Using Custom Google Scraper for: {query}")
+        return scrape_google_custom(query, max_results)
             
-            if resp.status_code == 200:
-                # Validation: Check content type
-                c_type = resp.headers.get('Content-Type', '').lower()
-                if 'pdf' not in c_type and 'application/octet-stream' not in c_type:
-                     # It's likely an HTML block page or redirect
-                     return False, f"Invalid Content-Type: {c_type} (Likely blocked or not a direct PDF)"
-                
-                # Check magic bytes (start of file)
-                if resp.content[:4] != b'%PDF':
-                     return False, "File validation failed: Not a valid PDF document."
-
-                with open(filepath, 'wb') as f:
-                    f.write(resp.content)
-            else:
-                return False, f"Download failed: Status {resp.status_code}"
-                
-    except Exception as e:
-        return False, f"Download Error: {str(e)}"
-
-    # 2. INDEXING PHASE
-    try:
-        from langchain_community.document_loaders import PyMuPDFLoader
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+    else:
+        # Default to DuckDuckGo
+        if not ddgs_instance:
+            with DDGS() as ddgs:
+                return list(ddgs.text(query, max_results=max_results, region='us-en'))
         
-        # Validation before loading
-        if not os.path.getsize(filepath) > 0:
-             return False, "File is empty."
-        
-        # Double-check magic bytes before passing to C++ loader (prevents crashes)
-        with open(filepath, 'rb') as f:
-            header = f.read(4)
-            if header != b'%PDF':
-                return False, f"Corrupt/Invalid PDF file (Header: {header})"
-
-        loader = PyMuPDFLoader(filepath)
         try:
-            docs = loader.load()
+            return list(ddgs_instance.text(query, max_results=max_results, region='us-en'))
         except Exception as e:
-            return False, f"PDF Parsing Error (Corrupt File?): {e}"
-            
-        if not docs:
-            return False, "PDF loaded but no text found (scanned image?)"
-            
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        chunks = text_splitter.split_documents(docs)
-        
-        for chunk in chunks:
-            chunk.metadata['source'] = filename
-            chunk.metadata['title'] = title
-            
-        # Add to DB
-        emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        db = Chroma(persist_directory="chroma_db", embedding_function=emb)
-        db.add_documents(chunks)
-        
-        return True, f"Indexed {len(chunks)} chunks."
-
-    except Exception as e:
-        return False, f"Indexing Error: {str(e)}"
+            print(f"DuckDuckGo Error: {e}")
+            return []
 
 
 # Helper to checking if domain is likely an official site (heuristic)
@@ -322,7 +274,7 @@ def delete_link(index):
     return False
 
 # Function to perform searches
-def search_esg_info(company_name):
+def search_esg_info(company_name, provider="DuckDuckGo"):
     import concurrent.futures
     import datetime
     import io
@@ -402,7 +354,7 @@ def search_esg_info(company_name):
         else:
             log(f"Searching for domain: {domain_query}")
             try:
-                domain_results = list(ddgs.text(domain_query, max_results=5, region='us-en'))
+                domain_results = search_web(domain_query, max_results=5, provider=provider, ddgs_instance=ddgs)
             except:
                 domain_results = []
         
@@ -440,7 +392,7 @@ def search_esg_info(company_name):
         log(f"Searching for website query: {website_query}")
         
         try:
-            web_search_results = list(ddgs.text(website_query, max_results=10, region='us-en'))
+            web_search_results = search_web(website_query, max_results=10, provider=provider, ddgs_instance=ddgs)
             for res in web_search_results:
                 url = res['href']
                 if url.lower().endswith('.pdf'): continue
@@ -460,7 +412,7 @@ def search_esg_info(company_name):
         # --- 2.5 Find Company Description ---
         try:
             desc_query = f"{company_name} company description summary"
-            desc_results = list(ddgs.text(desc_query, max_results=1, region='us-en'))
+            desc_results = search_web(desc_query, max_results=1, provider=provider, ddgs_instance=ddgs)
             if desc_results:
                 results['description'] = desc_results[0]['body']
         except Exception as e:
@@ -478,7 +430,7 @@ def search_esg_info(company_name):
         log(f"Strategy A: Direct Search ({report_query})")
         
         try:
-            report_search_results = list(ddgs.text(report_query, max_results=15, region='us-en')) # Fetch more to filter
+            report_search_results = search_web(report_query, max_results=15, provider=provider, ddgs_instance=ddgs) # Fetch more to filter
             
             # Filter first by title/url
             candidates = []
@@ -598,7 +550,7 @@ def search_esg_info(company_name):
              log("Strategy C: ResponsibilityReports.com Fallback")
              rr_query = f"site:responsibilityreports.com {company_name} ESG report"
              try:
-                 rr_results = list(ddgs.text(rr_query, max_results=3, region='us-en'))
+                 rr_results = search_web(rr_query, max_results=3, provider=provider, ddgs_instance=ddgs)
                  
                  # Just take top result if it looks good, usually trustworthy
                  for res in rr_results:
@@ -620,7 +572,7 @@ def search_esg_info(company_name):
         log(f"Searching for CDP: {cdp_query}")
         
         try:
-            cdp_search_results = list(ddgs.text(cdp_query, max_results=8, region='us-en'))
+            cdp_search_results = search_web(cdp_query, max_results=8, provider=provider, ddgs_instance=ddgs)
             
             cdp_candidates = []
             for res in cdp_search_results:
@@ -646,7 +598,7 @@ def search_esg_info(company_name):
              ungc_query = f"site:unglobalcompact.org {company_name} Communication on Progress pdf"
              log(f"Searching UN Global Compact: {ungc_query}")
              try:
-                 ungc_results = list(ddgs.text(ungc_query, max_results=4, region='us-en'))
+                 ungc_results = search_web(ungc_query, max_results=4, provider=provider, ddgs_instance=ddgs)
                  
                  ungc_candidates = []
                  for res in ungc_results:
@@ -722,7 +674,7 @@ def update_input_from_select():
         st.session_state.company_input = name
 
 # --- TABS LAYOUT ---
-tab1, tab2, tab3 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data", "💬 Chat with Reports"])
+tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data"])
 
 # ... (Tab 1 and Tab 2 content remains, omitted here for brevity, I will match start of Tab 1) ...
 
@@ -747,6 +699,16 @@ with tab1:
         on_change=update_input_from_select
     )
 
+    # 3. Search Provider
+    search_provider = st.radio(
+        "Search Provider:",
+        options=["Google", "DuckDuckGo"],
+        index=0,
+        horizontal=True,
+        help="Google uses 'googlesearch-python' library. DuckDuckGo uses 'ddgs'."
+    )
+
+
     if st.button("Find Reports", type="primary"):
         if not company_name:
             st.warning("Please enter a company name.")
@@ -754,7 +716,7 @@ with tab1:
             with st.spinner(f"Searching for {company_name}'s ESG data..."):
                 try:
                     # Run search
-                    data = search_esg_info(company_name)
+                    data = search_esg_info(company_name, provider=search_provider)
                     # Store in session state
                     st.session_state.esg_data = data
                     st.session_state.current_company = company_name
@@ -814,7 +776,8 @@ with tab1:
                 for idx, report in enumerate(data["reports"]):
                     # 3 Columns: Info, Save, Chat
                     # Adjusted ratios to prevent button text wrapping
-                    r_col, r_save, r_chat = st.columns([0.5, 0.25, 0.25])
+                    # 2 Columns: Info, Save
+                    r_col, r_save = st.columns([0.8, 0.2])
                     
                     with r_col:
                         st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
@@ -829,20 +792,6 @@ with tab1:
                                 st.rerun()
                             else:
                                 st.warning("Exists")
-                                
-                    with r_chat:
-                        if RAG_AVAILABLE:
-                            # Unique key for every button
-                            if st.button("🧠 Chat", key=f"rag_rep_{idx}", help="Download & Index this report for Chat", use_container_width=True):
-                                with st.spinner("Processing PDF..."):
-                                    success, msg = process_one_report(report['href'], report['title'], st.session_state.current_company)
-                                    if success:
-                                        st.toast(f"✅ Indexed! {msg}", icon="🧠")
-                                        time.sleep(1)
-                                    else:
-                                        st.error(f"Failed: {msg}")
-                        else:
-                            st.button("🧠", key=f"no_rag_{idx}", disabled=True, use_container_width=True)
                             
             else:
                 st.info("No PDF reports found immediately.")
@@ -948,91 +897,6 @@ with tab2:
 
 
 
-# --- TAB 3: Chat with Reports ---
-with tab3:
-    col_head, col_reset = st.columns([0.8, 0.2])
-    with col_head:
-        st.header("💬 Chat with Reports")
-        st.markdown("Ask questions about the downloaded ESG reports using local RAG.")
-    with col_reset:
-        if st.button("🗑️ Reset DB", help="Clear all indexed reports and start fresh"):
-            import shutil
-            try:
-                if os.path.exists("chroma_db"): shutil.rmtree("chroma_db")
-                if os.path.exists("rag_docs"): shutil.rmtree("rag_docs")
-                st.cache_resource.clear()
-                st.success("Cleared!")
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
-    
-    if not RAG_AVAILABLE:
-        st.error("❌ RAG libraries (langchain, chromadb, etc.) are not installed. Chat is disabled.")
-    else:
-        # Load DB (Cached)
-        @st.cache_resource
-        def load_vector_db():
-            if not os.path.exists("chroma_db"):
-                return None
-            try:
-                emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-                db = Chroma(persist_directory="chroma_db", embedding_function=emb)
-                return db
-            except Exception as e:
-                return None
-
-        db = load_vector_db()
-        
-        if not db:
-            st.warning("⚠️ No Vector Database found. Please run the `ingest_reports.py` and `build_vector_db.py` scripts first.")
-            st.info("Run in terminal:\n1. `python3 scripts/ingest_reports.py <your_msg_data.json>`\n2. `python3 scripts/build_vector_db.py`")
-        else:
-            # Chat UI
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            # Display previous chat
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-            # Input
-            if prompt := st.chat_input("Ask about Scope 3 emissions, targets, etc..."):
-                # Add user message
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-
-                # RAG Retrieval
-                with st.chat_message("assistant"):
-                    with st.spinner("Searching reports..."):
-                        try:
-                            # Search DB
-                            docs = db.similarity_search(prompt, k=4)
-                            
-                            if not docs:
-                                response = "I couldn't find any relevant information in the indexed reports."
-                            else:
-                                # Synthesize a simple "Context Retrieved" response (since we don't have an LLM connected yet)
-                                # The user asked for "Retrieval" primarily.
-                                response = "Here are the most relevant excerpts found from the reports:\n\n"
-                                for i, doc in enumerate(docs):
-                                    source = doc.metadata.get('source', 'Unknown File')
-                                    page = doc.metadata.get('page', '?')
-                                    content = doc.page_content.replace('\n', ' ')
-                                    
-                                    response += f"**Source {i+1}** (`{os.path.basename(source)}`, p.{page}):\n"
-                                    response += f"> {content[:400]}...\n\n"
-                                    
-                                response += "---\n*Note: Full LLM generation is not enabled, showing retrieved context.*"
-
-                            st.markdown(response)
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            
-                        except Exception as e:
-                            st.error(f"Retrieval error: {e}")
-
 # --- Sidebar: Saved Links --- (Existing code continues)
 
 with st.sidebar:
@@ -1055,11 +919,7 @@ with st.sidebar:
 
     st.divider()
     
-    # RAG Status Debug
-    if RAG_AVAILABLE:
-        st.success("✅ RAG System: Active")
-    else:
-        st.error("❌ RAG System: Disabled (Missing Libs)")
+
 
     saved_links = load_links()
     if saved_links:
