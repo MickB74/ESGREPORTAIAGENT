@@ -557,6 +557,7 @@ companies_options = []
 if companies_data:
     companies_options = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
 
+
 # --- Company Selection UI ---
 
 if 'company_input' not in st.session_state:
@@ -569,127 +570,165 @@ def update_input_from_select():
         name = selection.split('(')[0].strip()
         st.session_state.company_input = name
 
-# 1. Main Text Input (Free Text)
-company_name = st.text_input(
-    "Enter Company Name (Type anything):", 
-    key="company_input"
-)
+# --- TABS LAYOUT ---
+tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data"])
 
-# 2. Helper Selectbox (S&P 500)
-companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
-companies_options_clean.sort()
-companies_options_clean.insert(0, "Select from S&P 500 (Optional)...")
-
-st.selectbox(
-    "Or pick from S&P 500 list to auto-fill:", 
-    options=companies_options_clean, 
-    key="sp500_selector",
-    on_change=update_input_from_select
-)
-
-if st.button("Find Reports", type="primary"):
-    if not company_name:
-        st.warning("Please enter a company name.")
-    else:
-        with st.spinner(f"Searching for {company_name}'s ESG data..."):
-            try:
-                # Run search
-                data = search_esg_info(company_name)
-                # Store in session state
-                st.session_state.esg_data = data
-                st.session_state.current_company = company_name
-                st.success("Search complete!")
-            except Exception as e:
-                st.error(f"An error occurred during search: {e}")
-
-# Display Logic (Check Session State)
-if 'esg_data' in st.session_state and st.session_state.esg_data:
-    data = st.session_state.esg_data
+# --- TAB 1: Search Interface ---
+with tab1:
+    st.subheader("Find ESG Reports")
     
-    # Export Button
-    json_str = json.dumps(data, indent=4)
-    st.download_button(
-        label="Download Analysis (JSON)",
-        data=json_str,
-        file_name=f"{st.session_state.current_company}_esg_data.json",
-        mime="application/json"
+    # 1. Main Text Input (Free Text)
+    company_name = st.text_input(
+        "Enter Company Name (Type anything):", 
+        key="company_input"
     )
 
-    # Display Auto-Resolve Notice
-    if data.get('resolved_from'):
-        st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
+    # 2. Helper Selectbox (S&P 500)
+    companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+    companies_options_clean.sort()
+    companies_options_clean.insert(0, "Select from S&P 500 (Optional)...")
 
-    st.divider()
-    
-    if data.get('description'):
-        st.caption("COMPANY PROFILE")
-        st.info(data['description'])
-    
-    # Display Website
-    st.subheader("🌐 ESG / Sustainability Website")
-    if data["website"]:
-        col_web, col_save_web = st.columns([0.8, 0.2])
-        with col_web:
-            st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
-            st.caption(data['website']['body'])
-        with col_save_web:
-            if st.button("Save", key="save_web"):
-                if save_link_to_file(data['website']['title'], data['website']['href']):
-                    st.success("Saved!")
-                    time.sleep(0.5)
-                    st.rerun()
-                else:
-                    st.warning("Exists")
-    else:
-        st.info("No specific ESG website found.")
-    
-    st.divider()
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Display Reports
-        st.subheader("📄 Recent ESG Reports")
-        if data["reports"]:
-            for idx, report in enumerate(data["reports"]):
-                r_col, r_save = st.columns([0.8, 0.2])
-                with r_col:
-                    st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
-                    st.caption(report['body'])
-                with r_save:
-                    if st.button("Save", key=f"save_rep_{idx}"):
-                        if save_link_to_file(report['title'], report['href']):
-                            st.success("Saved!")
-                            time.sleep(0.5)
-                            st.rerun()
-                        else:
-                            st.warning("Exists")
+    st.selectbox(
+        "Or pick from S&P 500 list to auto-fill:", 
+        options=companies_options_clean, 
+        key="sp500_selector",
+        on_change=update_input_from_select
+    )
+
+    if st.button("Find Reports", type="primary"):
+        if not company_name:
+            st.warning("Please enter a company name.")
         else:
-            st.info("No PDF reports found immediately.")
+            with st.spinner(f"Searching for {company_name}'s ESG data..."):
+                try:
+                    # Run search
+                    data = search_esg_info(company_name)
+                    # Store in session state
+                    st.session_state.esg_data = data
+                    st.session_state.current_company = company_name
+                    st.success("Search complete!")
+                except Exception as e:
+                    st.error(f"An error occurred during search: {e}")
 
-    with col2:
-            # Display CDP
-        st.subheader("📋 CDP Submissions")
-        if data.get("cdp"):
-            for idx, item in enumerate(data["cdp"]):
-                c_col, c_save = st.columns([0.8, 0.2])
-                with c_col:
-                    st.markdown(f"**{idx+1}. [{item['title']}]({item['href']})**")
-                    st.caption(item['body'])
-                with c_save:
-                    if st.button("Save", key=f"save_cdp_{idx}"):
-                        if save_link_to_file(item['title'], item['href']):
-                            st.success("Saved!")
-                            time.sleep(0.5)
-                            st.rerun()
-                        else:
-                            st.warning("Exists")
+    # Display Logic (Check Session State)
+    if 'esg_data' in st.session_state and st.session_state.esg_data:
+        data = st.session_state.esg_data
+        
+        # Export Button
+        json_str = json.dumps(data, indent=4)
+        st.download_button(
+            label="Download Analysis (JSON)",
+            data=json_str,
+            file_name=f"{st.session_state.current_company}_esg_data.json",
+            mime="application/json"
+        )
+
+        # Display Auto-Resolve Notice
+        if data.get('resolved_from'):
+            st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
+
+        st.divider()
+        
+        if data.get('description'):
+            st.caption("COMPANY PROFILE")
+            st.info(data['description'])
+        
+        # Display Website
+        st.subheader("🌐 ESG / Sustainability Website")
+        if data["website"]:
+            col_web, col_save_web = st.columns([0.8, 0.2])
+            with col_web:
+                st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
+                st.caption(data['website']['body'])
+            with col_save_web:
+                if st.button("Save", key="save_web"):
+                    if save_link_to_file(data['website']['title'], data['website']['href']):
+                        st.success("Saved!")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.warning("Exists")
         else:
-            st.info("No recent CDP submissions found.")
+            st.info("No specific ESG website found.")
+        
+        st.divider()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Display Reports
+            st.subheader("📄 Recent ESG Reports")
+            if data["reports"]:
+                for idx, report in enumerate(data["reports"]):
+                    r_col, r_save = st.columns([0.8, 0.2])
+                    with r_col:
+                        st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
+                        st.caption(report['body'])
+                    with r_save:
+                        if st.button("Save", key=f"save_rep_{idx}"):
+                            if save_link_to_file(report['title'], report['href']):
+                                st.success("Saved!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.warning("Exists")
+            else:
+                st.info("No PDF reports found immediately.")
+
+        with col2:
+                # Display CDP
+            st.subheader("📋 CDP Submissions")
+            if data.get("cdp"):
+                for idx, item in enumerate(data["cdp"]):
+                    c_col, c_save = st.columns([0.8, 0.2])
+                    with c_col:
+                        st.markdown(f"**{idx+1}. [{item['title']}]({item['href']})**")
+                        st.caption(item['body'])
+                    with c_save:
+                        if st.button("Save", key=f"save_cdp_{idx}"):
+                            if save_link_to_file(item['title'], item['href']):
+                                st.success("Saved!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.warning("Exists")
+            else:
+                st.info("No recent CDP submissions found.")
 
 
-st.markdown("---")
-st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
+    st.markdown("---")
+    st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
+
+
+# --- TAB 2: Fast Track Data ---
+with tab2:
+    st.header("🚀 Fast Track Data (Known Hubs)")
+    st.markdown("This database ensures 100% accuracy for known companies by skipping the search engine guessing game.")
+    
+    try:
+        with open("company_map.json", "r") as f:
+            cmap = json.load(f)
+            
+        # Convert to list of dicts for Table
+        table_data = [{"Company / Key": k, "Official Sustainability Hub": v} for k, v in cmap.items()]
+        
+        # Display as DataFrame (Streamlit handles generic dicts well)
+        # Using st.dataframe allows sorting and filtering natively
+        st.dataframe(
+            table_data, 
+            use_container_width=True,
+            column_config={
+                "Official Sustainability Hub": st.column_config.LinkColumn("Sustainability Hub Link")
+            },
+            hide_index=True
+        )
+        
+        st.caption(f"Total entries: {len(cmap)}")
+        
+    except FileNotFoundError:
+        st.warning("⚠️ local company_map.json not found. Run the builder script first.")
+    except Exception as e:
+        st.error(f"Error loading map: {e}")
 
 
 # --- Sidebar: Saved Links ---
