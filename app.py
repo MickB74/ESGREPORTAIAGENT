@@ -470,6 +470,46 @@ def search_esg_info(company_name):
         except Exception as e:
              log(f"CDP search error: {e}")
 
+        # --- 5. UN Global Compact (COP) ---
+        if len(results["reports"]) < 8:
+             ungc_query = f"site:unglobalcompact.org {company_name} Communication on Progress pdf"
+             log(f"Searching UN Global Compact: {ungc_query}")
+             try:
+                 ungc_results = list(ddgs.text(ungc_query, max_results=4, region='us-en'))
+                 
+                 ungc_candidates = []
+                 for res in ungc_results:
+                     if res['href'].lower().endswith('.pdf'):
+                         ungc_candidates.append(res)
+                 
+                 # Verify UNGC
+                 with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                     futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in ungc_candidates}
+                     for future in concurrent.futures.as_completed(futures):
+                         verified_item = future.result()
+                         if verified_item:
+                             if verified_item['href'] not in [r['href'] for r in results['reports']]:
+                                 verified_item['source'] = "UN Global Compact"
+                                 results["reports"].append(verified_item)
+             except Exception as e:
+                 log(f"UNGC search error: {e}")
+
+    # --- Sorting: Newest First ---
+    def extract_year(text):
+        if not text: return 0
+        import re
+        # Find 202x or 201x
+        match = re.search(r'20[12][0-9]', text)
+        if match:
+            return int(match.group(0))
+        return 0
+    
+    # Sort reports by year descending (newest on top)
+    results["reports"].sort(key=lambda x: extract_year(x['title']), reverse=True)
+    
+    # Also sort CDP by year if possible
+    results["cdp"].sort(key=lambda x: extract_year(x['title']), reverse=True)
+
     return results
 
 # --- UI Setup ---
