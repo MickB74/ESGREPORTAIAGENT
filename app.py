@@ -120,23 +120,20 @@ def search_esg_info(company_name):
             # NEGATIVE KEYWORDS (Strict Filtering)
             negative_terms = [
                 'policy', 'guideline', 'charter', 'code of conduct', 'code-of-conduct',
-                'presentation', 'earnings', 'fact sheet', 'factsheet', 'release', 
-                'summary', 'highlight', 'index', 'appendix', 'proxy', 'letter'
-            ]
-            if any(term in text_lower or term in url_lower for term in negative_terms):
-                # Allow exceptions if "annual report" or "sustainability report" is explicitly in title
-                if "annual report" not in text_lower and "sustainability report" not in text_lower:
-                    return False
+            url_lower = url.lower()
+            
+            # 1. Negative Filters (Strong Rejection)
+            negative_terms = ['policy', 'charter', 'code of conduct', 'guidelines', 'framework', 'presentation', 'investor presentation', 'earnings', 'quarterly', 'q1', 'q2', 'q3', 'slide', 'webcast']
+            if any(term in text_lower for term in negative_terms):
+                return False
 
-            # POSITIVE KEYWORDS
-            # Must have at least one from Group A AND one from Group B
-            group_a = ['esg', 'sustainability', 'climate', 'integrated', 'impact', 'csr', 'annual', 'responsibility', 'environment']
-            group_b = ['report', 'review', 'year', '2020', '2021', '2022', '2023', '2024', '2025']
-            
-            has_a = any(term in text_lower for term in group_a) or any(term in url_lower for term in group_a)
-            has_b = any(term in text_lower for term in group_b) or any(term in url_lower for term in group_b)
-            
-            return has_a and has_b
+            # 2. Positive Filters (Must have "Report" intent)
+            # Strict: Must have [Year] or "Report"
+            has_report_keyword = any(w in text_lower for w in ['report', 'sustainability', 'esg', 'annual', 'integrated', 'csr'])
+            if not has_report_keyword:
+                return False
+                
+            return True
 
         def verify_pdf_content(url, title, context="report"):
             """
@@ -205,10 +202,10 @@ def search_esg_info(company_name):
                     except:
                         pass
                 
-                # Check Company Name
-                company_first_word = company_name.split()[0].lower()
-                if company_first_word not in text_content:
-                    log(f"  [SKIP] Company name '{company_first_word}' not found in first {pages_to_check} pages: {url}")
+                # Check Company Name (SMARTER)
+                sig_token = get_significant_token(company_name) # e.g. "Adobe" from "Adobe Inc."
+                if sig_token not in text_content:
+                    log(f"  [SKIP] Company token '{sig_token}' not found in first {pages_to_check} pages: {url}")
                     return None
                     
                 # Check Keywords (Context specific)
@@ -551,6 +548,10 @@ if 'esg_data' in st.session_state and st.session_state.esg_data:
         file_name=f"{st.session_state.current_company}_esg_data.json",
         mime="application/json"
     )
+
+    # Display Auto-Resolve Notice
+    if data.get('resolved_from'):
+        st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
 
     st.divider()
     
