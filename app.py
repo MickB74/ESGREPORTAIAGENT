@@ -455,76 +455,82 @@ if st.button("Find Reports", type="primary"):
     else:
         with st.spinner(f"Searching for {company_name}'s ESG data..."):
             try:
+                # Run search
                 data = search_esg_info(company_name)
-                
+                # Store in session state
+                st.session_state.esg_data = data
+                st.session_state.current_company = company_name
                 st.success("Search complete!")
-                
-                st.divider()
-                
-                # Display Website
-                st.subheader("🌐 ESG / Sustainability Website")
-                if data["website"]:
-                    col_web, col_save_web = st.columns([0.8, 0.2])
-                    with col_web:
-                        st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
-                        st.caption(data['website']['body'])
-                    with col_save_web:
-                        if st.button("Save", key="save_web"):
-                            if save_link_to_file(data['website']['title'], data['website']['href']):
-                                st.success("Saved!")
-                                time.sleep(0.5)
-                                st.rerun()
-                            else:
-                                st.warning("Exists")
-                else:
-                    st.info("No specific ESG website found.")
-                
-                st.divider()
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Display Reports
-                    st.subheader("📄 Recent ESG Reports")
-                    if data["reports"]:
-                        for idx, report in enumerate(data["reports"]):
-                            r_col, r_save = st.columns([0.8, 0.2])
-                            with r_col:
-                                st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
-                                st.caption(report['body'])
-                            with r_save:
-                                if st.button("Save", key=f"save_rep_{idx}"):
-                                    if save_link_to_file(report['title'], report['href']):
-                                        st.success("Saved!")
-                                        time.sleep(0.5)
-                                        st.rerun()
-                                    else:
-                                        st.warning("Exists")
-                    else:
-                        st.info("No PDF reports found immediately.")
-
-                with col2:
-                     # Display CDP
-                    st.subheader("📋 CDP Submissions")
-                    if data.get("cdp"):
-                        for idx, item in enumerate(data["cdp"]):
-                            c_col, c_save = st.columns([0.8, 0.2])
-                            with c_col:
-                                st.markdown(f"**{idx+1}. [{item['title']}]({item['href']})**")
-                                st.caption(item['body'])
-                            with c_save:
-                                if st.button("Save", key=f"save_cdp_{idx}"):
-                                    if save_link_to_file(item['title'], item['href']):
-                                        st.success("Saved!")
-                                        time.sleep(0.5)
-                                        st.rerun()
-                                    else:
-                                        st.warning("Exists")
-                    else:
-                        st.info("No recent CDP submissions found.")
-                    
             except Exception as e:
                 st.error(f"An error occurred during search: {e}")
+
+# Display Logic (Check Session State)
+if 'esg_data' in st.session_state and st.session_state.esg_data:
+    data = st.session_state.esg_data
+    
+    st.divider()
+    
+    # Display Website
+    st.subheader("🌐 ESG / Sustainability Website")
+    if data["website"]:
+        col_web, col_save_web = st.columns([0.8, 0.2])
+        with col_web:
+            st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
+            st.caption(data['website']['body'])
+        with col_save_web:
+            if st.button("Save", key="save_web"):
+                if save_link_to_file(data['website']['title'], data['website']['href']):
+                    st.success("Saved!")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.warning("Exists")
+    else:
+        st.info("No specific ESG website found.")
+    
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Display Reports
+        st.subheader("📄 Recent ESG Reports")
+        if data["reports"]:
+            for idx, report in enumerate(data["reports"]):
+                r_col, r_save = st.columns([0.8, 0.2])
+                with r_col:
+                    st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
+                    st.caption(report['body'])
+                with r_save:
+                    if st.button("Save", key=f"save_rep_{idx}"):
+                        if save_link_to_file(report['title'], report['href']):
+                            st.success("Saved!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.warning("Exists")
+        else:
+            st.info("No PDF reports found immediately.")
+
+    with col2:
+            # Display CDP
+        st.subheader("📋 CDP Submissions")
+        if data.get("cdp"):
+            for idx, item in enumerate(data["cdp"]):
+                c_col, c_save = st.columns([0.8, 0.2])
+                with c_col:
+                    st.markdown(f"**{idx+1}. [{item['title']}]({item['href']})**")
+                    st.caption(item['body'])
+                with c_save:
+                    if st.button("Save", key=f"save_cdp_{idx}"):
+                        if save_link_to_file(item['title'], item['href']):
+                            st.success("Saved!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.warning("Exists")
+        else:
+            st.info("No recent CDP submissions found.")
 
 
 st.markdown("---")
