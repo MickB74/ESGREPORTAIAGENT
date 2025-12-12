@@ -25,6 +25,109 @@ def is_likely_official_domain(url, company_name):
         return False
     return True
 
+def get_significant_token(name):
+    """Returns the most significant part of a company name for verification."""
+    stopwords = ['the', 'inc', 'corp', 'corporation', 'company', 'ltd', 'limited', 'group', 'holdings', 'plc', 'nv', 'sa', 'ag']
+    parts = name.lower().replace('.', '').replace(',', '').split()
+    significant = [p for p in parts if p not in stopwords and len(p) > 2] # >2 chars
+    if significant:
+        return significant[0] # Return first significant word (e.g. "Gap" from "The Gap Inc")
+    return name.split()[0].lower() # Fallback
+
+def verify_pdf_content(url, title, company_name, context="report"):
+    """
+    Downloads PDF and verifies:
+    1. File size > 50KB
+    2. Company name on Page 1-3
+    3. "Report" keywords on Page 1-3
+    """
+    import io
+    import pypdf
+    
+    # Helper for logging (print to stdout for now, handled by main loop logging usually)
+    def log_v(msg):
+        print(f"[VERIFY] {msg}")
+
+    try:
+        log_v(f"Verifying ({context}): {url}")
+        
+        # Stream request to check size first
+        try:
+            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, stream=True)
+        except requests.exceptions.Timeout:
+            return None
+        except Exception:
+            return None
+
+        # Size Check
+        content_length = response.headers.get('Content-Length')
+        if content_length:
+            size_bytes = int(content_length)
+            if size_bytes < 50000: # 50KB
+                response.close()
+                return None
+            # OPTIMIZATION: If > 20MB, assume it's a report (save bandwidth)
+            if size_bytes > 20 * 1024 * 1024:
+                 response.close()
+                 return {
+                     "title": title,
+                     "href": url,
+                     "body": "Verified Large PDF Report"
+                 }
+        
+        # Content Check
+        try:
+            f = io.BytesIO(response.content)
+        except Exception as e:
+            response.close()
+            return None
+        
+        response.close()
+        
+        try:
+            reader = pypdf.PdfReader(f)
+        except:
+            return None
+        
+        if len(reader.pages) == 0:
+            return None
+            
+        # Check first 3 pages
+        pages_to_check = min(3, len(reader.pages))
+        text_content = ""
+        for i in range(pages_to_check):
+            try:
+                text_content += reader.pages[i].extract_text().lower() + " "
+            except:
+                pass
+        
+        # Check Company Name (SMARTER)
+        sig_token = get_significant_token(company_name) 
+        if sig_token not in text_content:
+            log_v(f"[SKIP] Company token '{sig_token}' not found.")
+            return None
+            
+        # Check Keywords (Context specific)
+        if context == "cdp":
+            if 'cdp' not in text_content and 'climate change' not in text_content:
+                 return None
+        else:
+            report_keywords = ['report', 'sustainability', 'esg', 'annual', 'review', 'fiscal', 'summary']
+            if not any(k in text_content for k in report_keywords):
+                return None
+        
+        log_v(f"[MATCH] Verified: {url}")
+        return {
+            "title": title,
+            "href": url,
+            "body": "Verified PDF Report"
+        }
+
+    except Exception as e:
+        return None
+
+# Function to clean scraped titles
+
 # Function to clean scraped titles
 def clean_title(text):
     if not text:
@@ -127,100 +230,6 @@ def search_esg_info(company_name):
                 
             return True
 
-        def verify_pdf_content(url, title, context="report"):
-            """
-            Downloads PDF and verifies:
-            1. File size > 50KB
-            2. Company name on Page 1-3
-            3. "Report" keywords on Page 1-3
-            """
-            try:
-                log(f"  Verifying ({context}): {url}")
-                
-                # Stream request to check size first
-                # TIMEOUT REDUCED to 5s
-                try:
-                    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, stream=True)
-                except requests.exceptions.Timeout:
-                    log(f"  [SKIP] Timeout checking {url}")
-                    return None
-                except Exception:
-                    return None
-
-                # Size Check
-                content_length = response.headers.get('Content-Length')
-                if content_length:
-                    size_bytes = int(content_length)
-                    if size_bytes < 50000: # 50KB
-                        log(f"  [SKIP] File too small ({size_bytes} bytes): {url}")
-                        response.close()
-                        return None
-                    # OPTIMIZATION: If > 20MB, assume it's a report (save bandwidth)
-                    if size_bytes > 20 * 1024 * 1024:
-                         log(f"  [MATCH] File is large ({size_bytes/1024/1024:.1f} MB), assuming report: {url}")
-                         response.close()
-                         return {
-                             "title": title,
-                             "href": url,
-                             "body": "Verified Large PDF Report"
-                         }
-                
-                # Content Check
-                try:
-                    # Download content with size limit (e.g. read max 10MB if no content-length?)
-                    # For now just standard read but catch errors
-                    f = io.BytesIO(response.content)
-                except Exception as e:
-                    log(f"  [SKIP] download failed: {e}")
-                    response.close()
-                    return None
-                
-                response.close()
-                
-                try:
-                    reader = pypdf.PdfReader(f)
-                except:
-                    return None
-                
-                if len(reader.pages) == 0:
-                    return None
-                    
-                # Check first 3 pages
-                pages_to_check = min(3, len(reader.pages))
-                text_content = ""
-                for i in range(pages_to_check):
-                    try:
-                        text_content += reader.pages[i].extract_text().lower() + " "
-                    except:
-                        pass
-                
-                # Check Company Name (SMARTER)
-                sig_token = get_significant_token(company_name) # e.g. "Adobe" from "Adobe Inc."
-                if sig_token not in text_content:
-                    log(f"  [SKIP] Company token '{sig_token}' not found in first {pages_to_check} pages: {url}")
-                    return None
-                    
-                # Check Keywords (Context specific)
-                if context == "cdp":
-                    if 'cdp' not in text_content and 'climate change' not in text_content:
-                         log(f"  [SKIP] CDP keywords not found: {url}")
-                         return None
-                else:
-                    report_keywords = ['report', 'sustainability', 'esg', 'annual', 'review', 'fiscal', 'summary']
-                    if not any(k in text_content for k in report_keywords):
-                        log(f"  [SKIP] Report keywords not found: {url}")
-                        return None
-                
-                log(f"  [MATCH] Verified: {url}")
-                return {
-                    "title": title,
-                    "href": url,
-                    "body": "Verified PDF Report"
-                }
-
-            except Exception as e:
-                log(f"  Verification failed for {url}: {e}")
-                return None
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
@@ -311,7 +320,7 @@ def search_esg_info(company_name):
             # Verify content concurrently
             # REDUCED WORKERS TO 3
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                futures = {executor.submit(verify_pdf_content, c['href'], c['title']): c for c in candidates}
+                futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in candidates}
                 for future in concurrent.futures.as_completed(futures):
                     verified_item = future.result()
                     if verified_item:
@@ -359,7 +368,7 @@ def search_esg_info(company_name):
                     # Verify page candidates
                     # REDUCED WORKERS TO 2
                     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                        futures = {executor.submit(verify_pdf_content, c['href'], c['title']): c for c in page_candidates}
+                        futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in page_candidates}
                         for future in concurrent.futures.as_completed(futures):
                             verified_item = future.result()
                             if verified_item:
@@ -393,7 +402,7 @@ def search_esg_info(company_name):
                                     
                                     # Verify inner candidates
                                     for hc in h_candidates:
-                                        v = verify_pdf_content(hc['href'], hc['title'])
+                                        v = verify_pdf_content(hc['href'], hc['title'], company_name)
                                         if v:
                                             v['source'] = "Hub Scrape"
                                             found.append(v)
@@ -452,7 +461,7 @@ def search_esg_info(company_name):
             
             # REDUCED WORKERS TO 2
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                futures = {executor.submit(verify_pdf_content, c['href'], c['title'], "cdp"): c for c in cdp_candidates}
+                futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name, "cdp"): c for c in cdp_candidates}
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     if result:
