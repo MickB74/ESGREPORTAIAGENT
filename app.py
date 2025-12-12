@@ -1,5 +1,5 @@
 import streamlit as st
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 import time
 import json
 import os

@@ -1,4 +1,4 @@
-duckduckgo-search
+ddgs
 streamlit
 beautifulsoup4
 requests
