@@ -713,7 +713,8 @@ with tab2:
     csv_path = "SP500ESGWebsites.csv"
     if os.path.exists(csv_path):
         try:
-            df = pd.read_csv(csv_path)
+            # File is likely iso-8859-1 (Excel standard CSV)
+            df = pd.read_csv(csv_path, encoding='iso-8859-1')
             
             # Select relevant columns if they exist
             # CSV Header: Symbol,Symbol,Name,Company Description,Company Name,Website
