@@ -427,7 +427,90 @@ def search_esg_info(company_name):
     return results
 
 # --- UI Setup ---
-st.set_page_config(page_title="ESG Report Finder", page_icon="🌿")
+st.set_page_config(page_title="ESG Report Finder", page_icon="🌿", layout="wide")
+
+# --- BLOOMBERG TERMINAL STYLING ---
+st.markdown("""
+<style>
+    /* Main Background */
+    .stApp {
+        background-color: #000000;
+        color: #ff9900;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    
+    /* Text Elements */
+    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
+        color: #ff9900 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+    }
+    
+    /* Links */
+    a {
+        color: #00ccff !important; /* Bloomberg Cyan */
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        background-color: #1a1a1a;
+        color: #ff9900;
+        border: 1px solid #ff9900;
+        border-radius: 0px; /* Square corners */
+        font-family: 'Courier New', Courier, monospace;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+    .stButton > button:hover {
+        background-color: #ff9900;
+        color: #000000;
+        border-color: #ff9900;
+    }
+    
+    /* Inputs (Selectbox, Text Input) */
+    .stSelectbox > div > div {
+        background-color: #000000;
+        color: #ff9900;
+        border: 1px solid #333;
+        border-radius: 0px;
+    }
+    .stTextInput > div > div > input {
+        background-color: #000000;
+        color: #ff9900;
+        border: 1px solid #333;
+        border-radius: 0px;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    
+    /* Captions/Secondary Text */
+    .stCaption {
+        color: #bbbbbb !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: #333333;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #111111;
+        border-right: 1px solid #333;
+    }
+    
+    /* Warnings/Success/Info/Error Boxes - Force Terminal Look */
+    .stAlert {
+        background-color: #111111;
+        border: 1px solid #ff9900;
+        color: #ff9900;
+    }
+    
+</style>
+""", unsafe_allow_html=True)
+
 
 # Function to load S&P 500 companies
 @st.cache_data
@@ -453,8 +536,15 @@ SELECT_OPTION = "Select a company..."
 companies_options.insert(0, CUSTOM_OPTION)
 companies_options.insert(0, SELECT_OPTION)
 
-st.title("🌿 ESG Report Finder Agent")
-st.markdown("Enter a company name below to find their recent ESG reports, sustainability website, and CDP submissions.")
+# HEADER
+col_h1, col_h2 = st.columns([0.8, 0.2])
+with col_h1:
+    st.title("ESG TERMINAL <GO>")
+with col_h2:
+    st.caption("MKT STATUS: OPEN")
+    st.caption(f"{time.strftime('%H:%M:%S')} EST")
+
+st.markdown("Enter Company Name/Ticker to Search Reports")
 
 # Selection UI
 selected_option = st.selectbox("Choose a company from S&P 500 or enter custom:", companies_options)
@@ -555,7 +645,7 @@ if 'esg_data' in st.session_state and st.session_state.esg_data:
 
 
 st.markdown("---")
-st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
+st.caption("Pwr by Streamlit & DuckDuckGo | TERMINAL v2.0")
 
 
 # --- Sidebar: Saved Links ---
