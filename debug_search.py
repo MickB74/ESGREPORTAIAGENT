@@ -50,10 +50,6 @@ if __name__ == "__main__":
     # We need to mock streamlit for the import to work without erroring on st.set_page_config?
     # Actually, st commands usually just warn or do nothing if no server is running.
     # Let's try.
-if __name__ == "__main__":
-    # We need to mock streamlit for the import to work without erroring on st.set_page_config?
-    # Actually, st commands usually just warn or do nothing if no server is running.
-    # Let's try.
     import streamlit
     # Mocking basic st stuff to avoid errors if possible
     
