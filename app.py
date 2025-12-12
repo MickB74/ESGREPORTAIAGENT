@@ -73,6 +73,27 @@ def search_web(query, max_results, provider, ddgs_instance=None):
             print(f"DuckDuckGo Error: {e}")
             return []
 
+def scrape_google_custom(query, max_results=10):
+    """
+    Fallback: Uses googlesearch-python library or basic scraping.
+    """
+    results = []
+    if google_search:
+        try:
+            # google_search(query, num=10, stop=10, pause=2) yields URLs
+            # It doesn't give titles/snippets easily without advanced usage, 
+            # but let's try to fetch metadata or just return URL as title.
+            for url in google_search(query, num=max_results, stop=max_results, pause=2):
+                results.append({
+                    "title": url, # Library only returns URL
+                    "href": url,
+                    "body": "Result from Google Search"
+                })
+        except Exception as e:
+            print(f"Google Lib Error: {e}")
+    
+    return results
+
 
 # Helper to checking if domain is likely an official site (heuristic)
 def is_likely_official_domain(url, company_name):
@@ -180,7 +201,46 @@ def verify_pdf_content(url, title, company_name, context="report"):
         
         if len(reader.pages) == 0:
             return None
+        
+        # --- TITLE ENHANCEMENT LOGIC ---
+        final_title = title # Default to link text
+        
+        # 1. Try PDF Metadata
+        pdf_title = None
+        try:
+            if reader.metadata and reader.metadata.title:
+                meta_t = reader.metadata.title.strip()
+                if len(meta_t) > 5 and "micros" not in meta_t.lower() and "untitled" not in meta_t.lower():
+                     pdf_title = meta_t
+        except: pass
+        
+        # 2. Try Filename from URL
+        url_filename = os.path.basename(urlparse(url).path)
+        clean_filename = url_filename.replace('.pdf', '').replace('-', ' ').replace('_', ' ').title()
+        
+        # 3. Decision Logic
+        # Is the original link text generic?
+        generic_terms = ['report', 'download', 'pdf', 'click here', 'view', 'full report', 'read more', 'file']
+        is_generic = False
+        if len(title) < 10 or any(title.lower() == g for g in generic_terms):
+            is_generic = True
             
+        if pdf_title:
+            # Metadata is usually best if it exists
+            final_title = pdf_title
+        elif is_generic and len(clean_filename) > 5:
+            # Fallback to filename if link text is bad
+            final_title = clean_filename
+            
+        # Refine: Ensure year is present if possible
+        import re
+        year_match = re.search(r'(20[12][0-9])', final_title)
+        if not year_match:
+             # Try to find year in URL or Original Text to append
+             y_url = re.search(r'(20[12][0-9])', url)
+             if y_url:
+                 final_title = f"{final_title} ({y_url.group(1)})"
+        
         # Check first 3 pages
         pages_to_check = min(3, len(reader.pages))
         text_content = ""
@@ -207,7 +267,7 @@ def verify_pdf_content(url, title, company_name, context="report"):
         
         log_v(f"[MATCH] Verified: {url}")
         return {
-            "title": title,
+            "title": final_title,
             "href": url,
             "body": "Verified PDF Report"
         }
@@ -383,31 +443,39 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                      break
 
 
-        # --- 2. Find ESG Website ---
-        if official_domain:
-            website_query = f"site:{official_domain} ESG sustainability"
+        # --- 2. Find ESG Website (Refined) ---
+        if known_url:
+            # Trusted Source
+            results["website"] = {
+                "title": f"{resolved_name} Sustainability Hub (Fast Track)",
+                "href": known_url,
+                "body": "Official verified sustainability page."
+            }
         else:
-            website_query = f"{company_name} official ESG sustainability website"
-            
-        log(f"Searching for website query: {website_query}")
-        
-        try:
-            web_search_results = search_web(website_query, max_results=10, provider=provider, ddgs_instance=ddgs)
-            for res in web_search_results:
-                url = res['href']
-                if url.lower().endswith('.pdf'): continue
-                if not official_domain:
-                     if not is_likely_official_domain(url, company_name): continue
-                     if 'bing.com' in url or 'google.com' in url: continue
-                    
-                results["website"] = {
-                    "title": res['title'],
-                    "href": url,
-                    "body": res['body']
-                }
-                break
-        except Exception as e:
-            print(f"Website search error: {e}")
+            # Discovery
+            if official_domain:
+                website_query = f"site:{official_domain} ESG sustainability"
+            else:
+                website_query = f"{company_name} official ESG sustainability website"
+                
+            log(f"Searching for website query: {website_query}")
+            try:
+                web_search_results = search_web(website_query, max_results=10, provider=provider, ddgs_instance=ddgs)
+                for res in web_search_results:
+                    url = res['href']
+                    if url.lower().endswith('.pdf'): continue
+                    if not official_domain:
+                         if not is_likely_official_domain(url, company_name): continue
+                         if 'bing.com' in url or 'google.com' in url: continue
+                        
+                    results["website"] = {
+                        "title": res['title'],
+                        "href": url,
+                        "body": res['body']
+                    }
+                    break
+            except Exception as e:
+                print(f"Website search error: {e}")
             
         # --- 2.5 Find Company Description ---
         try:
@@ -418,145 +486,172 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         except Exception as e:
             log(f"Description search error: {e}")
 
-        # --- 3. Report Discovery Strategy ---
+        # --- 3. Report Discovery ---
         print("Starting Report Discovery...")
 
-        # Strategy A: Direct Search (Verified)
-        if official_domain:
-            report_query = f"site:{official_domain} ESG sustainability report pdf"
-        else:
-            report_query = f"{company_name} ESG sustainability report pdf"
-            
-        log(f"Strategy A: Direct Search ({report_query})")
-        
-        try:
-            report_search_results = search_web(report_query, max_results=15, provider=provider, ddgs_instance=ddgs) # Fetch more to filter
-            
-            # Filter first by title/url
-            candidates = []
-            for res in report_search_results:
-                if is_report_link(res['title'], res['href']):
-                     candidates.append(res)
-
-            # Verify content concurrently
-            # REDUCED WORKERS TO 3
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in candidates}
-                for future in concurrent.futures.as_completed(futures):
-                    verified_item = future.result()
-                    if verified_item:
-                        if verified_item['href'] not in [r['href'] for r in results['reports']]:
-                            verified_item['source'] = "Direct Search"
-                            results["reports"].append(verified_item)
-                            if len(results["reports"]) >= 6: break
-        except Exception as e:
-            print(f"Strategy A error: {e}")
-
-        # Strategy B: "Nearby" Hub Discovery (Verified)
-        if len(results["reports"]) < 6 and results.get("website"):
-            log("Strategy B: Scanning ESG Website for Report Hubs...")
+        # PRIORITY STRATEGY: Scan The Official Hub (Fast Track)
+        # We do this FIRST to ensure authoritative reports are top of list.
+        if results.get("website"):
+            log("Strategy Priority: Scanning ESG Website for Reports...")
             try:
                 web_url = results["website"]["href"]
-                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-                resp = requests.get(web_url, headers=headers, timeout=5)
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                }
+                # Allow redirects, 10s timeout
+                resp = requests.get(web_url, headers=headers, timeout=10)
                 
                 if resp.status_code == 200:
                     soup = BeautifulSoup(resp.content, 'html.parser')
                     links = soup.find_all('a', href=True)
                     
-                    # Hub Candidates
-                    hub_candidates = []
+                    # Candidates to check
+                    scan_candidates = []
+                    hub_links_to_follow = []
                     
-                    # 1. Scrape current page 
-                    page_candidates = []
                     for link in links:
                         href = link['href']
                         text = clean_title(link.get_text(strip=True))
+                        
+                        # Fix relative URLs
                         if href.startswith('/'):
                             parsed = urlparse(web_url)
                             href = f"{parsed.scheme}://{parsed.netloc}{href}"
+                        elif not href.startswith('http'):
+                            continue # Skip javascript: etc
                         
+                        # 1. Direct PDF Links
                         if is_report_link(text, href):
-                            page_candidates.append({'href': href, 'title': text})
+                            scan_candidates.append({'href': href, 'title': text})
                         
-                        # Hub detection
-                        if len(results["reports"]) < 6:
-                             if 'reports' in text.lower() or 'archive' in text.lower() or 'downloads' in text.lower():
-                                 if href not in esg_hub_urls:
-                                     esg_hub_urls.append(href)
-                                     hub_candidates.append(href)
+                        # 2. "Reports" / "Archive" Sub-pages (Follow them!)
+                        # Only strictly follow likely hubs
+                        lower_text = text.lower()
+                        if 'report' in lower_text or 'archive' in lower_text or 'download' in lower_text or 'library' in lower_text:
+                             if href not in esg_hub_urls:
+                                 esg_hub_urls.append(href)
+                                 hub_links_to_follow.append(href)
 
-                    # Verify page candidates
-                    # REDUCED WORKERS TO 2
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                        futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in page_candidates}
+                    # Verify found page PDFs
+                    if scan_candidates:
+                         log(f"  Found {len(scan_candidates)} potential PDFs on main page.")
+                         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                            futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in scan_candidates}
+                            for future in concurrent.futures.as_completed(futures):
+                                v = future.result()
+                                if v:
+                                    if v['href'] not in [r['href'] for r in results['reports']]:
+                                        v['source'] = "Official Site"
+                                        results["reports"].append(v)
+
+                    # Follow Hub Links (Depth 1)
+                    if hub_links_to_follow:
+                        def scrape_hub(h_url):
+                            found = []
+                            try:
+                                log(f"  Following Hub: {h_url}")
+                                h_resp = requests.get(h_url, headers=headers, timeout=10)
+                                if h_resp.status_code == 200:
+                                    h_soup = BeautifulSoup(h_resp.content, 'html.parser')
+                                    for hl in h_soup.find_all('a', href=True):
+                                        hl_href = hl['href']
+                                        hl_text = clean_title(hl.get_text(strip=True))
+                                        
+                                        if hl_href.startswith('/'):
+                                            parsed = urlparse(h_url)
+                                            hl_href = f"{parsed.scheme}://{parsed.netloc}{hl_href}"
+                                        
+                                        if is_report_link(hl_text, hl_href):
+                                            found.append({'href': hl_href, 'title': hl_text})
+                            except: pass
+                            return found
+
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                            futures = {executor.submit(scrape_hub, u): u for u in hub_links_to_follow[:4]} # Limit to 4 hubs
+                            for future in concurrent.futures.as_completed(futures):
+                                candidates = future.result()
+                                # Verify these new candidates
+                                for c in candidates:
+                                     v = verify_pdf_content(c['href'], c['title'], company_name)
+                                     if v and v['href'] not in [r['href'] for r in results['reports']]:
+                                         v['source'] = "Official Hub"
+                                         results["reports"].append(v)
+                                         
+            except Exception as e:
+                print(f"Priority Strategy Error: {e}")
+                
+            # FALLBACK: If scraping failed (403) or found nothing, search THE SITE via Google/DDG.
+            # This handles blocked sites (like CBRE) where we know the domain is correct.
+            if len(results["reports"]) == 0 and results.get("website"):
+                 log("Priority Strategy Fallback: Site is blocked or empty. Searching SITE via engine...")
+                 try:
+                     web_url = results["website"]["href"]
+                     domain = urlparse(web_url).netloc
+                     # Targeted search on the specific trusted domain
+                     site_query = f"site:{domain} ESG sustainability report pdf"
+                     log(f"  Fallback Site Search: {site_query}")
+                     
+                     site_results = search_web(site_query, max_results=8, provider=provider, ddgs_instance=ddgs)
+                     
+                     fallback_candidates = []
+                     for res in site_results:
+                         if is_report_link(res['title'], res['href']):
+                             fallback_candidates.append(res)
+                             
+                     if fallback_candidates:
+                         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                            futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in fallback_candidates}
+                            for future in concurrent.futures.as_completed(futures):
+                                v = future.result()
+                                if v:
+                                    if v['href'] not in [r['href'] for r in results['reports']]:
+                                        v['source'] = "Official Site Search" # Trusted source
+                                        results["reports"].append(v)
+                 except Exception as e:
+                     log(f"Fallback Site Search Error: {e}")
+
+        # SECONDARY STRATEGY: Direct Search (Fill gaps)
+        # Only run if we don't have enough results, OR always run to capture external checks?
+        # Let's run it but limit it if we already have good stuff.
+        if len(results["reports"]) < 6:
+            if official_domain:
+                report_query = f"site:{official_domain} ESG sustainability report pdf"
+            else:
+                report_query = f"{company_name} ESG sustainability report pdf"
+                
+            log(f"Strategy B: Direct Search ({report_query})")
+            
+            try:
+                report_search_results = search_web(report_query, max_results=15, provider=provider, ddgs_instance=ddgs)
+                
+                candidates = []
+                for res in report_search_results:
+                    if is_report_link(res['title'], res['href']):
+                         # Don't re-add what we already found
+                         if res['href'] not in [r['href'] for r in results['reports']]:
+                            candidates.append(res)
+    
+                if candidates:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                        futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in candidates}
                         for future in concurrent.futures.as_completed(futures):
                             verified_item = future.result()
                             if verified_item:
                                 if verified_item['href'] not in [r['href'] for r in results['reports']]:
-                                    verified_item['source'] = "ESG Page Scrape"
+                                    verified_item['source'] = "Web Search"
                                     results["reports"].append(verified_item)
-                                    if len(results["reports"]) >= 6: break
-
-                    # 2. Scrape Hubs (if needed)
-                    if len(results["reports"]) < 6 and hub_candidates:
-                         def scrape_and_verify_hub(hub_url):
-                            found = []
-                            try:
-                                log(f"  Visiting Hub: {hub_url}")
-                                hub_resp = requests.get(hub_url, headers=headers, timeout=5)
-                                if hub_resp.status_code == 200:
-                                    hub_soup = BeautifulSoup(hub_resp.content, 'html.parser')
-                                    hub_links = hub_soup.find_all('a', href=True)
-                                    
-                                    h_candidates = []
-                                    for h_link in hub_links:
-                                        h_href = h_link['href']
-                                        h_text = clean_title(h_link.get_text(strip=True))
-                                        
-                                        if h_href.startswith('/'):
-                                            parsed = urlparse(hub_url)
-                                            h_href = f"{parsed.scheme}://{parsed.netloc}{h_href}"
-                                        
-                                        if is_report_link(h_text, h_href):
-                                            h_candidates.append({'href': h_href, 'title': h_text})
-                                    
-                                    # Verify inner candidates
-                                    for hc in h_candidates:
-                                        v = verify_pdf_content(hc['href'], hc['title'], company_name)
-                                        if v:
-                                            v['source'] = "Hub Scrape"
-                                            found.append(v)
-                            except:
-                                pass
-                            return found
-
-                         # REDUCED WORKERS TO 2
-                         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                            futures = {executor.submit(scrape_and_verify_hub, url): url for url in hub_candidates[:3]}
-                            for future in concurrent.futures.as_completed(futures):
-                                hub_results = future.result()
-                                for item in hub_results:
-                                     if item['href'] not in [r['href'] for r in results['reports']]:
-                                          results["reports"].append(item)
-                                          if len(results["reports"]) >= 8: break
-                                if len(results["reports"]) >= 6: break
-
+                                    if len(results["reports"]) >= 8: break # Cap total
             except Exception as e:
                 print(f"Strategy B error: {e}")
 
-        # Strategy C: ResponsibilityReports.com (Already trusted, but could verify)
-        if len(results["reports"]) < 6:  
+        # Strategy C: ResponsibilityReports.com
+        if len(results["reports"]) < 4:  
              log("Strategy C: ResponsibilityReports.com Fallback")
              rr_query = f"site:responsibilityreports.com {company_name} ESG report"
              try:
                  rr_results = search_web(rr_query, max_results=3, provider=provider, ddgs_instance=ddgs)
-                 
-                 # Just take top result if it looks good, usually trustworthy
                  for res in rr_results:
                      if res['href'] not in [r['href'] for r in results['reports']]:
-                         # Optional: Verify this too if we want to be super strict
-                         # But RR is usually correct.
                          results["reports"].append({
                              "title": f"ResponsibilityReports: {res['title']}",
                              "href": res['href'],
@@ -567,7 +662,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
              except Exception as e:
                  print(f"Strategy C error: {e}")
         
-        # --- 4. CDP Submission (Verified) ---
+        # --- 4. CDP & UNGC (Optimized) ---
         cdp_query = f"{company_name} CDP climate change questionnaire pdf"
         log(f"Searching for CDP: {cdp_query}")
         
@@ -702,7 +797,7 @@ with tab1:
     # 3. Search Provider
     search_provider = st.radio(
         "Search Provider:",
-        options=["Google", "DuckDuckGo"],
+        options=["DuckDuckGo", "Google"],
         index=0,
         horizontal=True,
         help="Google uses 'googlesearch-python' library. DuckDuckGo uses 'ddgs'."
