@@ -127,8 +127,6 @@ def verify_pdf_content(url, title, company_name, context="report"):
         return None
 
 # Function to clean scraped titles
-
-# Function to clean scraped titles
 def clean_title(text):
     if not text:
         return "ESG Report"
