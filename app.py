@@ -31,10 +31,12 @@ def process_one_report(url, title, company_name):
     if not RAG_AVAILABLE:
         return False, "RAG libraries missing."
 
+    # 1. DOWNLOAD PHASE
     try:
-        # 1. Download
         import requests
         import re
+        from urllib3.exceptions import InsecureRequestWarning
+        requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
         
         output_dir = "rag_docs"
         os.makedirs(output_dir, exist_ok=True)
@@ -46,29 +48,41 @@ def process_one_report(url, title, company_name):
         
         # Download if not exists
         if not os.path.exists(filepath):
-            headers = {"User-Agent": "Mozilla/5.0"}
-            resp = requests.get(url, headers=headers, timeout=20)
+            # Robust headers to mimic browser
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Referer": "https://www.google.com/"
+            }
+            try:
+                resp = requests.get(url, headers=headers, timeout=30)
+                resp.raise_for_status()
+            except requests.exceptions.RequestException:
+                # Retry with verification disabled (common for some corp sites)
+                resp = requests.get(url, headers=headers, timeout=30, verify=False)
+            
             if resp.status_code == 200:
                 with open(filepath, 'wb') as f:
                     f.write(resp.content)
             else:
-                return False, f"Download failed: {resp.status_code}"
+                return False, f"Download failed: Status {resp.status_code}"
                 
-        # 2. Index
+    except Exception as e:
+        return False, f"Download Error: {str(e)}"
+
+    # 2. INDEXING PHASE
+    try:
         from langchain_community.document_loaders import PyMuPDFLoader
         from langchain.text_splitter import RecursiveCharacterTextSplitter
-        # from langchain_community.embeddings import HuggingFaceEmbeddings # Already imported if RAG_AVAILABLE
-        # from langchain_community.vectorstores import Chroma # Already imported
         
         loader = PyMuPDFLoader(filepath)
         docs = loader.load()
         if not docs:
-            return False, "PDF loaded but no text found (maybe scanned image?)"
+            return False, "PDF loaded but no text found (scanned image or empty?)"
             
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
         
-        # Update metadata to ensure source is clear
         for chunk in chunks:
             chunk.metadata['source'] = filename
             chunk.metadata['title'] = title
@@ -77,12 +91,11 @@ def process_one_report(url, title, company_name):
         emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         db = Chroma(persist_directory="chroma_db", embedding_function=emb)
         db.add_documents(chunks)
-        # db.persist() # Auto-persists
         
         return True, f"Indexed {len(chunks)} chunks."
 
     except Exception as e:
-        return False, str(e)
+        return False, f"Indexing Error: {str(e)}"
 
 
 # Helper to checking if domain is likely an official site (heuristic)
