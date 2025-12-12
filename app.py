@@ -6,6 +6,11 @@ import os
 from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
+
+
+# ... (rest of imports/code) ...
+
 
 # Helper to checking if domain is likely an official site (heuristic)
 def is_likely_official_domain(url, company_name):
@@ -703,32 +708,61 @@ with tab1:
 # --- TAB 2: Fast Track Data ---
 with tab2:
     st.header("🚀 Fast Track Data (Known Hubs)")
-    st.markdown("This database ensures 100% accuracy for known companies by skipping the search engine guessing game.")
+    st.markdown("This database is sourced from the official S&P 500 ESG Websites list.")
     
-    try:
-        with open("company_map.json", "r") as f:
-            cmap = json.load(f)
+    csv_path = "SP500ESGWebsites.csv"
+    if os.path.exists(csv_path):
+        try:
+            df = pd.read_csv(csv_path)
             
-        # Convert to list of dicts for Table
-        table_data = [{"Company / Key": k, "Official Sustainability Hub": v} for k, v in cmap.items()]
-        
-        # Display as DataFrame (Streamlit handles generic dicts well)
-        # Using st.dataframe allows sorting and filtering natively
-        st.dataframe(
-            table_data, 
-            use_container_width=True,
-            column_config={
-                "Official Sustainability Hub": st.column_config.LinkColumn("Sustainability Hub Link")
-            },
-            hide_index=True
-        )
-        
-        st.caption(f"Total entries: {len(cmap)}")
-        
-    except FileNotFoundError:
-        st.warning("⚠️ local company_map.json not found. Run the builder script first.")
-    except Exception as e:
-        st.error(f"Error loading map: {e}")
+            # Select relevant columns if they exist
+            # CSV Header: Symbol,Symbol,Name,Company Description,Company Name,Website
+            # We want: Symbol (Short), Company Name, Website
+            # Note: Pandas handles duplicate col names by appending .1, .2
+            
+            # Let's clean up columns
+            # The CSV has 'Symbol' twice. The second one (index 1) is usually the ticker.
+            
+            # We will try to pick by index or name
+            display_cols = []
+            if "Company Name" in df.columns: display_cols.append("Company Name")
+            if "Symbol" in df.columns: display_cols.append("Symbol") # might get both or first
+            if "Sym" in df.columns: display_cols.append("Sym")      # user might rename
+            if "Website" in df.columns: display_cols.append("Website")
+            
+            # Simple display
+            # If columns are duplicated, pandas names them Symbol, Symbol.1
+            # Let's just display the whole Clean DF
+            
+            # Filter to just Name, Ticker, URL
+            final_df = df.copy()
+            if "Company Name" in final_df.columns and "Website" in final_df.columns:
+                 # Try to find ticker
+                 ticker_col = "Symbol.1" if "Symbol.1" in final_df.columns else "Symbol"
+                 cols_to_show = [ticker_col, "Company Name", "Website"]
+                 # Filter only existing
+                 cols_to_show = [c for c in cols_to_show if c in final_df.columns]
+                 final_df = final_df[cols_to_show]
+                 
+                 # Rename for display
+                 rename_map = {ticker_col: "Ticker"}
+                 final_df = final_df.rename(columns=rename_map)
+
+            st.dataframe(
+                final_df, 
+                use_container_width=True,
+                column_config={
+                    "Website": st.column_config.LinkColumn("Sustainability Hub Link")
+                },
+                hide_index=True
+            )
+            
+            st.caption(f"Total entries: {len(df)}")
+            
+        except Exception as e:
+            st.error(f"Error loading CSV: {e}")
+    else:
+        st.warning(f"⚠️ {csv_path} not found.")
 
 
 # --- Sidebar: Saved Links ---
