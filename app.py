@@ -12,6 +12,17 @@ import pandas as pd
 # ... (rest of imports/code) ...
 
 
+import pandas as pd
+
+# RAG Imports (Optional failure)
+try:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
+    from langchain_community.vectorstores import Chroma
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+    print("RAG libraries not found. Chat feature disabled.")
+
 # Helper to checking if domain is likely an official site (heuristic)
 def is_likely_official_domain(url, company_name):
     try:
@@ -576,9 +587,10 @@ def update_input_from_select():
         st.session_state.company_input = name
 
 # --- TABS LAYOUT ---
-tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data"])
+tab1, tab2, tab3 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data", "💬 Chat with Reports"])
 
-# --- TAB 1: Search Interface ---
+# ... (Tab 1 and Tab 2 content remains, omitted here for brevity, I will match start of Tab 1) ...
+
 with tab1:
     st.subheader("Find ESG Reports")
     
@@ -766,7 +778,80 @@ with tab2:
         st.warning(f"⚠️ {csv_path} not found.")
 
 
-# --- Sidebar: Saved Links ---
+
+# --- TAB 3: Chat with Reports ---
+with tab3:
+    st.header("💬 Chat with Reports")
+    st.markdown("Ask questions about the downloaded ESG reports using local RAG (Retrieval Augmented Generation).")
+    
+    if not RAG_AVAILABLE:
+        st.error("❌ RAG libraries (langchain, chromadb, etc.) are not installed. Chat is disabled.")
+    else:
+        # Load DB (Cached)
+        @st.cache_resource
+        def load_vector_db():
+            if not os.path.exists("chroma_db"):
+                return None
+            try:
+                emb = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+                db = Chroma(persist_directory="chroma_db", embedding_function=emb)
+                return db
+            except Exception as e:
+                return None
+
+        db = load_vector_db()
+        
+        if not db:
+            st.warning("⚠️ No Vector Database found. Please run the `ingest_reports.py` and `build_vector_db.py` scripts first.")
+            st.info("Run in terminal:\n1. `python3 scripts/ingest_reports.py <your_msg_data.json>`\n2. `python3 scripts/build_vector_db.py`")
+        else:
+            # Chat UI
+            if "messages" not in st.session_state:
+                st.session_state.messages = []
+
+            # Display previous chat
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+            # Input
+            if prompt := st.chat_input("Ask about Scope 3 emissions, targets, etc..."):
+                # Add user message
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                # RAG Retrieval
+                with st.chat_message("assistant"):
+                    with st.spinner("Searching reports..."):
+                        try:
+                            # Search DB
+                            docs = db.similarity_search(prompt, k=4)
+                            
+                            if not docs:
+                                response = "I couldn't find any relevant information in the indexed reports."
+                            else:
+                                # Synthesize a simple "Context Retrieved" response (since we don't have an LLM connected yet)
+                                # The user asked for "Retrieval" primarily.
+                                response = "Here are the most relevant excerpts found from the reports:\n\n"
+                                for i, doc in enumerate(docs):
+                                    source = doc.metadata.get('source', 'Unknown File')
+                                    page = doc.metadata.get('page', '?')
+                                    content = doc.page_content.replace('\n', ' ')
+                                    
+                                    response += f"**Source {i+1}** (`{os.path.basename(source)}`, p.{page}):\n"
+                                    response += f"> {content[:400]}...\n\n"
+                                    
+                                response += "---\n*Note: Full LLM generation is not enabled, showing retrieved context.*"
+
+                            st.markdown(response)
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            
+                        except Exception as e:
+                            st.error(f"Retrieval error: {e}")
+
+# --- Sidebar: Saved Links --- (Existing code continues)
+
 with st.sidebar:
     st.header("🔖 Saved Links")
     
