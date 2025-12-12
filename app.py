@@ -62,6 +62,16 @@ def process_one_report(url, title, company_name):
                 resp = requests.get(url, headers=headers, timeout=30, verify=False)
             
             if resp.status_code == 200:
+                # Validation: Check content type
+                c_type = resp.headers.get('Content-Type', '').lower()
+                if 'pdf' not in c_type and 'application/octet-stream' not in c_type:
+                     # It's likely an HTML block page or redirect
+                     return False, f"Invalid Content-Type: {c_type} (Likely blocked or not a direct PDF)"
+                
+                # Check magic bytes (start of file)
+                if resp.content[:4] != b'%PDF':
+                     return False, "File validation failed: Not a valid PDF document."
+
                 with open(filepath, 'wb') as f:
                     f.write(resp.content)
             else:
@@ -75,10 +85,24 @@ def process_one_report(url, title, company_name):
         from langchain_community.document_loaders import PyMuPDFLoader
         from langchain.text_splitter import RecursiveCharacterTextSplitter
         
+        # Validation before loading
+        if not os.path.getsize(filepath) > 0:
+             return False, "File is empty."
+        
+        # Double-check magic bytes before passing to C++ loader (prevents crashes)
+        with open(filepath, 'rb') as f:
+            header = f.read(4)
+            if header != b'%PDF':
+                return False, f"Corrupt/Invalid PDF file (Header: {header})"
+
         loader = PyMuPDFLoader(filepath)
-        docs = loader.load()
+        try:
+            docs = loader.load()
+        except Exception as e:
+            return False, f"PDF Parsing Error (Corrupt File?): {e}"
+            
         if not docs:
-            return False, "PDF loaded but no text found (scanned image or empty?)"
+            return False, "PDF loaded but no text found (scanned image?)"
             
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
@@ -142,12 +166,26 @@ def verify_pdf_content(url, title, company_name, context="report"):
     try:
         log_v(f"Verifying ({context}): {url}")
         
-        # Stream request to check size first
+        # Robust Headers
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        }
+
+        # Stream request to check headers first
         try:
-            response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, stream=True)
-        except requests.exceptions.Timeout:
-            return None
+            from urllib3.exceptions import InsecureRequestWarning
+            requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+            response = requests.get(url, headers=headers, timeout=10, stream=True)
+        except requests.exceptions.SSLError:
+             response = requests.get(url, headers=headers, timeout=10, stream=True, verify=False)
         except Exception:
+            return None
+
+        # Content Type Check
+        c_type = response.headers.get('Content-Type', '').lower()
+        if 'pdf' not in c_type and 'application/octet-stream' not in c_type:
+            response.close()
             return None
 
         # Size Check
@@ -166,9 +204,17 @@ def verify_pdf_content(url, title, company_name, context="report"):
                      "body": "Verified Large PDF Report"
                  }
         
-        # Content Check
+        # Content Download
         try:
-            f = io.BytesIO(response.content)
+            # Read only start to check magic bytes
+            chunk = response.raw.read(4)
+            if chunk != b'%PDF':
+                response.close()
+                return None
+            
+            # Read rest
+            pdf_data = chunk + response.raw.read()
+            f = io.BytesIO(pdf_data)
         except Exception as e:
             response.close()
             return None
@@ -335,7 +381,8 @@ def search_esg_info(company_name):
                     log(f"Found known sustainability hub (exact): {known_url}")
                 else:
                     # 2. Fuzzy Match (Handle typos like 'appel' -> 'apple')
-                    matches = difflib.get_close_matches(company_name.lower(), cmap.keys(), n=1, cutoff=0.8)
+                    # Lowered cutoff to 0.6 to catch 'appel' -> 'apple' (ratio is 0.8 but better safe)
+                    matches = difflib.get_close_matches(company_name.lower(), cmap.keys(), n=1, cutoff=0.6)
                     if matches:
                         resolved_name = matches[0]
                         known_url = cmap[resolved_name]
@@ -858,6 +905,9 @@ with tab2:
             # Filter to just Name, Ticker, URL
             final_df = df.copy()
             if "Company Name" in final_df.columns and "Website" in final_df.columns:
+                 # Clean blank rows
+                 final_df = final_df.dropna(subset=["Company Name", "Website"], how='any')
+
                  # Try to find ticker
                  ticker_col = "Symbol.1" if "Symbol.1" in final_df.columns else "Symbol"
                  cols_to_show = [ticker_col, "Company Name", "Website"]
