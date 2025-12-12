@@ -967,6 +967,12 @@ with st.sidebar:
                 st.warning("Title and URL required.")
 
     st.divider()
+    
+    # RAG Status Debug
+    if RAG_AVAILABLE:
+        st.success("✅ RAG System: Active")
+    else:
+        st.error("❌ RAG System: Disabled (Missing Libs)")
 
     saved_links = load_links()
     if saved_links:
