@@ -320,16 +320,29 @@ def search_esg_info(company_name):
             return True
 
 
-        # --- 0.5 Load Company Map (Knwon Hubs) ---
+        # --- 0.5 Load Company Map (Known Hubs) ---
         known_url = None
+        resolved_name = None
+        
         try:
             with open("company_map.json", "r") as f:
                 cmap = json.load(f)
+                
+                # 1. Exact Match
                 if company_name.lower() in cmap:
                     known_url = cmap[company_name.lower()]
-                    log(f"Found known sustainability hub: {known_url}")
-        except:
-             pass
+                    resolved_name = company_name
+                    log(f"Found known sustainability hub (exact): {known_url}")
+                else:
+                    # 2. Fuzzy Match (Handle typos like 'appel' -> 'apple')
+                    matches = difflib.get_close_matches(company_name.lower(), cmap.keys(), n=1, cutoff=0.8)
+                    if matches:
+                        resolved_name = matches[0]
+                        known_url = cmap[resolved_name]
+                        log(f"Found known sustainability hub (fuzzy '{resolved_name}'): {known_url}")
+                        
+        except Exception as e:
+             log(f"Map lookup error: {e}")
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
@@ -338,7 +351,7 @@ def search_esg_info(company_name):
              # Fast Path: Use known URL as the "official domain" for hub scanning
              official_domain = known_url
              # Add to domain results to ensure it gets processed in hub scan
-             domain_results = [{'href': known_url, 'title': f"{company_name} Sustainability Hub"}]
+             domain_results = [{'href': known_url, 'title': f"{resolved_name.title()} Sustainability Hub"}]
         else:
             log(f"Searching for domain: {domain_query}")
             try:
