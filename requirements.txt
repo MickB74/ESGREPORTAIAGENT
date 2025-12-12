@@ -1,2 +1,5 @@
+ddgs==0.1.2
 streamlit
+beautifulsoup4
+requests
 ddgs

@@ -4,6 +4,8 @@ import time
 import json
 import os
 from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
 
 # Helper to checking if domain is likely an official site (heuristic)
 def is_likely_official_domain(url, company_name):
@@ -16,24 +18,52 @@ def is_likely_official_domain(url, company_name):
         'wikipedia.org', 'bloomberg.com', 'reuters.com', 'yahoo.com', 
         'finance.yahoo.com', 'wsj.com', 'cnbc.com', 'forbes.com', 
         'investopedia.com', 'morningstar.com', 'marketwatch.com', 
-        'motleyfool.com', 'seekingalpha.com', 'barrons.com'
+        'motleyfool.com', 'seekingalpha.com', 'barrons.com',
+        'bing.com' # Filter out search engine ad links
     ]
     if any(b in domain for b in block_list):
         return False
     return True
 
+# Function to clean scraped titles
+def clean_title(text):
+    if not text:
+        return "ESG Report"
+    
+    # Remove common junk from scraping icons/svgs
+    junk_phrases = [
+        "PDFCreated with Sketch.", 
+        "backgroundLayer", 
+        "Created with Sketch",
+        "Shape",
+        "Path"
+    ]
+    
+    for junk in junk_phrases:
+        text = text.replace(junk, " ")
+        
+    # Collapse whitespace
+    text = " ".join(text.split())
+    
+    # If text became empty or too short, fallback
+    if len(text) < 5:
+        return "ESG Report"
+        
+    return text
+
 # Function to perform searches
 def search_esg_info(company_name):
     results = {
         "website": None,
-        "reports": []
+        "reports": [],
+        "cdp": []
     }
     
     official_domain = None
+    esg_hub_urls = [] # Potential "Report Hubs"
 
     with DDGS() as ddgs:
-        # 1. First, try to identify the official company domain
-        # The user wants "a website from that company"
+        # 1. Official Domain Identification
         domain_query = f"{company_name} official corporate website"
         print(f"Searching for domain: {domain_query}")
         
@@ -43,26 +73,33 @@ def search_esg_info(company_name):
                 url = res['href']
                 title = res['title']
                 
-                # Check 1: Is it a PDF? Skip.
                 if url.lower().endswith('.pdf'):
                     continue
                 
-                # Check 2: Heuristic blocklist
                 if not is_likely_official_domain(url, company_name):
                     continue
                 
-                # Check 3: Title match (very loose) - skip if company name probably not in title
-                # This helps avoid random unrelated sites if the search engine gets confused
-                # We normalize simple check
+                domain_str = urlparse(url).netloc.lower()
+                company_parts = company_name.lower().split()
+                
+                is_domain_match = False
+                for part in company_parts:
+                    if len(part) > 2 and part in domain_str:
+                        is_domain_match = True
+                        break
+                
+                if not is_domain_match:
+                     print(f"Skipping {domain_str} - name mismatch")
+                     continue
+
                 if company_name.split()[0].lower() in title.lower():
-                     official_domain = urlparse(url).netloc
+                     official_domain = domain_str
                      print(f"Identified official domain: {official_domain}")
                      break
         except Exception as e:
             print(f"Domain identification error: {e}")
 
         # 2. Find ESG Website
-        # Strategy: If we have a domain, use site:domain. Else, use general search.
         if official_domain:
             website_query = f"site:{official_domain} ESG sustainability"
         else:
@@ -72,17 +109,15 @@ def search_esg_info(company_name):
         
         try:
             web_search_results = list(ddgs.text(website_query, max_results=10, region='us-en'))
-            # Filter results for the best candidate
             for res in web_search_results:
                 url = res['href']
-                
-                # Prefer non-PDF for website
                 if url.lower().endswith('.pdf'):
                     continue
-                
-                # If we didn't have a domain before, apply blocklist now
-                if not official_domain and not is_likely_official_domain(url, company_name):
-                    continue
+                if not official_domain:
+                     if not is_likely_official_domain(url, company_name):
+                        continue
+                     if 'bing.com' in url or 'google.com' in url:
+                        continue
                     
                 results["website"] = {
                     "title": res['title'],
@@ -92,51 +127,184 @@ def search_esg_info(company_name):
                 break
         except Exception as e:
             print(f"Website search error: {e}")
-
-        # Small delay to be polite
+            
         time.sleep(1)
 
-        # 3. Find last 2 ESG reports (PDFs)
-        # Using site:domain if available is usually cleaner for reports too
+        # 3. Report Discovery Strategy
+        print("Starting Report Discovery...")
+        
+        # Helper to check if link is report-like
+        def is_report_link(text, url):
+            url_lower = url.lower()
+            text_lower = text.lower()
+            if '.pdf' not in url_lower:
+                return False
+            # Check for keywords
+            if 'esg' in text_lower or 'sustainability' in text_lower or 'climate' in text_lower or 'annual' in text_lower:
+                 if 'report' in text_lower:
+                     return True
+            # Check for year patterns near 'report'
+            if 'report' in url_lower and ('202' in url_lower or '202' in text_lower):
+                return True
+            return False
+
+        # Strategy A: Direct Search (Existing)
         if official_domain:
             report_query = f"site:{official_domain} ESG sustainability report pdf"
         else:
             report_query = f"{company_name} ESG sustainability report pdf"
             
-        print(f"Searching for reports: {report_query}")
+        print(f"Strategy A: Direct Search ({report_query})")
         
         try:
-            report_search_results = list(ddgs.text(report_query, max_results=15, region='us-en'))
-            
+            report_search_results = list(ddgs.text(report_query, max_results=10, region='us-en'))
             for res in report_search_results:
                 url = res['href']
                 title = res['title']
-                
-                # Check for PDF extension
-                if url.lower().endswith('.pdf'):
+                if '.pdf' in url.lower():
                      if url not in [r['href'] for r in results['reports']]:
                         results["reports"].append({
                             "title": title,
                             "href": url,
-                            "body": res['body']
+                            "body": res['body'],
+                            "source": "Direct Search"
                         })
-                
-                if len(results["reports"]) >= 2:
+                if len(results["reports"]) >= 6:
                     break
         except Exception as e:
-            print(f"Report search error: {e}")
+            print(f"Strategy A error: {e}")
 
-        # Small delay
-        time.sleep(1)
+        # Strategy B: "Nearby" Hub Discovery (New)
+        if len(results["reports"]) < 6 and results.get("website"):
+            print("Strategy B: Scanning ESG Website for Report Hubs...")
+            try:
+                web_url = results["website"]["href"]
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+                resp = requests.get(web_url, headers=headers, timeout=10)
+                
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.content, 'html.parser')
+                    links = soup.find_all('a', href=True)
+                    
+                    # 1. Scrape current page for PDFs first
+                    for link in links:
+                        href = link['href']
+                        text = clean_title(link.get_text(strip=True))
+                        if href.startswith('/'):
+                            parsed = urlparse(web_url)
+                            href = f"{parsed.scheme}://{parsed.netloc}{href}"
+                        
+                        if is_report_link(text, href):
+                            if href not in [r['href'] for r in results['reports']]:
+                                results["reports"].append({
+                                    "title": text,
+                                    "href": href,
+                                    "body": "Found on ESG Homepage",
+                                    "source": "ESG Page Scrape"
+                                })
 
-        # 4. Find latest CDP Submission (Climate Change Questionnaire)
-        # CDP is usually hosted on cdp.net or external sites, so we DON'T restrict to company domain
+                    # 2. Look for "Report Hub" sub-pages if we still need reports
+                    if len(results["reports"]) < 6:
+                        for link in links:
+                            text = link.get_text(strip=True).lower()
+                            href = link['href']
+                            # Keywords for hubs
+                            if 'reports' in text or 'archive' in text or 'downloads' in text or 'library' in text or 'performance' in text:
+                                if href.startswith('/'):
+                                    parsed = urlparse(web_url)
+                                    href = f"{parsed.scheme}://{parsed.netloc}{href}"
+                                
+                                # Avoid external links for hubs usually
+                                if official_domain and official_domain not in href and 'http' in href:
+                                    continue
+                                    
+                                if href not in esg_hub_urls:
+                                    esg_hub_urls.append(href)
+                        
+                        # Visit top 2 likely hubs
+                        for hub_url in esg_hub_urls[:2]:
+                            print(f"  Visiting Hub: {hub_url}")
+                            try:
+                                hub_resp = requests.get(hub_url, headers=headers, timeout=8)
+                                if hub_resp.status_code == 200:
+                                    hub_soup = BeautifulSoup(hub_resp.content, 'html.parser')
+                                    hub_links = hub_soup.find_all('a', href=True)
+                                    for h_link in hub_links:
+                                        h_href = h_link['href']
+                                        h_text = clean_title(h_link.get_text(strip=True))
+                                        
+                                        if h_href.startswith('/'):
+                                            parsed = urlparse(hub_url)
+                                            h_href = f"{parsed.scheme}://{parsed.netloc}{h_href}"
+                                        
+                                        if is_report_link(h_text, h_href):
+                                            if h_href not in [r['href'] for r in results['reports']]:
+                                                results["reports"].append({
+                                                    "title": h_text if h_text else "Report (Hub)",
+                                                    "href": h_href,
+                                                    "body": f"Found on {hub_url}",
+                                                    "source": "Hub Scrape"
+                                                })
+                                        if len(results["reports"]) >= 8: # Stop if we found plenty
+                                            break
+                            except:
+                                continue
+                            if len(results["reports"]) >= 6:
+                                break
+
+            except Exception as e:
+                print(f"Strategy B error: {e}")
+
+        # Strategy C: ResponsibilityReports.com Fallback (New)
+        if len(results["reports"]) < 6:  
+             # User asked for robust logic. If we have fewer than 2 reports, try this reliable source.
+             print("Strategy C: ResponsibilityReports.com Fallback")
+             rr_query = f"site:responsibilityreports.com {company_name} ESG report"
+             try:
+                 rr_results = list(ddgs.text(rr_query, max_results=3, region='us-en'))
+                 for res in rr_results:
+                     rr_url = res['href'] # This is likely the company page on RR
+                     if 'responsibilityreports.com' in rr_url:
+                         print(f"  Checking RR Page: {rr_url}")
+                         # We need to visit this page to get the actual PDF link usually
+                         try:
+                             rr_resp = requests.get(rr_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                             if rr_resp.status_code == 200:
+                                 rr_soup = BeautifulSoup(rr_resp.content, 'html.parser')
+                                 # RR usually has "View Report" or "Download" buttons
+                                 # They often link to a view_report.php or directly to PDF
+                                 rr_links = rr_soup.find_all('a', href=True)
+                                 for rrl in rr_links:
+                                     rrh = rrl['href']
+                                     rrt = clean_title(rrl.get_text(strip=True))
+                                     
+                                     # Logic for RR structure
+                                     if rrh.startswith('/'):
+                                         rrh = f"https://www.responsibilityreports.com{rrh}"
+                                     
+                                     if '.pdf' in rrh.lower() or 'click here to download' in rrt.lower():
+                                         if rrh not in [r['href'] for r in results['reports']]:
+                                             results["reports"].append({
+                                                 "title": f"{company_name} Report (ResponsibilityReports)",
+                                                 "href": rrh,
+                                                 "body": "Sourced from responsibilityreports.com",
+                                                 "source": "ResponsibilityReports"
+                                             })
+                         except Exception as e:
+                             print(f"  RR Scrape error: {e}")
+                     
+                     if len(results["reports"]) >= 6:
+                         break
+             except Exception as e:
+                 print(f"Strategy C error: {e}")
+
+        
+        # 4. CDP Submission
         cdp_query = f"{company_name} CDP climate change questionnaire pdf"
         print(f"Searching for CDP: {cdp_query}")
-        results["cdp"] = []
-
+        
         try:
-            cdp_results = list(ddgs.text(cdp_query, max_results=10, region='us-en'))
+            cdp_results = list(ddgs.text(cdp_query, max_results=5, region='us-en'))
             for res in cdp_results:
                 url = res['href']
                 title = res['title']
@@ -147,7 +315,7 @@ def search_esg_info(company_name):
                             "href": url,
                             "body": res['body']
                         })
-                if len(results["cdp"]) >= 2:
+                if len(results["cdp"]) >= 6:
                     break
         except Exception as e:
              print(f"CDP search error: {e}")

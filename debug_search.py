@@ -2,6 +2,9 @@ from ddgs import DDGS
 import time
 from urllib.parse import urlparse
 
+import requests
+from bs4 import BeautifulSoup
+
 def get_domain(url):
     try:
         return urlparse(url).netloc
@@ -9,39 +12,53 @@ def get_domain(url):
         return ""
 
 def test(company):
-    print(f"\nTesting for: {company}")
-    with DDGS() as ddgs:
-        # Step 1: Find Official Website
-        # Using 'official corporate website' usually ranks the main site #1
-        q_site = f"{company} official corporate website"
-        print(f"  Query 1: {q_site}")
-        
-        candidates = list(ddgs.text(q_site, max_results=3, region='us-en'))
-        
-        official_domain = None
-        
-        for c in candidates:
-            url = c['href']
-            domain = get_domain(url)
-            # Filter out common encyclopedias/news if possible, though 'official' usually pushes them down
-            if 'wikipedia' not in domain and 'bloomberg' not in domain and 'reuters' not in domain:
-                official_domain = domain
-                print(f"  Found potential official domain: {official_domain} ({url})")
-                break
-        
-        if not official_domain:
-            print("  Could not determine official domain.")
-            return
-
-        # Step 2: Search specific ESG site on that domain
-        q_esg = f"site:{official_domain} ESG sustainability"
-        print(f"  Query 2: {q_esg}")
-        
-        esg_results = list(ddgs.text(q_esg, max_results=3, region='us-en'))
-        for res in esg_results:
-            print(f"    Result: {res['title']} -> {res['href']}")
+    print(f"\n{'='*40}")
+    print(f"Testing for: {company}")
+    print(f"{'='*40}")
+    
+    # We can just import the actual function from app.py to test it directly!
+    # But first we need to make sure app.py is importable (it has st. calls at top level?)
+    # app.py has st calls at top level, so importing it might execute them and fail/warn.
+    # It's better to copy the critical logic or mock st.
+    # Actually, let's just copy the logic effectively for the debug script, 
+    # OR we can wrap the app.py logic in a `if __name__ == "__main__":` block? 
+    # No, app.py is a streamlit app.
+    
+    # Let's just run the search_esg_info from app.py by importing it.
+    # Streamlit scripts often execute on import. 
+    # A better approach for the future refactor would be to move logic to a separate file.
+    # For now, I will reimplement a simplified version here to verify the CONCEPTS work,
+    # or I will try to see if I can import it.
+    
+    # Let's try importing it. If it fails, I'll paste the logic.
+    try:
+        from app import search_esg_info
+        print("Successfully imported search_esg_info")
+        results = search_esg_info(company)
+        print("\nResults found:")
+        print(f"Website: {results['website']['href'] if results['website'] else 'None'}")
+        print(f"Reports ({len(results['reports'])}):")
+        for r in results['reports']:
+            print(f" - [{r.get('source', 'Unknown')}] {r['title'][:50]}... -> {r['href']}")
+            
+    except ImportError:
+        print("Could not import app.py correctly (likely due to top-level code).")
+    except Exception as e:
+        print(f"Error running search: {e}")
 
 if __name__ == "__main__":
+    # We need to mock streamlit for the import to work without erroring on st.set_page_config?
+    # Actually, st commands usually just warn or do nothing if no server is running.
+    # Let's try.
+if __name__ == "__main__":
+    # We need to mock streamlit for the import to work without erroring on st.set_page_config?
+    # Actually, st commands usually just warn or do nothing if no server is running.
+    # Let's try.
+    import streamlit
+    # Mocking basic st stuff to avoid errors if possible
+    
     test("Apple")
     test("ExxonMobil")
     test("3M")
+
+
