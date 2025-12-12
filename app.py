@@ -149,18 +149,49 @@ def search_esg_info(company_name):
                 log(f"  Verifying ({context}): {url}")
                 
                 # Stream request to check size first
-                response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10, stream=True)
-                
+                # TIMEOUT REDUCED to 5s
+                try:
+                    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, stream=True)
+                except requests.exceptions.Timeout:
+                    log(f"  [SKIP] Timeout checking {url}")
+                    return None
+                except Exception:
+                    return None
+
                 # Size Check
                 content_length = response.headers.get('Content-Length')
-                if content_length and int(content_length) < 50000: # 50KB
-                    log(f"  [SKIP] File too small ({content_length} bytes): {url}")
+                if content_length:
+                    size_bytes = int(content_length)
+                    if size_bytes < 50000: # 50KB
+                        log(f"  [SKIP] File too small ({size_bytes} bytes): {url}")
+                        response.close()
+                        return None
+                    # OPTIMIZATION: If > 20MB, assume it's a report (save bandwidth)
+                    if size_bytes > 20 * 1024 * 1024:
+                         log(f"  [MATCH] File is large ({size_bytes/1024/1024:.1f} MB), assuming report: {url}")
+                         response.close()
+                         return {
+                             "title": title,
+                             "href": url,
+                             "body": "Verified Large PDF Report"
+                         }
+                
+                # Content Check
+                try:
+                    # Download content with size limit (e.g. read max 10MB if no content-length?)
+                    # For now just standard read but catch errors
+                    f = io.BytesIO(response.content)
+                except Exception as e:
+                    log(f"  [SKIP] download failed: {e}")
                     response.close()
                     return None
                 
-                # Content Check
-                f = io.BytesIO(response.content)
-                reader = pypdf.PdfReader(f)
+                response.close()
+                
+                try:
+                    reader = pypdf.PdfReader(f)
+                except:
+                    return None
                 
                 if len(reader.pages) == 0:
                     return None
@@ -169,7 +200,10 @@ def search_esg_info(company_name):
                 pages_to_check = min(3, len(reader.pages))
                 text_content = ""
                 for i in range(pages_to_check):
-                    text_content += reader.pages[i].extract_text().lower() + " "
+                    try:
+                        text_content += reader.pages[i].extract_text().lower() + " "
+                    except:
+                        pass
                 
                 # Check Company Name
                 company_first_word = company_name.split()[0].lower()
@@ -286,7 +320,8 @@ def search_esg_info(company_name):
                      candidates.append(res)
 
             # Verify content concurrently
-            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            # REDUCED WORKERS TO 3
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 futures = {executor.submit(verify_pdf_content, c['href'], c['title']): c for c in candidates}
                 for future in concurrent.futures.as_completed(futures):
                     verified_item = future.result()
@@ -333,7 +368,8 @@ def search_esg_info(company_name):
                                      hub_candidates.append(href)
 
                     # Verify page candidates
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                    # REDUCED WORKERS TO 2
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                         futures = {executor.submit(verify_pdf_content, c['href'], c['title']): c for c in page_candidates}
                         for future in concurrent.futures.as_completed(futures):
                             verified_item = future.result()
@@ -376,7 +412,8 @@ def search_esg_info(company_name):
                                 pass
                             return found
 
-                         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                         # REDUCED WORKERS TO 2
+                         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                             futures = {executor.submit(scrape_and_verify_hub, url): url for url in hub_candidates[:3]}
                             for future in concurrent.futures.as_completed(futures):
                                 hub_results = future.result()
@@ -423,8 +460,9 @@ def search_esg_info(company_name):
                  if 'cdp' in res['title'].lower() or 'climate' in res['title'].lower():
                      if res['href'].lower().endswith('.pdf'):
                          cdp_candidates.append(res)
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            
+            # REDUCED WORKERS TO 2
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 futures = {executor.submit(verify_pdf_content, c['href'], c['title'], "cdp"): c for c in cdp_candidates}
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
