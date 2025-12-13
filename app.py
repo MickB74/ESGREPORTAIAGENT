@@ -195,14 +195,16 @@ def verify_pdf_content(url, title, company_name, context="report"):
             log_v(f"[SKIP] Company token '{sig_token}' not found.")
             return None
             
+        # Check Company Name (SMARTER)
+        sig_token = get_significant_token(company_name) 
+        if sig_token not in text_content:
+            log_v(f"[SKIP] Company token '{sig_token}' not found.")
+            return None
+            
         # Check Keywords (Context specific)
-        if context == "cdp":
-            if 'cdp' not in text_content and 'climate change' not in text_content:
-                 return None
-        else:
-            report_keywords = ['report', 'sustainability', 'esg', 'annual', 'review', 'fiscal', 'summary']
-            if not any(k in text_content for k in report_keywords):
-                return None
+        report_keywords = ['report', 'sustainability', 'esg', 'annual', 'review', 'fiscal', 'summary']
+        if not any(k in text_content for k in report_keywords):
+            return None
         
         log_v(f"[MATCH] Verified: {url}")
         return {
@@ -295,7 +297,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         "timestamp": datetime.datetime.now().isoformat(),
         "website": None,
         "reports": [],
-        "cdp": []
+        "reports": []
     }
     
     official_domain = None
@@ -488,8 +490,25 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
 
                         text = clean_title(link.get_text(strip=True))
 
-                        if normalized.lower().endswith('.pdf') and is_report_link(text, normalized):
-                            pdf_candidates.append({'href': normalized, 'title': text})
+                        if normalized.lower().endswith('.pdf'):
+                            # BROADENED CRITERIA: If on the hub and is PDF, valid candidate unless explicitly skipped 
+                            # We skip ONLY if it matches negative terms (policy etc)
+                            if is_report_link(text, normalized):
+                                # Logic inside is_report_link handles negatives. 
+                                # It also enforces "report" keyword. 
+                                # But user said "I just want all reports on the site".
+                                # We'll trust "is_report_link" logic which I will relax slightly in a moment?
+                                # Actually, let's keep is_report_link but rename/relax it OR logic here.
+                                pass
+                            
+                            # Let's simple check negatives
+                            is_negative = False
+                            neg_terms = ['policy', 'charter', 'code of conduct', 'guidelines', 'presentation']
+                            for n in neg_terms:
+                                if n in text.lower(): is_negative = True
+                            
+                            if not is_negative:
+                                pdf_candidates.append({'href': normalized, 'title': text})
                             continue
 
                         lower_text = text.lower()
@@ -623,31 +642,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
              except Exception as e:
                  print(f"Strategy C error: {e}")
         
-        # --- 4. CDP & UNGC (Optimized) ---
-        cdp_query = f"{company_name} CDP climate change questionnaire pdf"
-        log(f"Searching for CDP: {cdp_query}")
-        
-        try:
-            cdp_search_results = search_web(cdp_query, max_results=8, ddgs_instance=ddgs)
-            
-            cdp_candidates = []
-            for res in cdp_search_results:
-                 if 'cdp' in res['title'].lower() or 'climate' in res['title'].lower():
-                     if res['href'].lower().endswith('.pdf'):
-                         cdp_candidates.append(res)
-            
-            # REDUCED WORKERS TO 2
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name, "cdp"): c for c in cdp_candidates}
-                for future in concurrent.futures.as_completed(futures):
-                    result = future.result()
-                    if result:
-                        if result['href'] not in [r['href'] for r in results['cdp']]:
-                            results["cdp"].append(result)
-                            if len(results["cdp"]) >= 6: break
-                                
-        except Exception as e:
-             log(f"CDP search error: {e}")
+
 
         # --- 5. UN Global Compact (COP) ---
         if len(results["reports"]) < 8:
@@ -693,8 +688,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
     # Sort reports by year descending (newest on top)
     results["reports"].sort(key=lambda x: extract_year(x['title']), reverse=True)
     
-    # Also sort CDP by year if possible
-    results["cdp"].sort(key=lambda x: extract_year(x['title']), reverse=True)
+
 
     return results
 
@@ -833,55 +827,28 @@ with tab1:
         
         st.divider()
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Display Reports
-            st.subheader("📄 Recent ESG Reports")
-            if data["reports"]:
-                for idx, report in enumerate(data["reports"]):
-                    # 3 Columns: Info, Save, Chat
-                    # Adjusted ratios to prevent button text wrapping
-                    # 2 Columns: Info, Save
-                    r_col, r_save = st.columns([0.8, 0.2])
-                    
-                    with r_col:
-                        st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
-                        st.caption(report['body'])
-                    
-                    with r_save:
-                        # use_container_width=True ensures button expands to fill column
-                        if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
-                            if save_link_to_file(report['title'], report['href'], description=report['body']):
-                                st.success("Saved")
-                                time.sleep(0.5)
-                                st.rerun()
-                            else:
-                                st.warning("Exists")
-                            
-            else:
-                st.info("No PDF reports loaded yet.")
-
-        with col2:
-                # Display CDP
-            st.subheader("📋 CDP Submissions")
-            if data.get("cdp"):
-                for idx, item in enumerate(data["cdp"]):
-                    c_col, c_save = st.columns([0.8, 0.2])
-                    with c_col:
-                        st.markdown(f"**{idx+1}. [{item['title']}]({item['href']})**")
-                        st.caption(item['body'])
-                    with c_save:
-                        if st.button("Save", key=f"save_cdp_{idx}"):
-                            if save_link_to_file(item['title'], item['href']):
-                                st.success("Saved!")
-                                time.sleep(0.5)
-                                st.rerun()
-                            else:
-                                st.warning("Exists")
-            else:
-                st.info("No recent CDP submissions found.")
-
+        st.subheader("📄 Recent ESG Reports")
+        if data["reports"]:
+            for idx, report in enumerate(data["reports"]):
+                # 2 Columns: Info, Save
+                r_col, r_save = st.columns([0.85, 0.15])
+                
+                with r_col:
+                    st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
+                    st.caption(report['body'])
+                
+                with r_save:
+                    # use_container_width=True ensures button expands to fill column
+                    if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
+                        if save_link_to_file(report['title'], report['href'], description=report['body']):
+                            st.success("Saved")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.warning("Exists")
+                        
+        else:
+            st.info("No PDF reports loaded yet.")
 
     st.markdown("---")
     st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
