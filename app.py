@@ -252,13 +252,18 @@ def load_links():
     except:
         return []
 
-def save_link_to_file(title, url):
+def save_link_to_file(title, url, description=None):
     links = load_links()
     # Check if exists
     for link in links:
         if link['href'] == url:
             return False # Already saved
-    links.append({"title": title, "href": url})
+    
+    new_link = {"title": title, "href": url}
+    if description:
+        new_link["description"] = description
+        
+    links.append(new_link)
     with open(LINKS_FILE, "w") as f:
         json.dump(links, f)
     return True
@@ -801,7 +806,7 @@ with tab1:
                 st.caption(data['website']['body'])
             with col_save_web:
                 if st.button("Save", key="save_web"):
-                    if save_link_to_file(data['website']['title'], data['website']['href']):
+                    if save_link_to_file(data['website']['title'], data['website']['href'], description=data['website']['body']):
                         st.success("Saved!")
                         time.sleep(0.5)
                         st.rerun()
@@ -848,7 +853,7 @@ with tab1:
                     with r_save:
                         # use_container_width=True ensures button expands to fill column
                         if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
-                            if save_link_to_file(report['title'], report['href']):
+                            if save_link_to_file(report['title'], report['href'], description=report['body']):
                                 st.success("Saved")
                                 time.sleep(0.5)
                                 st.rerun()
