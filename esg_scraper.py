@@ -23,6 +23,22 @@ SITES = [
         "name": "Home_Depot",
         # Home Depot is heavy JS; we explicitly wait for their report container
         "wait_for": ".views-element-container" 
+    },
+    {
+        "url": "https://www.factset.com/our-company/sustainability",
+        "name": "FactSet",
+        "wait_for": "main" # Detected by auto-config
+    },
+    {
+        "url": "https://investor.spglobal.com/corporate-governance/Impact-and-TCFD-Reports/",
+        "name": "SP_Global",
+        "wait_for": "body"
+    },
+    {
+        "url": "https://corporate.ford.com/social-impact/sustainability/",
+        "name": "Ford",
+        "wait_until": "domcontentloaded",
+        "wait_for": "div.module-container" # Waiting for some content container
     }
 ]
 
@@ -77,7 +93,8 @@ class ESGScraper:
         page = browser_context.new_page()
         
         try:
-            page.goto(site['url'], timeout=60000)
+            wait_strategy = site.get("wait_until", "load") # Default to 'load', but can be 'domcontentloaded' or 'commit'
+            page.goto(site['url'], timeout=60000, wait_until=wait_strategy)
             
             # --- STRATEGY: Click to Download ---
             if "click_selector" in site:

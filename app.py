@@ -7,6 +7,7 @@ from urllib.parse import urlparse, urljoin
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import difflib
 
 
 # ... (rest of imports/code) ...
@@ -281,7 +282,7 @@ def delete_link(index):
 
 # Function to perform searches
 # Function to perform searches
-def search_esg_info(company_name, fetch_reports=True, known_website=None):
+def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None):
 
     import concurrent.futures
     import datetime
@@ -297,7 +298,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         "timestamp": datetime.datetime.now().isoformat(),
         "website": None,
         "reports": [],
-        "reports": []
+        "reports": [],
+        "symbol": symbol
     }
     
     official_domain = None
@@ -594,7 +596,11 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
         # Optimization: SKIP if we already have good results (> 3)
         if len(results["reports"]) < 4:
-            if official_domain:
+            if symbol:
+                # USER REQUESTED STRATEGY: Stock Symbol + "ESG REPORT 2025 or 2024 or 2023"
+                report_query = f"{symbol} ESG REPORT 2025 OR 2024 OR 2023"
+                log(f"Strategy B: Direct Search by Symbol ({report_query})")
+            elif official_domain:
                 report_query = f"site:{official_domain} ESG sustainability report pdf"
             else:
                 report_query = f"{company_name} ESG sustainability report pdf"
@@ -715,13 +721,19 @@ if companies_data:
 
 if 'company_input' not in st.session_state:
     st.session_state.company_input = ""
+if 'company_symbol' not in st.session_state:
+    st.session_state.company_symbol = None
 
 def update_input_from_select():
     selection = st.session_state.sp500_selector
     if selection and selection != "Select from S&P 500 (Optional)...":
         # Extract name part: "Apple Inc. (AAPL)" -> "Apple Inc."
-        name = selection.split('(')[0].strip()
-        st.session_state.company_input = name
+        parts = selection.rsplit('(', 1)
+        if len(parts) == 2:
+            name = parts[0].strip()
+            sym = parts[1].replace(')', '').strip()
+            st.session_state.company_input = name
+            st.session_state.company_symbol = sym
 
 # --- TABS LAYOUT ---
 tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data"])
@@ -758,8 +770,20 @@ with tab1:
         else:
             with st.spinner(f"Searching for {company_name}'s info..."):
                 try:
+                    # Resolve symbol if not set
+                    search_symbol = st.session_state.get('company_symbol')
+                    # If the name doesn't match the selected symbol's name (user edited text), try to re-resolve
+                    # Simple check: if we have a list, try to find the match
+                    if not search_symbol:
+                        # Try to find in companies_data
+                        c_lower = company_name.lower()
+                        for c in companies_data:
+                            if c['Security'].lower() == c_lower or c['Symbol'].lower() == c_lower:
+                                search_symbol = c['Symbol']
+                                break
+                    
                     # STEP 1: Fast Search (No scraping)
-                    data = search_esg_info(company_name, fetch_reports=False)
+                    data = search_esg_info(company_name, fetch_reports=False, symbol=search_symbol)
                     # Store in session state
                     st.session_state.esg_data = data
                     st.session_state.current_company = company_name
@@ -815,7 +839,7 @@ with tab1:
                      with st.spinner(f"Scanning {data['website']['title']} for reports..."):
                          try:
                              # STEP 2: Deep Scan (Using known website)
-                             new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'])
+                             new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'))
                              new_data['description'] = data['description'] # Preserve description
                              st.session_state.esg_data = new_data
                              st.rerun()
