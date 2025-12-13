@@ -596,37 +596,46 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
         # Optimization: SKIP if we already have good results (> 3)
         if len(results["reports"]) < 4:
+            report_queries = []
             if symbol:
-                # USER REQUESTED STRATEGY: Stock Symbol + "ESG REPORT 2025 or 2024 or 2023"
-                report_query = f"{symbol} ESG REPORT 2025 OR 2024 OR 2023"
-                log(f"Strategy B: Direct Search by Symbol ({report_query})")
+                # Prioritize recent report years individually for clearer matches
+                report_queries = [
+                    f"{symbol} ESG report 2024",
+                    f"{symbol} ESG report 2023"
+                ]
+                log("Strategy B: Direct Search by Symbol (year-by-year)")
             elif official_domain:
-                report_query = f"site:{official_domain} ESG sustainability report pdf"
+                report_queries = [f"site:{official_domain} ESG sustainability report pdf"]
             else:
-                report_query = f"{company_name} ESG sustainability report pdf"
-                
-            log(f"Strategy B: Direct Search ({report_query})")
-            
+                report_queries = [f"{company_name} ESG sustainability report pdf"]
+
             try:
-                report_search_results = search_web(report_query, max_results=8, ddgs_instance=ddgs)
-                
-                candidates = []
-                for res in report_search_results:
-                    if is_report_link(res['title'], res['href']):
-                         # Don't re-add what we already found
-                         if res['href'] not in [r['href'] for r in results['reports']]:
-                            candidates.append(res)
-    
-                if candidates:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                        futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in candidates}
-                        for future in concurrent.futures.as_completed(futures):
-                            verified_item = future.result()
-                            if verified_item:
-                                if verified_item['href'] not in [r['href'] for r in results['reports']]:
-                                    verified_item['source'] = "Web Search"
-                                    results["reports"].append(verified_item)
-                                    if len(results["reports"]) >= 8: break # Cap total
+                for report_query in report_queries:
+                    if len(results["reports"]) >= 8:
+                        break
+
+                    log(f"Strategy B: Direct Search ({report_query})")
+                    report_search_results = search_web(report_query, max_results=8, ddgs_instance=ddgs)
+
+                    candidates = []
+                    for res in report_search_results:
+                        if is_report_link(res['title'], res['href']):
+                             # Don't re-add what we already found
+                             if res['href'] not in [r['href'] for r in results['reports']]:
+                                candidates.append(res)
+
+                    if candidates:
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                            futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in candidates}
+                            for future in concurrent.futures.as_completed(futures):
+                                verified_item = future.result()
+                                if verified_item:
+                                    if verified_item['href'] not in [r['href'] for r in results['reports']]:
+                                        verified_item['source'] = "Web Search"
+                                        results["reports"].append(verified_item)
+                                        if len(results["reports"]) >= 8: break # Cap total
+                    # Avoid hammering the API; respect one-query-at-a-time intent
+                    time.sleep(0.3)
             except Exception as e:
                 print(f"Strategy B error: {e}")
 
