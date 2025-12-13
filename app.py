@@ -348,8 +348,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
                         known_url = cmap[resolved_name]
                         log(f"Found known sustainability hub (fuzzy '{resolved_name}'): {known_url}")
                         
-        except Exception as e:
-             log(f"Map lookup error: {e}")
+            except Exception as e:
+                 log(f"Map lookup error: {e}")
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
