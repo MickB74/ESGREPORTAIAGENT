@@ -299,7 +299,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         "website": None,
         "reports": [],
         "reports": [],
-        "symbol": symbol
+        "symbol": symbol,
+        "search_log": []
     }
     
     official_domain = None
@@ -307,6 +308,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
 
     log("Starting search...")
+    # Add initial context to log
+    results["search_log"].append(f"Starting search for: {company_name} (Known Symbol: {symbol}, Fetch Reports: {fetch_reports})")
 
     with DDGS() as ddgs:
         # --- 0. Shared Helpers ---
@@ -371,6 +374,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
              domain_results = [{'href': known_url, 'title': f"{resolved_name.title()} Sustainability Hub"}]
         else:
             log(f"Searching for domain: {domain_query}")
+            results["search_log"].append(f"Domain Search: {domain_query}")
             try:
                 domain_results = search_web(domain_query, max_results=5, ddgs_instance=ddgs)
             except:
@@ -417,6 +421,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 website_query = f"{company_name} official ESG sustainability website"
                 
             log(f"Searching for website query: {website_query}")
+            results["search_log"].append(f"Website Search: {website_query}")
             try:
                 web_search_results = search_web(website_query, max_results=10, ddgs_instance=ddgs)
                 for res in web_search_results:
@@ -438,6 +443,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         # --- 2.5 Find Company Description ---
         try:
             desc_query = f"{company_name} company description summary"
+            results["search_log"].append(f"Description Search: {desc_query}")
             desc_results = search_web(desc_query, max_results=1, ddgs_instance=ddgs)
             if desc_results:
                 results['description'] = desc_results[0]['body']
@@ -572,6 +578,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                      # Targeted search on the specific trusted domain
                      site_query = f"site:{domain} ESG sustainability report pdf"
                      log(f"  Fallback Site Search: {site_query}")
+                     results["search_log"].append(f"Hub Fallback Search: {site_query}")
                      
                      site_results = search_web(site_query, max_results=6, ddgs_instance=ddgs)
                      
@@ -606,6 +613,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 report_query = f"{company_name} ESG sustainability report pdf"
                 
             log(f"Strategy B: Direct Search ({report_query})")
+            results["search_log"].append(f"Direct Report Search: {report_query}")
             
             try:
                 report_search_results = search_web(report_query, max_results=8, ddgs_instance=ddgs)
@@ -634,6 +642,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         if len(results["reports"]) < 4:  
              log("Strategy C: ResponsibilityReports.com Fallback")
              rr_query = f"site:responsibilityreports.com {company_name} ESG report"
+             results["search_log"].append(f"ResponsibilityReports Search: {rr_query}")
              try:
                  rr_results = search_web(rr_query, max_results=3, ddgs_instance=ddgs)
                  for res in rr_results:
@@ -654,6 +663,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         if len(results["reports"]) < 8:
              ungc_query = f"site:unglobalcompact.org {company_name} Communication on Progress pdf"
              log(f"Searching UN Global Compact: {ungc_query}")
+             results["search_log"].append(f"UNGC Search: {ungc_query}")
              try:
                  ungc_results = search_web(ungc_query, max_results=4, ddgs_instance=ddgs)
                  
@@ -807,6 +817,12 @@ with tab1:
         # Display Auto-Resolve Notice
         if data.get('resolved_from'):
             st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
+
+        # --- DEBUG LOGS ---
+        if data.get("search_log"):
+            with st.expander("🔍 Search Debug Logs (Terms Used)"):
+                for log_item in data["search_log"]:
+                    st.code(log_item, language="text")
 
         st.divider()
         
