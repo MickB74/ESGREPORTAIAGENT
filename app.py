@@ -332,7 +332,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         else:
             try:
                 with open("company_map.json", "r") as f:
-                cmap = json.load(f)
+                    cmap = json.load(f)
                 
                 # 1. Exact Match
                 if company_name.lower() in cmap:
