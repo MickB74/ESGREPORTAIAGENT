@@ -13,86 +13,25 @@ import pandas as pd
 
 
 import pandas as pd
-try:
-    from googlesearch import search as google_search
-except ImportError:
-    google_search = None
-
-
-def search_web(query, max_results, provider, ddgs_instance=None):
+# Helper to checking if domain is likely an official site (heuristic)
+def search_web(query, max_results, ddgs_instance=None):
     """
-    Generic search wrapper for Google (via library or API) and DuckDuckGo.
+    Wrapper for DuckDuckGo search.
     Returns list of dicts: {'title': str, 'href': str, 'body': str}
     """
-    results = []
-    
-    if provider == "Google":
-        # 1. Try Google Custom Search API (Robust)
-        api_key = os.environ.get("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
-        cx = os.environ.get("GOOGLE_CX") or st.secrets.get("GOOGLE_CX")
-        
-        if api_key and cx:
+    if not ddgs_instance:
+        with DDGS() as ddgs:
             try:
-                # Custom Search JSON API
-                url = "https://www.googleapis.com/customsearch/v1"
-                params = {
-                    "key": api_key,
-                    "cx": cx,
-                    "q": query,
-                    "num": min(max_results, 10) # API max is 10
-                }
-                resp = requests.get(url, params=params, timeout=10)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    items = data.get('items', [])
-                    for item in items:
-                        results.append({
-                            "title": item.get('title', 'No Title'),
-                            "href": item.get('link', ''),
-                            "body": item.get('snippet', '')
-                        })
-                    return results
-                else:
-                    print(f"Google API Error: {resp.status_code} - {resp.text}")
-            except Exception as e:
-                print(f"Google API Exception: {e}")
-        
-        # 2. Use Custom Scraper (No API) - Replaces library
-        print(f"Using Custom Google Scraper for: {query}")
-        return scrape_google_custom(query, max_results)
-            
-    else:
-        # Default to DuckDuckGo
-        if not ddgs_instance:
-            with DDGS() as ddgs:
                 return list(ddgs.text(query, max_results=max_results, region='us-en'))
-        
-        try:
-            return list(ddgs_instance.text(query, max_results=max_results, region='us-en'))
-        except Exception as e:
-            print(f"DuckDuckGo Error: {e}")
-            return []
-
-def scrape_google_custom(query, max_results=10):
-    """
-    Fallback: Uses googlesearch-python library or basic scraping.
-    """
-    results = []
-    if google_search:
-        try:
-            # google_search(query, num=10, stop=10, pause=2) yields URLs
-            # It doesn't give titles/snippets easily without advanced usage, 
-            # but let's try to fetch metadata or just return URL as title.
-            for url in google_search(query, num=max_results, stop=max_results, pause=2):
-                results.append({
-                    "title": url, # Library only returns URL
-                    "href": url,
-                    "body": "Result from Google Search"
-                })
-        except Exception as e:
-            print(f"Google Lib Error: {e}")
+            except Exception as e:
+                print(f"DuckDuckGo Error: {e}")
+                return []
     
-    return results
+    try:
+        return list(ddgs_instance.text(query, max_results=max_results, region='us-en'))
+    except Exception as e:
+        print(f"DuckDuckGo Error: {e}")
+        return []
 
 
 # Helper to checking if domain is likely an official site (heuristic)
@@ -334,7 +273,9 @@ def delete_link(index):
     return False
 
 # Function to perform searches
-def search_esg_info(company_name, provider="DuckDuckGo"):
+# Function to perform searches
+def search_esg_info(company_name, fetch_reports=True, known_website=None):
+
     import concurrent.futures
     import datetime
     import io
@@ -355,6 +296,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
     official_domain = None
     esg_hub_urls = [] 
 
+
     log("Starting search...")
 
     with DDGS() as ddgs:
@@ -362,6 +304,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         
         def is_report_link(text, url):
             text_lower = text.lower()
+
             url_lower = url.lower()
             
             # 1. Negative Filters (Strong Rejection)
@@ -382,8 +325,13 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         known_url = None
         resolved_name = None
         
-        try:
-            with open("company_map.json", "r") as f:
+        if known_website:
+            results["website"] = known_website
+            known_url = known_website['href']
+            log(f"Using known website: {known_url}")
+        else:
+            try:
+                with open("company_map.json", "r") as f:
                 cmap = json.load(f)
                 
                 # 1. Exact Match
@@ -414,7 +362,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         else:
             log(f"Searching for domain: {domain_query}")
             try:
-                domain_results = search_web(domain_query, max_results=5, provider=provider, ddgs_instance=ddgs)
+                domain_results = search_web(domain_query, max_results=5, ddgs_instance=ddgs)
             except:
                 domain_results = []
         
@@ -460,7 +408,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                 
             log(f"Searching for website query: {website_query}")
             try:
-                web_search_results = search_web(website_query, max_results=10, provider=provider, ddgs_instance=ddgs)
+                web_search_results = search_web(website_query, max_results=10, ddgs_instance=ddgs)
                 for res in web_search_results:
                     url = res['href']
                     if url.lower().endswith('.pdf'): continue
@@ -480,13 +428,17 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         # --- 2.5 Find Company Description ---
         try:
             desc_query = f"{company_name} company description summary"
-            desc_results = search_web(desc_query, max_results=1, provider=provider, ddgs_instance=ddgs)
+            desc_results = search_web(desc_query, max_results=1, ddgs_instance=ddgs)
             if desc_results:
                 results['description'] = desc_results[0]['body']
         except Exception as e:
             log(f"Description search error: {e}")
 
         # --- 3. Report Discovery ---
+        if not fetch_reports:
+             log("Skipping report discovery (Step 1 complete).")
+             return results
+             
         print("Starting Report Discovery...")
 
         # PRIORITY STRATEGY: Scan The Official Hub (Fast Track)
@@ -498,8 +450,8 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
-                # Allow redirects, 10s timeout
-                resp = requests.get(web_url, headers=headers, timeout=10)
+                # Allow redirects, 5s timeout (Reduced from 10 for speed)
+                resp = requests.get(web_url, headers=headers, timeout=5)
                 
                 if resp.status_code == 200:
                     soup = BeautifulSoup(resp.content, 'html.parser')
@@ -525,7 +477,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                             scan_candidates.append({'href': href, 'title': text})
                         
                         # 2. "Reports" / "Archive" Sub-pages (Follow them!)
-                        # Only strictly follow likely hubs
+                        # Strictly limit depth
                         lower_text = text.lower()
                         if 'report' in lower_text or 'archive' in lower_text or 'download' in lower_text or 'library' in lower_text:
                              if href not in esg_hub_urls:
@@ -533,8 +485,10 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                                  hub_links_to_follow.append(href)
 
                     # Verify found page PDFs
+                    found_on_main = 0
                     if scan_candidates:
                          log(f"  Found {len(scan_candidates)} potential PDFs on main page.")
+                         # Reduced workers to 3 for stability
                          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                             futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in scan_candidates}
                             for future in concurrent.futures.as_completed(futures):
@@ -543,14 +497,16 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                                     if v['href'] not in [r['href'] for r in results['reports']]:
                                         v['source'] = "Official Site"
                                         results["reports"].append(v)
+                                        found_on_main += 1
 
                     # Follow Hub Links (Depth 1)
-                    if hub_links_to_follow:
+                    # OPTIMIZATION: Only follow hubs if main page yielded FEW results (< 2)
+                    if hub_links_to_follow and found_on_main < 2:
                         def scrape_hub(h_url):
                             found = []
                             try:
                                 log(f"  Following Hub: {h_url}")
-                                h_resp = requests.get(h_url, headers=headers, timeout=10)
+                                h_resp = requests.get(h_url, headers=headers, timeout=5) # 5s timeout
                                 if h_resp.status_code == 200:
                                     h_soup = BeautifulSoup(h_resp.content, 'html.parser')
                                     for hl in h_soup.find_all('a', href=True):
@@ -567,7 +523,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                             return found
 
                         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                            futures = {executor.submit(scrape_hub, u): u for u in hub_links_to_follow[:4]} # Limit to 4 hubs
+                            futures = {executor.submit(scrape_hub, u): u for u in hub_links_to_follow[:2]} # Limit to 2 hubs
                             for future in concurrent.futures.as_completed(futures):
                                 candidates = future.result()
                                 # Verify these new candidates
@@ -591,7 +547,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                      site_query = f"site:{domain} ESG sustainability report pdf"
                      log(f"  Fallback Site Search: {site_query}")
                      
-                     site_results = search_web(site_query, max_results=8, provider=provider, ddgs_instance=ddgs)
+                     site_results = search_web(site_query, max_results=6, ddgs_instance=ddgs)
                      
                      fallback_candidates = []
                      for res in site_results:
@@ -599,6 +555,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                              fallback_candidates.append(res)
                              
                      if fallback_candidates:
+                         # Use ThreadPool for faster verification
                          with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                             futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in fallback_candidates}
                             for future in concurrent.futures.as_completed(futures):
@@ -609,11 +566,10 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
                                         results["reports"].append(v)
                  except Exception as e:
                      log(f"Fallback Site Search Error: {e}")
-
+ 
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
-        # Only run if we don't have enough results, OR always run to capture external checks?
-        # Let's run it but limit it if we already have good stuff.
-        if len(results["reports"]) < 6:
+        # Optimization: SKIP if we already have good results (> 3)
+        if len(results["reports"]) < 4:
             if official_domain:
                 report_query = f"site:{official_domain} ESG sustainability report pdf"
             else:
@@ -622,7 +578,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
             log(f"Strategy B: Direct Search ({report_query})")
             
             try:
-                report_search_results = search_web(report_query, max_results=15, provider=provider, ddgs_instance=ddgs)
+                report_search_results = search_web(report_query, max_results=8, ddgs_instance=ddgs)
                 
                 candidates = []
                 for res in report_search_results:
@@ -649,7 +605,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
              log("Strategy C: ResponsibilityReports.com Fallback")
              rr_query = f"site:responsibilityreports.com {company_name} ESG report"
              try:
-                 rr_results = search_web(rr_query, max_results=3, provider=provider, ddgs_instance=ddgs)
+                 rr_results = search_web(rr_query, max_results=3, ddgs_instance=ddgs)
                  for res in rr_results:
                      if res['href'] not in [r['href'] for r in results['reports']]:
                          results["reports"].append({
@@ -667,7 +623,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
         log(f"Searching for CDP: {cdp_query}")
         
         try:
-            cdp_search_results = search_web(cdp_query, max_results=8, provider=provider, ddgs_instance=ddgs)
+            cdp_search_results = search_web(cdp_query, max_results=8, ddgs_instance=ddgs)
             
             cdp_candidates = []
             for res in cdp_search_results:
@@ -693,7 +649,7 @@ def search_esg_info(company_name, provider="DuckDuckGo"):
              ungc_query = f"site:unglobalcompact.org {company_name} Communication on Progress pdf"
              log(f"Searching UN Global Compact: {ungc_query}")
              try:
-                 ungc_results = search_web(ungc_query, max_results=4, provider=provider, ddgs_instance=ddgs)
+                 ungc_results = search_web(ungc_query, max_results=4, ddgs_instance=ddgs)
                  
                  ungc_candidates = []
                  for res in ungc_results:
@@ -794,28 +750,21 @@ with tab1:
         on_change=update_input_from_select
     )
 
-    # 3. Search Provider
-    search_provider = st.radio(
-        "Search Provider:",
-        options=["DuckDuckGo", "Google"],
-        index=0,
-        horizontal=True,
-        help="Google uses 'googlesearch-python' library. DuckDuckGo uses 'ddgs'."
-    )
 
 
-    if st.button("Find Reports", type="primary"):
+
+    if st.button("🔍 Find Company Info", type="primary"):
         if not company_name:
             st.warning("Please enter a company name.")
         else:
-            with st.spinner(f"Searching for {company_name}'s ESG data..."):
+            with st.spinner(f"Searching for {company_name}'s info..."):
                 try:
-                    # Run search
-                    data = search_esg_info(company_name, provider=search_provider)
+                    # STEP 1: Fast Search (No scraping)
+                    data = search_esg_info(company_name, fetch_reports=False)
                     # Store in session state
                     st.session_state.esg_data = data
                     st.session_state.current_company = company_name
-                    st.success("Search complete!")
+                    st.success("Company found!")
                 except Exception as e:
                     st.error(f"An error occurred during search: {e}")
 
@@ -857,6 +806,23 @@ with tab1:
                         st.rerun()
                     else:
                         st.warning("Exists")
+
+            # --- STEP 2 TRIGGER ---
+            # If we have a website but no reports yet, offer to scan
+            if not data["reports"]:
+                 st.divider()
+                 st.info("ℹ️ Official Hub Found. Click below to scan for reports.")
+                 if st.button("📄 Fetch Reports & Data", type="primary", use_container_width=True):
+                     with st.spinner(f"Scanning {data['website']['title']} for reports..."):
+                         try:
+                             # STEP 2: Deep Scan (Using known website)
+                             new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'])
+                             new_data['description'] = data['description'] # Preserve description
+                             st.session_state.esg_data = new_data
+                             st.rerun()
+                         except Exception as e:
+                             st.error(f"Scan error: {e}")
+
         else:
             st.info("No specific ESG website found.")
         
@@ -889,7 +855,7 @@ with tab1:
                                 st.warning("Exists")
                             
             else:
-                st.info("No PDF reports found immediately.")
+                st.info("No PDF reports loaded yet.")
 
         with col2:
                 # Display CDP
