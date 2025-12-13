@@ -3,7 +3,7 @@ from ddgs import DDGS
 import time
 import json
 import os
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -362,7 +362,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         
         if known_url:
              # Fast Path: Use known URL as the "official domain" for hub scanning
-             official_domain = known_url
+             official_domain = urlparse(known_url).netloc
              # Add to domain results to ensure it gets processed in hub scan
              domain_results = [{'href': known_url, 'title': f"{resolved_name.title()} Sustainability Hub"}]
         else:
@@ -456,89 +456,88 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
                 headers = {
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 }
-                # Allow redirects, 5s timeout (Reduced from 10 for speed)
-                resp = requests.get(web_url, headers=headers, timeout=5)
-                
-                if resp.status_code == 200:
-                    soup = BeautifulSoup(resp.content, 'html.parser')
-                    links = soup.find_all('a', href=True)
-                    
-                    # Candidates to check
-                    scan_candidates = []
-                    hub_links_to_follow = []
-                    
-                    for link in links:
-                        href = link['href']
-                        text = clean_title(link.get_text(strip=True))
-                        
-                        # Fix relative URLs
-                        if href.startswith('/'):
-                            parsed = urlparse(web_url)
-                            href = f"{parsed.scheme}://{parsed.netloc}{href}"
-                        elif not href.startswith('http'):
-                            continue # Skip javascript: etc
-                        
-                        # 1. Direct PDF Links
-                        if is_report_link(text, href):
-                            scan_candidates.append({'href': href, 'title': text})
-                        
-                        # 2. "Reports" / "Archive" Sub-pages (Follow them!)
-                        # Strictly limit depth
-                        lower_text = text.lower()
-                        if 'report' in lower_text or 'archive' in lower_text or 'download' in lower_text or 'library' in lower_text:
-                             if href not in esg_hub_urls:
-                                 esg_hub_urls.append(href)
-                                 hub_links_to_follow.append(href)
+                parsed_base = urlparse(web_url)
+                primary_domain = parsed_base.netloc
 
-                    # Verify found page PDFs
-                    found_on_main = 0
+                def normalize_href(base, href):
+                    if not href:
+                        return None
+                    if href.startswith("mailto:") or href.startswith("javascript:"):
+                        return None
+                    if href.startswith("#"):
+                        return None
+                    if href.startswith("//"):
+                        return f"{parsed_base.scheme}:{href}"
+                    if href.startswith("http"):
+                        return href
+                    return urljoin(base, href)
+
+                def collect_links(page_url, html_text):
+                    soup = BeautifulSoup(html_text, 'html.parser')
+                    pdf_candidates = []
+                    hubs = []
+                    for link in soup.find_all('a', href=True):
+                        raw_href = link['href']
+                        normalized = normalize_href(page_url, raw_href)
+                        if not normalized:
+                            continue
+
+                        link_domain = urlparse(normalized).netloc
+                        if link_domain and primary_domain and primary_domain not in link_domain:
+                            continue
+
+                        text = clean_title(link.get_text(strip=True))
+
+                        if normalized.lower().endswith('.pdf') and is_report_link(text, normalized):
+                            pdf_candidates.append({'href': normalized, 'title': text})
+                            continue
+
+                        lower_text = text.lower()
+                        hub_keywords = ['report', 'archive', 'download', 'library', 'sustainability', 'esg', 'impact', 'responsibility', 'csr']
+                        if any(k in lower_text for k in hub_keywords):
+                            hubs.append(normalized)
+
+                    return pdf_candidates, hubs
+
+                hubs_to_visit = [web_url]
+                visited_hubs = set()
+                found_on_main = 0
+                max_hubs = 5
+
+                while hubs_to_visit and len(visited_hubs) < max_hubs:
+                    current_hub = hubs_to_visit.pop(0)
+                    if current_hub in visited_hubs:
+                        continue
+                    visited_hubs.add(current_hub)
+
+                    try:
+                        log(f"  Scanning hub: {current_hub}")
+                        resp = requests.get(current_hub, headers=headers, timeout=6)
+                    except Exception as e:
+                        log(f"  Hub request failed: {e}")
+                        continue
+
+                    if resp.status_code != 200:
+                        continue
+
+                    scan_candidates, hub_links_to_follow = collect_links(current_hub, resp.text)
+
                     if scan_candidates:
-                         log(f"  Found {len(scan_candidates)} potential PDFs on main page.")
-                         # Reduced workers to 3 for stability
-                         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                        log(f"    Found {len(scan_candidates)} potential PDFs on {current_hub}")
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                             futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in scan_candidates}
                             for future in concurrent.futures.as_completed(futures):
                                 v = future.result()
-                                if v:
-                                    if v['href'] not in [r['href'] for r in results['reports']]:
-                                        v['source'] = "Official Site"
-                                        results["reports"].append(v)
-                                        found_on_main += 1
+                                if v and v['href'] not in [r['href'] for r in results['reports']]:
+                                    v['source'] = "Official Site"
+                                    results["reports"].append(v)
+                                    found_on_main += 1
 
-                    # Follow Hub Links (Depth 1)
-                    # OPTIMIZATION: Only follow hubs if main page yielded FEW results (< 2)
-                    if hub_links_to_follow and found_on_main < 2:
-                        def scrape_hub(h_url):
-                            found = []
-                            try:
-                                log(f"  Following Hub: {h_url}")
-                                h_resp = requests.get(h_url, headers=headers, timeout=5) # 5s timeout
-                                if h_resp.status_code == 200:
-                                    h_soup = BeautifulSoup(h_resp.content, 'html.parser')
-                                    for hl in h_soup.find_all('a', href=True):
-                                        hl_href = hl['href']
-                                        hl_text = clean_title(hl.get_text(strip=True))
-                                        
-                                        if hl_href.startswith('/'):
-                                            parsed = urlparse(h_url)
-                                            hl_href = f"{parsed.scheme}://{parsed.netloc}{hl_href}"
-                                        
-                                        if is_report_link(hl_text, hl_href):
-                                            found.append({'href': hl_href, 'title': hl_text})
-                            except: pass
-                            return found
+                    if found_on_main < 5:
+                        for h in hub_links_to_follow:
+                            if h not in visited_hubs and h not in hubs_to_visit and len(hubs_to_visit) < max_hubs:
+                                hubs_to_visit.append(h)
 
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                            futures = {executor.submit(scrape_hub, u): u for u in hub_links_to_follow[:2]} # Limit to 2 hubs
-                            for future in concurrent.futures.as_completed(futures):
-                                candidates = future.result()
-                                # Verify these new candidates
-                                for c in candidates:
-                                     v = verify_pdf_content(c['href'], c['title'], company_name)
-                                     if v and v['href'] not in [r['href'] for r in results['reports']]:
-                                         v['source'] = "Official Hub"
-                                         results["reports"].append(v)
-                                         
             except Exception as e:
                 print(f"Priority Strategy Error: {e}")
                 
