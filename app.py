@@ -328,6 +328,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None):
         if known_website:
             results["website"] = known_website
             known_url = known_website['href']
+            resolved_name = company_name
             log(f"Using known website: {known_url}")
         else:
             try:
