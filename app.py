@@ -374,7 +374,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
              domain_results = [{'href': known_url, 'title': f"{resolved_name.title()} Sustainability Hub"}]
         else:
             log(f"Searching for domain: {domain_query}")
-            results["search_log"].append(f"Domain Search: {domain_query}")
+            results["search_log"].append(f"Domain Search: \"{domain_query}\"")
             try:
                 domain_results = search_web(domain_query, max_results=5, ddgs_instance=ddgs)
             except:
@@ -421,7 +421,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 website_query = f"{company_name} official ESG sustainability website"
                 
             log(f"Searching for website query: {website_query}")
-            results["search_log"].append(f"Website Search: {website_query}")
+            results["search_log"].append(f"Website Search: \"{website_query}\"")
             try:
                 web_search_results = search_web(website_query, max_results=10, ddgs_instance=ddgs)
                 for res in web_search_results:
@@ -443,7 +443,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         # --- 2.5 Find Company Description ---
         try:
             desc_query = f"{company_name} company description summary"
-            results["search_log"].append(f"Description Search: {desc_query}")
+            results["search_log"].append(f"Description Search: \"{desc_query}\"")
             desc_results = search_web(desc_query, max_results=1, ddgs_instance=ddgs)
             if desc_results:
                 results['description'] = desc_results[0]['body']
@@ -578,7 +578,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                      # Targeted search on the specific trusted domain
                      site_query = f"site:{domain} ESG sustainability report pdf"
                      log(f"  Fallback Site Search: {site_query}")
-                     results["search_log"].append(f"Hub Fallback Search: {site_query}")
+                     results["search_log"].append(f"Hub Fallback Search: \"{site_query}\"")
                      
                      site_results = search_web(site_query, max_results=6, ddgs_instance=ddgs)
                      
@@ -621,7 +621,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         break
 
                     log(f"Strategy B: Direct Search ({report_query})")
-                    results["search_log"].append(f"Direct Report Search: {report_query}")
+                    results["search_log"].append(f"Direct Report Search: \"{report_query}\"")
                     report_search_results = search_web(report_query, max_results=8, ddgs_instance=ddgs)
 
                     candidates = []
@@ -650,7 +650,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         if len(results["reports"]) < 4:  
              log("Strategy C: ResponsibilityReports.com Fallback")
              rr_query = f"site:responsibilityreports.com {company_name} ESG report"
-             results["search_log"].append(f"ResponsibilityReports Search: {rr_query}")
+             results["search_log"].append(f"ResponsibilityReports Search: \"{rr_query}\"")
              try:
                  rr_results = search_web(rr_query, max_results=3, ddgs_instance=ddgs)
                  for res in rr_results:
@@ -671,7 +671,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         if len(results["reports"]) < 8:
              ungc_query = f"site:unglobalcompact.org {company_name} Communication on Progress pdf"
              log(f"Searching UN Global Compact: {ungc_query}")
-             results["search_log"].append(f"UNGC Search: {ungc_query}")
+             results["search_log"].append(f"UNGC Search: \"{ungc_query}\"")
              try:
                  ungc_results = search_web(ungc_query, max_results=4, ddgs_instance=ddgs)
                  
