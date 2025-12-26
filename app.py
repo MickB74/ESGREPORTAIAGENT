@@ -1363,12 +1363,14 @@ with tab1:
                 
                 with r_col:
                     st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
-                    st.caption(report['body'])
+                    # Use .get() for optional 'body' key
+                    if report.get('body'):
+                        st.caption(report['body'])
                 
                 with r_save:
                     # use_container_width=True ensures button expands to fill column
                     if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
-                        if save_link_to_file(report['title'], report['href'], description=report['body']):
+                        if save_link_to_file(report['title'], report['href'], description=report.get('body', '')):
                             st.success("Saved")
                             time.sleep(0.5)
                             st.rerun()
