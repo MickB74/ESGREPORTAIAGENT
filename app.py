@@ -1390,6 +1390,8 @@ with tab1:
                 
                 with r_col:
                     st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
+                    # Display full URL
+                    st.caption(f"🔗 {report['href']}")
                     # Use .get() for optional 'body' key
                     if report.get('body'):
                         st.caption(report['body'])
