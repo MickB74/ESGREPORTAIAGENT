@@ -378,7 +378,11 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         
         if known_website:
             results["website"] = known_website
-            known_url = known_website['href']
+            # Handle both string URL and dict with 'href' key
+            if isinstance(known_website, str):
+                known_url = known_website
+            elif isinstance(known_website, dict):
+                known_url = known_website.get('href')
             resolved_name = company_name
             log(f"Using known website: {known_url}")
         else:
