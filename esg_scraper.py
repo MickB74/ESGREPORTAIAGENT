@@ -60,6 +60,31 @@ class ESGScraper:
         
         GENERIC_TERMS = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
 
+        def extract_year(text):
+            """Extract 4-digit year from text (2020-2030)"""
+            import re
+            years = re.findall(r'\b(202[0-9]|203[0])\b', text)
+            return years[0] if years else None
+
+        def get_parent_context(node):
+            """Get text from parent elements for context"""
+            context_text = ""
+            parent = node.parent
+            
+            # Go up 2 levels max to find context
+            for _ in range(2):
+                if parent and parent.tag in ['div', 'p', 'li', 'td', 'section', 'article']:
+                    parent_text = parent.text(strip=True)
+                    if parent_text and len(parent_text) < 200:  # Don't get huge blocks
+                        context_text = parent_text
+                        break
+                if parent:
+                    parent = parent.parent
+                else:
+                    break
+            
+            return context_text
+
         def get_best_text(node):
             # 1. Visible Text
             text = node.text(strip=True)
@@ -88,7 +113,20 @@ class ESGScraper:
                 # heuristic: if aria is significantly longer, it's probably better
                 return aria
 
-            return text if text else (aria or title or alt_text or "Unknown Link")
+            base_text = text if text else (aria or title or alt_text or "Unknown Link")
+            
+            # 4. Enhancement: Add year from context if missing
+            year = extract_year(base_text)
+            if not year:
+                # Look in parent context
+                context = get_parent_context(node)
+                year = extract_year(context)
+                
+                # If we found a year in context and it's not in the base text, add it
+                if year and year not in base_text:
+                    base_text = f"{base_text} ({year})"
+            
+            return base_text
 
         for node in tree.css("a"):
             href = node.attributes.get("href")

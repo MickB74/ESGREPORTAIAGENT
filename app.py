@@ -526,7 +526,24 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         if link_domain and primary_domain and primary_domain not in link_domain:
                             continue
 
-                        # --- Enhanced Name Extraction ---
+                        # --- Enhanced Name Extraction with Year Detection ---
+                        import re
+                        
+                        def extract_year_bs(text):
+                            years = re.findall(r'\b(202[0-9]|203[0])\b', str(text))
+                            return years[0] if years else None
+                        
+                        def get_parent_context_bs(element):
+                            """Get parent context for year/info extraction"""
+                            parent = element.parent
+                            for _ in range(2):  # Go up 2 levels
+                                if parent and parent.name in ['div', 'p', 'li', 'td', 'section', 'article']:
+                                    parent_text = parent.get_text(strip=True)
+                                    if parent_text and len(parent_text) < 200:
+                                        return parent_text
+                                parent = parent.parent if parent else None
+                            return ""
+                        
                         visible_text = link.get_text(strip=True)
                         aria = link.get('aria-label', '').strip()
                         title_attr = link.get('title', '').strip()
@@ -546,8 +563,15 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                             elif title_attr: candidate_text = title_attr
                             elif alt_text: candidate_text = alt_text
                         elif aria and len(aria) > len(visible_text) + 5:
-                             # heuristic: if aria is significantly longer/better, use it
                             candidate_text = aria
+                        
+                        # Add year from context if not present
+                        year = extract_year_bs(candidate_text)
+                        if not year:
+                            context = get_parent_context_bs(link)
+                            year = extract_year_bs(context)
+                            if year and year not in candidate_text:
+                                candidate_text = f"{candidate_text} ({year})"
                             
                         text = clean_title(candidate_text)
                         if not text: text = "Unknown Web Resource"
@@ -975,11 +999,42 @@ with tab1:
             if st.button(btn_label, type="primary", use_container_width=True):
                  with st.spinner(f"Deep scanning {data['website']['title']}..."):
                      try:
-                         # STEP 2: Deep Scan (Using known website)
-                         # We pass fetch_reports=True and known_website to force the crawler
-                         # ENABLE STRICT MODE: User wants ONLY internal links from this page
-                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
-                         new_data['description'] = data['description'] # Preserve description
+                     # ENABLE STRICT MODE: User wants ONLY internal links from this page
+                    # SCREENSHOT CAPTURE: Take a screenshot of the verified page
+                    screenshot_path = None
+                    try:
+                        from esg_scraper import ESGScraper
+                        import os
+                        import time
+                        
+                        # Create screenshots directory
+                        screenshot_dir = "/tmp/esg_screenshots"
+                        os.makedirs(screenshot_dir, exist_ok=True)
+                        
+                        # Generate filename from company name
+                        safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                        safe_name = safe_name.replace(' ', '_')
+                        screenshot_filename = f"{safe_name}_{int(time.time())}.png"
+                        screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
+                        
+                        # Use Playwright to capture screenshot
+                        from playwright.sync_api import sync_playwright
+                        with sync_playwright() as p:
+                            browser = p.chromium.launch(headless=True)
+                            page = browser.new_page()
+                            page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
+                            page.wait_for_timeout(3000)  # Let page settle
+                            page.screenshot(path=screenshot_path, full_page=False)  # Viewport only
+                            browser.close()
+                            
+                        log(f"Screenshot captured: {screenshot_path}")
+                    except Exception as e:
+                        log(f"Screenshot capture failed: {e}")
+                        screenshot_path = None
+                    
+                    new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
+                    new_data['description'] = data['description'] # Preserve description
+                    new_data['screenshot'] = screenshot_path  # Add screenshot path
                          
                          # Merge with existing reports if we had some? 
                          # Actually search_esg_info returns a fresh list. 
@@ -999,6 +1054,17 @@ with tab1:
         st.divider()
         
         st.subheader("📄 Recent ESG Reports")
+        web = data.get("website")
+        if web:
+            st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
+            st.caption(web.get('body', ''))
+            
+            # Display screenshot if available
+            import os
+            if data.get('screenshot') and os.path.exists(data['screenshot']):
+                st.markdown("**📸 Page Preview:**")
+                st.image(data['screenshot'], use_container_width=True)
+        
         if data["reports"]:
             for idx, report in enumerate(data["reports"]):
                 # 2 Columns: Info, Save
