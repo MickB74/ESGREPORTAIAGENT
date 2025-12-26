@@ -1311,6 +1311,9 @@ with tab1:
                          url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
                          if not url_to_scan: url_to_scan = data.get('href') # Fallback
 
+                         # CRITICAL: Clear cache to prevent returning stale data structure
+                         search_esg_info.clear()
+                         
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
                          
                          # Defensive: Ensure new_data is a dict
