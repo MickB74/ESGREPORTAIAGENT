@@ -334,28 +334,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
     import sheets_handler # Import handler
 
-    # --- 1. Map Company Name & Check Verified List ---
-    # ... (existing mapping code) ...
-    
-    # --- [NEW] Check Google Sheets Database ---
-    st.markdown("---")
-    res_col1, res_col2 = st.columns([0.8, 0.2])
-    with res_col1:
-        st.subheader(f"Results for: {resolved_name}")
-    
-    # Load from Sheets
-    saved_sheet_links, sheet_error = sheets_handler.get_links_from_sheet(resolved_name)
-    
-    if sheet_error and "Missing" not in sheet_error: # Ignore if just not configured
-        st.warning(f"Sheets Error: {sheet_error}")
-        
-    if saved_sheet_links:
-        with st.expander(f"📂 Saved Database Links ({len(saved_sheet_links)})", expanded=True):
-            for i, row in enumerate(saved_sheet_links):
-                # Display Label if exists, else Title
-                display_text = row.get('Label') if row.get('Label') else row.get('Title')
-                st.markdown(f"**{i+1}. [{display_text}]({row['URL']})**")
-                st.caption(f"📅 Saved: {row.get('Timestamp')} | 🏷️ {row.get('Title')}")
+
     
     # ... (proceed to web search) ...
     results = {
@@ -432,6 +411,30 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         
             except Exception as e:
                  log(f"Map lookup error: {e}")
+
+        # --- [MOVED] Check Google Sheets Database ---
+        if resolved_name:
+            st.markdown("---")
+            res_col1, res_col2 = st.columns([0.8, 0.2])
+            with res_col1:
+                st.subheader(f"Results for: {resolved_name}")
+            
+            # Load from Sheets
+            try:
+                # Use resolved_name which is now defined
+                saved_sheet_links, sheet_error = sheets_handler.get_links_from_sheet(resolved_name)
+                
+                if sheet_error and "Missing" not in sheet_error: 
+                    st.warning(f"Sheets Error: {sheet_error}")
+                    
+                if saved_sheet_links:
+                    with st.expander(f"📂 Saved Database Links ({len(saved_sheet_links)})", expanded=True):
+                        for i, row in enumerate(saved_sheet_links):
+                            display_text = row.get('Label') if row.get('Label') else row.get('Title')
+                            st.markdown(f"**{i+1}. [{display_text}]({row['URL']})**")
+                            st.caption(f"📅 Saved: {row.get('Timestamp')} | 🏷️ {row.get('Title')}")
+            except Exception as e:
+                print(f"Sheets error: {e}")
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
