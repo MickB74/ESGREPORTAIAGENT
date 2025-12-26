@@ -268,6 +268,7 @@ class ESGScraper:
 
     def expand_page_interaction(self, page):
         """Aggressive interaction: Click 'Load More', Year Tabs, etc."""
+        import re  # Import here for regex operations
         print("   🔨 Attempting to expand page content...")
         try:
             # 1. Click "Load More" / "Show All" buttons
