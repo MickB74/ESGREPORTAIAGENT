@@ -332,6 +332,32 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     def log(msg):
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
 
+    import sheets_handler # Import handler
+
+    # --- 1. Map Company Name & Check Verified List ---
+    # ... (existing mapping code) ...
+    
+    # --- [NEW] Check Google Sheets Database ---
+    st.markdown("---")
+    res_col1, res_col2 = st.columns([0.8, 0.2])
+    with res_col1:
+        st.subheader(f"Results for: {resolved_name}")
+    
+    # Load from Sheets
+    saved_sheet_links, sheet_error = sheets_handler.get_links_from_sheet(resolved_name)
+    
+    if sheet_error and "Missing" not in sheet_error: # Ignore if just not configured
+        st.warning(f"Sheets Error: {sheet_error}")
+        
+    if saved_sheet_links:
+        with st.expander(f"📂 Saved Database Links ({len(saved_sheet_links)})", expanded=True):
+            for i, row in enumerate(saved_sheet_links):
+                # Display Label if exists, else Title
+                display_text = row.get('Label') if row.get('Label') else row.get('Title')
+                st.markdown(f"**{i+1}. [{display_text}]({row['URL']})**")
+                st.caption(f"📅 Saved: {row.get('Timestamp')} | 🏷️ {row.get('Title')}")
+    
+    # ... (proceed to web search) ...
     results = {
         "company": company_name,
         "description": None,
@@ -1397,14 +1423,30 @@ with tab1:
                         st.caption(report['body'])
                 
                 with r_save:
-                    # use_container_width=True ensures button expands to fill column
-                    if st.button("Save", key=f"save_rep_{idx}", use_container_width=True):
-                        if save_link_to_file(report['title'], report['href'], description=report.get('body', '')):
-                            st.success("Saved")
-                            time.sleep(0.5)
-                            st.rerun()
+                    # Label Input
+                    user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="e.g. 2024 Report", label_visibility="collapsed")
+                    
+                    # Save Button
+                    if st.button("Save 💾", key=f"save_rep_{idx}", use_container_width=True):
+                        # 1. Save to Local (Sidebar) - Legacy
+                        save_link_to_file(report['title'], report['href'], description=report.get('body', ''))
+                        
+                        # 2. Save to Google Sheet (if configured)
+                        final_label = user_label if user_label else report['title']
+                        success, msg = sheets_handler.save_link_to_sheet(
+                            company=data['website']['title'] if data.get('website') else "Unknown",
+                            title=report['title'],
+                            url=report['href'],
+                            label=final_label,
+                            description=report.get('body', '')
+                        )
+                        
+                        if success:
+                            st.success(f"Saved to Sheet as '{final_label}'")
+                        elif "Missing" in msg:
+                            st.info("Saved locally. (Add secrets for Sheets)")
                         else:
-                            st.warning("Exists")
+                            st.error(f"Sheet Error: {msg}")
                         
         else:
             st.info("No PDF reports loaded yet.")
