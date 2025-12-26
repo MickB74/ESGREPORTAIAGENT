@@ -338,7 +338,6 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         "timestamp": datetime.datetime.now().isoformat(),
         "website": None,
         "reports": [],
-        "reports": [],
         "symbol": symbol,
         "search_log": []
     }
@@ -1313,8 +1312,15 @@ with tab1:
                          if not url_to_scan: url_to_scan = data.get('href') # Fallback
 
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
-                         new_data['description'] = data['description'] # Preserve description
-                         new_data['screenshot'] = screenshot_path  # Add screenshot path
+                         
+                         # Defensive: Ensure new_data is a dict
+                         if not isinstance(new_data, dict):
+                             st.error(f"Internal error: Unexpected data type returned: {type(new_data)}")
+                             st.stop()
+                         
+                         new_data['description'] = data.get('description') # Preserve description
+                         new_data['screenshot'] = screenshot_path  # Add screenshot path (always None for now)
+
                           
                          # Merge with existing reports if we had some? 
                          # Actually search_esg_info returns a fresh list. 
