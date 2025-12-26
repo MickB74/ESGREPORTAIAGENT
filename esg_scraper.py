@@ -45,7 +45,13 @@ SITES = [
 ]
 
 # Keywords to score "good" links if we are guessing
-REPORT_KEYWORDS = ["report", "esg", "sustainability", "2024", "2025", "2023", "impact", "tcfd", "annual"]
+REPORT_KEYWORDS = [
+    "report", "esg", "sustainability", "csr", "annual", "impact", 
+    "environmental", "social", "governance", "climate", "carbon", 
+    "diversity", "inclusion", "responsibility", "stewardship", 
+    "citizenship", "community", "ethics", "transparency",
+    "2024", "2025", "2023", "tcfd"
+]
 
 class ESGScraper:
     def __init__(self, headless=True):
@@ -64,8 +70,7 @@ class ESGScraper:
         # Negative keywords to exclude (non-report pages)
         EXCLUDE_KEYWORDS = [
             "login", "career", "job", "apply", "search", "contact",
-            "privacy policy", "terms", "cookie", "faq", "about us",
-            "news", "press release", "blog", "financial advisor"
+            "privacy policy", "terms", "cookie", "faq", "about us"
         ]
 
         def extract_year(text):
