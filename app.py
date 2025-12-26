@@ -13,9 +13,8 @@ import difflib
 # ... (rest of imports/code) ...
 
 
-import pandas as pd
-# Import ESGScraper for deep scanning dynamic sites
-from esg_scraper import ESGScraper
+
+# Helper to checking if domain is likely an official site (heuristic)
 # Helper to checking if domain is likely an official site (heuristic)
 def search_web(query, max_results, ddgs_instance=None):
     """
@@ -625,6 +624,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 log("Strict Mode: Basic scraper returned 0 results. Attempting Deep Browser Scan (Playwright)...")
                 try:
                     # Initialize Playwright Scraper (Headless)
+                    from esg_scraper import ESGScraper
                     scraper = ESGScraper(headless=True)
                     
                     # Create a "dummy" config for this specific on-the-fly scan
