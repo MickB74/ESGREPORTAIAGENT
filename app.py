@@ -600,7 +600,29 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                     'Sec-Fetch-User': '?1'
                 }
                 resp = requests.get(url, headers=headers, timeout=15)
-                # ... (rest of logic handles parsing)
+                
+                # AUTOMATIC BYPASS: If 403 Forbidden, use Playwright
+                if resp.status_code in [403, 401, 429, 503]:
+                    print(f"   ⚠️ Access Denied ({resp.status_code}). Engaging Playwright Bypass...")
+                    st.toast(f"Bot detected via requests. Switching to stealth Playwright... 🕵️‍♂️")
+                    
+                    from esg_scraper import ESGScraper
+                    scraper = ESGScraper(headless=True)
+                    # Run single site config
+                    # Note: We rely on scraper to handle the "wait_for" logic (defaults to body)
+                    res_map = scraper.run([{'url': url, 'name': 'fallback_target'}])
+                    
+                    if res_map and 'fallback_target' in res_map:
+                        found_links = res_map['fallback_target']
+                        # Convert to app format and add to results
+                        for fl in found_links:
+                             all_reports.append({
+                                 'title': fl.get('text', 'Unknown'),
+                                 'href': fl.get('url', '#'),
+                                 'body': 'Extracted via Stealth Mode'
+                             })
+                    continue # Skip standard parsing
+                    
                 page_content = resp.text
                 page_url = resp.url # Effective URL
                 
