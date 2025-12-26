@@ -5,6 +5,5 @@ requests
 pypdf
 playwright
 selectolax
-gspread
-google-auth
+
 

@@ -332,7 +332,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     def log(msg):
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    import sheets_handler # Import handler
+    import csv_handler # Import handler
 
 
     
@@ -419,22 +419,22 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             with res_col1:
                 st.subheader(f"Results for: {resolved_name}")
             
-            # Load from Sheets
+            # Load from CSV
             try:
                 # Use resolved_name which is now defined
-                saved_sheet_links, sheet_error = sheets_handler.get_links_from_sheet(resolved_name)
+                saved_csv_links, csv_error = csv_handler.get_links(resolved_name)
                 
-                if sheet_error and "Missing" not in sheet_error: 
-                    st.warning(f"Sheets Error: {sheet_error}")
+                if csv_error: 
+                    st.warning(f"CSV Error: {csv_error}")
                     
-                if saved_sheet_links:
-                    with st.expander(f"📂 Saved Database Links ({len(saved_sheet_links)})", expanded=True):
-                        for i, row in enumerate(saved_sheet_links):
+                if saved_csv_links:
+                    with st.expander(f"📂 Saved Verified Links ({len(saved_csv_links)})", expanded=True):
+                        for i, row in enumerate(saved_csv_links):
                             display_text = row.get('Label') if row.get('Label') else row.get('Title')
                             st.markdown(f"**{i+1}. [{display_text}]({row['URL']})**")
                             st.caption(f"📅 Saved: {row.get('Timestamp')} | 🏷️ {row.get('Title')}")
             except Exception as e:
-                print(f"Sheets error: {e}")
+                print(f"CSV error: {e}")
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
@@ -1434,9 +1434,9 @@ with tab1:
                         # 1. Save to Local (Sidebar) - Legacy
                         save_link_to_file(report['title'], report['href'], description=report.get('body', ''))
                         
-                        # 2. Save to Google Sheet (if configured)
+                        # 2. Save to CSV
                         final_label = user_label if user_label else report['title']
-                        success, msg = sheets_handler.save_link_to_sheet(
+                        success, msg = csv_handler.save_link(
                             company=data['website']['title'] if data.get('website') else "Unknown",
                             title=report['title'],
                             url=report['href'],
@@ -1445,11 +1445,9 @@ with tab1:
                         )
                         
                         if success:
-                            st.success(f"Saved to Sheet as '{final_label}'")
-                        elif "Missing" in msg:
-                            st.info("Saved locally. (Add secrets for Sheets)")
+                            st.success(f"Saved to CSV as '{final_label}'")
                         else:
-                            st.error(f"Sheet Error: {msg}")
+                            st.error(f"CSV Error: {msg}")
                         
         else:
             st.info("No PDF reports loaded yet.")
