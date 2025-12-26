@@ -248,7 +248,9 @@ class ESGScraper:
             href = urljoin(base_url, href)
 
             # 2. Filter: Must be a PDF OR have a good score
-            if href.lower().endswith(".pdf") or score >= 2:  # Raised threshold from 1 to 2
+            # Score 1 is sufficient if we have a robust EXCLUDE list (which we do now)
+            # This captures HTML pages like "Sound Governance" or "Community Impact"
+            if href.lower().endswith(".pdf") or score >= 1:
                 # Boost score for PDF to keep them top priority
                 if href.lower().endswith(".pdf"):
                     score += 3
