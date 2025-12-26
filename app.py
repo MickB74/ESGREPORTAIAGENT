@@ -14,6 +14,8 @@ import difflib
 
 
 import pandas as pd
+# Import ESGScraper for deep scanning dynamic sites
+from esg_scraper import ESGScraper
 # Helper to checking if domain is likely an official site (heuristic)
 def search_web(query, max_results, ddgs_instance=None):
     """
@@ -616,6 +618,51 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
  
         if strict_mode and results.get("website"):
             log("Strict Mode: Skipping external search strategies (B, C, D). Returning only direct findings.")
+            
+            # --- STRICT MODE ENHANCEMENT: Playwright Scraper ---
+            # If standard scraper found nothing (e.g. 403 or JS site), use Playwright
+            if len(results["reports"]) == 0:
+                log("Strict Mode: Basic scraper returned 0 results. Attempting Deep Browser Scan (Playwright)...")
+                try:
+                    # Initialize Playwright Scraper (Headless)
+                    scraper = ESGScraper(headless=True)
+                    
+                    # Create a "dummy" config for this specific on-the-fly scan
+                    temp_config = {
+                        "url": results["website"]["href"],
+                        "name": company_name,
+                        "wait_until": "domcontentloaded",
+                        "wait_for": "body" 
+                    }
+                    
+                    # Use a synchronized call - we might need to handle the loop if already running?
+                    # Streamlit runs in a thread, so sync_playwright should be fine.
+                    # We reuse the logic from esg_scraper.py but we need a context.
+                    # Actually ESGScraper.run uses sync_playwright() context manager. 
+                    # We can't easily jump into the middle of it without refactoring esg_scraper OR just instantiating it.
+                    # Let's use the .run() method but with just ONE site.
+                    
+                    scrape_results = scraper.run(sites_config=[temp_config])
+                    
+                    if scrape_results and company_name in scrape_results:
+                         # It found something!
+                         best_link = scrape_results[company_name]
+                         # Convert to our format
+                         pw_report = {
+                             "title": best_link['text'],
+                             "href": best_link['url'],
+                             "body": "Detected via Deep Browser Scan",
+                             "source": "Deep Browser Scan"
+                         }
+                         # Verify it? esg_scraper already checks keywords/PDF extension
+                         # Let's optionally verify if we want to be safe, but 403 might block verification too!
+                         # If the browser saw it, the link is likely valid.
+                         results["reports"].append(pw_report)
+                         log(f"Playwright found report: {pw_report['title']}")
+                         
+                except Exception as e:
+                    log(f"Playwright Scan Error: {e}")
+
             return results
  
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
