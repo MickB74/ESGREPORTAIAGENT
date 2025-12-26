@@ -1,6 +1,13 @@
 import streamlit as st
 from ddgs import DDGS
 import time
+import json
+import os
+from urllib.parse import urlparse, urljoin
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+import difflib
 
 # --- Auto-Install Playwright Browsers (for Cloud Env) ---
 @st.cache_resource
