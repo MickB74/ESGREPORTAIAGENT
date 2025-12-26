@@ -614,9 +614,9 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                  except Exception as e:
                      log(f"Fallback Site Search Error: {e}")
  
-         if strict_mode and results.get("website"):
-             log("Strict Mode: Skipping external search strategies (B, C, D). Returning only direct findings.")
-             return results
+        if strict_mode and results.get("website"):
+            log("Strict Mode: Skipping external search strategies (B, C, D). Returning only direct findings.")
+            return results
  
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
         # Optimization: SKIP if we already have good results (> 3)
