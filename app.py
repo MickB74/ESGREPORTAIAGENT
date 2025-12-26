@@ -1333,7 +1333,11 @@ with tab1:
                              st.warning(f"Screenshot failed: {e}")
                              screenshot_path = None
                          
-                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
+                         # FIX: Pass the URL string, not the dict object
+                         url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
+                         if not url_to_scan: url_to_scan = data.get('href') # Fallback
+
+                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
                          new_data['description'] = data['description'] # Preserve description
                          new_data['screenshot'] = screenshot_path  # Add screenshot path
                           
