@@ -1307,8 +1307,30 @@ with tab1:
                  with st.spinner(f"Deep scanning {data['website']['title']}..."):
                      try:
                          # ENABLE STRICT MODE: User wants ONLY internal links from this page
-                         # Screenshot disabled per user request
+                         # SCREENSHOT CAPTURE
                          screenshot_path = None
+                         try:
+                             import os, uuid
+                             from playwright.sync_api import sync_playwright
+                             
+                             screenshot_dir = "/tmp/esg_screenshots"
+                             os.makedirs(screenshot_dir, exist_ok=True)
+                             
+                             safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')[:30]
+                             screenshot_filename = f"{safe_name}_{uuid.uuid4().hex[:6]}.png"
+                             screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
+                             
+                             with sync_playwright() as p:
+                                 browser = p.chromium.launch(headless=True)
+                                 page = browser.new_page()
+                                 page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
+                                 page.wait_for_timeout(2000)
+                                 page.screenshot(path=screenshot_path, full_page=False)
+                                 browser.close()
+                             print(f"✅ Screenshot: {screenshot_path}")
+                         except Exception as e:
+                             print(f"⚠️ Screenshot failed: {e}")
+                             screenshot_path = None
 
                          
                          # FIX: Pass the URL string, not the dict object
@@ -1353,7 +1375,12 @@ with tab1:
         if web:
             st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
             st.caption(web.get('body', ''))
-            # Screenshot removed per request
+            
+            # Display screenshot if available
+            import os
+            if data.get('screenshot') and os.path.exists(data['screenshot']):
+                st.markdown("**📸 Page Preview:**")
+                st.image(data['screenshot'], use_container_width=True)
 
         
         if data["reports"]:
