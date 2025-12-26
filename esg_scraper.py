@@ -65,6 +65,27 @@ class ESGScraper:
             import re
             years = re.findall(r'\b(202[0-9]|203[0])\b', text)
             return years[0] if years else None
+            
+        def get_preceding_header(node):
+            """
+            Traverses backwards to find the nearest header (h1-h6).
+            Useful for lists like: 
+            <h3>2024 Reports</h3> 
+            <ul><li><a...>Report</a></li></ul>
+            """
+            current = node.parent
+            for _ in range(5): # Limit traversal depth
+                if not current: break
+                
+                # Check previous siblings
+                prev = current.prev
+                while prev:
+                    if prev.tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                        return prev.text(strip=True)
+                    prev = prev.prev
+                
+                current = current.parent
+            return None
 
         def get_parent_context(node):
             """Get text from parent elements for context"""
@@ -88,6 +109,7 @@ class ESGScraper:
         def get_best_text(node):
             # 1. Visible Text
             text = node.text(strip=True)
+            href = node.attributes.get("href", "")
             
             # 2. Attributes (aria-label, title) - often has the full context
             aria = node.attributes.get("aria-label", "").strip()
@@ -100,31 +122,48 @@ class ESGScraper:
                 alt_text = img.attributes.get("alt", "").strip()
 
             # Decision Logic:
-            # If text is empty or generic, prefer attributes
-            is_text_generic = not text or text.lower() in GENERIC_TERMS or len(text) < 4
+            generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link", "sustainability", "esg", "annual", "environmental", "social", "governance", "annual report", "sustainability report"]
             
+            # Initial base name selection
+            # If text is empty or super generic, prefer aria/title
+            is_text_generic = not text or text.lower() in generic_terms or len(text) < 4
+            
+            base_text = text
             if is_text_generic:
-                if aria: return aria
-                if title: return title
-                if alt_text: return alt_text
+                if aria: base_text = aria
+                elif title: base_text = title
+                elif alt_text: base_text = alt_text
             
-            # If we have text but aria is strictly more descriptive (longer), use aria
-            if text and aria and len(aria) > len(text) + 5:
-                # heuristic: if aria is significantly longer, it's probably better
-                return aria
-
-            base_text = text if text else (aria or title or alt_text or "Unknown Link")
-            
-            # 4. Enhancement: Add year from context if missing
-            year = extract_year(base_text)
-            if not year:
-                # Look in parent context
-                context = get_parent_context(node)
-                year = extract_year(context)
+            # If we have basic text but attributes are much better/longer
+            elif aria and len(aria) > len(text) + 5:
+                base_text = aria
                 
-                # If we found a year in context and it's not in the base text, add it
-                if year and year not in base_text:
-                    base_text = f"{base_text} ({year})"
+            if not base_text: base_text = "Unknown Link"
+
+            # 4. Contextual Enhancement Pipeline
+            # A. Check URL for Year (often reliable: .../2023/report.pdf)
+            year_url = extract_year(href)
+            if year_url and year_url not in base_text:
+                base_text = f"{base_text} ({year_url})"
+
+            # B. Check Preceding Header (for grouped lists)
+            # Only do this if text is somewhat generic or short
+            if len(base_text) < 30 or any(t in base_text.lower() for t in generic_terms):
+                header = get_preceding_header(node)
+                if header and len(header) < 50: # Don't prepend massive headers
+                    # Clean header
+                    import re
+                    header = re.sub(r'\s+', ' ', header).strip()
+                    # Avoid duplication (e.g. Header="2023 Report", Name="2023 Report")
+                    if header.lower() not in base_text.lower():
+                        base_text = f"{header} - {base_text}"
+
+            # C. Check Parent Content (last resort for year)
+            if not extract_year(base_text):
+                ctx = get_parent_context(node)
+                y = extract_year(ctx)
+                if y and y not in base_text:
+                     base_text = f"{base_text} ({y})"
             
             return base_text
 

@@ -526,13 +526,29 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         if link_domain and primary_domain and primary_domain not in link_domain:
                             continue
 
-                        # --- Enhanced Name Extraction with Year Detection ---
+                        # --- Enhanced Name Extraction with Year Detection & Headers ---
                         import re
                         
                         def extract_year_bs(text):
                             years = re.findall(r'\b(202[0-9]|203[0])\b', str(text))
                             return years[0] if years else None
                         
+                        def get_preceding_header_bs(element):
+                            """Traverses backwards/up to find nearest header"""
+                            try:
+                                current = element.parent
+                                for _ in range(4): # Limit depth
+                                    if not current: break
+                                    prev = current.find_previous_sibling()
+                                    while prev:
+                                        if prev.name and prev.name.startswith('h') and len(prev.name) == 2:
+                                            return prev.get_text(strip=True)
+                                        prev = prev.find_previous_sibling()
+                                    current = current.parent
+                            except:
+                                return None
+                            return None
+
                         def get_parent_context_bs(element):
                             """Get parent context for year/info extraction"""
                             parent = element.parent
@@ -554,20 +570,37 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                             alt_text = img_tag.get('alt', '').strip()
 
                         # Pick the most descriptive name
-                        generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
-                        is_generic = not visible_text or visible_text.lower() in generic_terms or len(visible_text) < 4
+                        generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link", "sustainability", "esg", "annual", "environmental", "social", "governance", "annual report", "sustainability report"]
                         
+                        is_text_generic = not visible_text or visible_text.lower() in generic_terms or len(visible_text) < 4
+                        
+                        # 1. Base Name Selection
                         candidate_text = visible_text
-                        if is_generic:
+                        if is_text_generic:
                             if aria: candidate_text = aria
                             elif title_attr: candidate_text = title_attr
                             elif alt_text: candidate_text = alt_text
                         elif aria and len(aria) > len(visible_text) + 5:
                             candidate_text = aria
                         
-                        # Add year from context if not present
-                        year = extract_year_bs(candidate_text)
-                        if not year:
+                        if not candidate_text: candidate_text = "Unknown Web Resource"
+
+                        # 2. Contextual Enhancement Pipeline
+                        # A. Check URL for Year
+                        year_url = extract_year_bs(normalized)
+                        if year_url and year_url not in candidate_text:
+                            candidate_text = f"{candidate_text} ({year_url})"
+
+                        # B. Check Preceding Header (if generic)
+                        if len(candidate_text) < 30 or any(t in candidate_text.lower() for t in generic_terms):
+                            header = get_preceding_header_bs(link)
+                            if header and len(header) < 50:
+                                header = re.sub(r'\s+', ' ', header).strip()
+                                if header.lower() not in candidate_text.lower():
+                                    candidate_text = f"{header} - {candidate_text}"
+
+                        # C. Check Parent Content (last resort for year)
+                        if not extract_year_bs(candidate_text):
                             context = get_parent_context_bs(link)
                             year = extract_year_bs(context)
                             if year and year not in candidate_text:
