@@ -868,21 +868,35 @@ with tab1:
                     else:
                         st.warning("Exists")
 
-            # --- STEP 2 TRIGGER ---
-            # If we have a website but no reports yet, offer to scan
-            if not data["reports"]:
-                 st.divider()
-                 st.info("ℹ️ Official Hub Found. Click below to scan for reports.")
-                 if st.button("📄 Fetch Reports & Data", type="primary", use_container_width=True):
-                     with st.spinner(f"Scanning {data['website']['title']} for reports..."):
-                         try:
-                             # STEP 2: Deep Scan (Using known website)
-                             new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'))
-                             new_data['description'] = data['description'] # Preserve description
-                             st.session_state.esg_data = new_data
-                             st.rerun()
-                         except Exception as e:
-                             st.error(f"Scan error: {e}")
+
+            # --- STEP 2 TRIGGER (Deep Scan) ---
+            # Offer deep scan if we have a verified site (Always visible now)
+            st.divider()
+            
+            # Dynamic Label: "Fetch" if empty, "Deep Scan" if we have some but want more
+            btn_label = "📄 Fetch Reports & Data" if not data["reports"] else "🕵️ Deep Scan Verified Site"
+            
+            st.info(f"ℹ️ Verified Hub Found. click '{btn_label}' to crawl {data['website']['title']} for all PDF links.")
+            
+            if st.button(btn_label, type="primary", use_container_width=True):
+                 with st.spinner(f"Deep scanning {data['website']['title']}..."):
+                     try:
+                         # STEP 2: Deep Scan (Using known website)
+                         # We pass fetch_reports=True and known_website to force the crawler
+                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'))
+                         new_data['description'] = data['description'] # Preserve description
+                         
+                         # Merge with existing reports if we had some? 
+                         # Actually search_esg_info returns a fresh list. 
+                         # If we want to KEEP existing reports that were NOT found in deep scan (e.g. from Google),
+                         # we might need merge logic. But usually Deep Scan is authoritative.
+                         # Let's just trust the fresh scan for now, or maybe append?
+                         # For now, replacing is cleaner to avoid duplicates, as deep scan *should* find everything on the site.
+                         
+                         st.session_state.esg_data = new_data
+                         st.rerun()
+                     except Exception as e:
+                         st.error(f"Scan error: {e}")
 
         else:
             st.info("No specific ESG website found.")
