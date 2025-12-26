@@ -501,7 +501,12 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 if candidates:
                     print(f"   ✅ Playwright found {len(candidates)} reports.")
                     df = pd.DataFrame(candidates)
-                    return df.to_dict('records')
+                    # Must return strict dictionary structure to match rest of app
+                    return {
+                        "reports": df.to_dict('records'),
+                        "website": {"title": "Verified Site", "href": known_website, "body": "Verified Playwright Scan"},
+                        "search_log": ["Strict Mode: Playwright Deep Scan"]
+                    }
 
         except Exception as e:
             print(f"   ⚠️ Playwright Scan failed: {e}. Falling back to standard requests.")
