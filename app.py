@@ -999,43 +999,43 @@ with tab1:
             if st.button(btn_label, type="primary", use_container_width=True):
                  with st.spinner(f"Deep scanning {data['website']['title']}..."):
                      try:
-                     # ENABLE STRICT MODE: User wants ONLY internal links from this page
-                    # SCREENSHOT CAPTURE: Take a screenshot of the verified page
-                    screenshot_path = None
-                    try:
-                        from esg_scraper import ESGScraper
-                        import os
-                        import time
-                        
-                        # Create screenshots directory
-                        screenshot_dir = "/tmp/esg_screenshots"
-                        os.makedirs(screenshot_dir, exist_ok=True)
-                        
-                        # Generate filename from company name
-                        safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).rstrip()
-                        safe_name = safe_name.replace(' ', '_')
-                        screenshot_filename = f"{safe_name}_{int(time.time())}.png"
-                        screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
-                        
-                        # Use Playwright to capture screenshot
-                        from playwright.sync_api import sync_playwright
-                        with sync_playwright() as p:
-                            browser = p.chromium.launch(headless=True)
-                            page = browser.new_page()
-                            page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
-                            page.wait_for_timeout(3000)  # Let page settle
-                            page.screenshot(path=screenshot_path, full_page=False)  # Viewport only
-                            browser.close()
-                            
-                        log(f"Screenshot captured: {screenshot_path}")
-                    except Exception as e:
-                        log(f"Screenshot capture failed: {e}")
-                        screenshot_path = None
-                    
-                    new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
-                    new_data['description'] = data['description'] # Preserve description
-                    new_data['screenshot'] = screenshot_path  # Add screenshot path
+                         # ENABLE STRICT MODE: User wants ONLY internal links from this page
+                         # SCREENSHOT CAPTURE: Take a screenshot of the verified page
+                         screenshot_path = None
+                         try:
+                             from esg_scraper import ESGScraper
+                             import os
+                             import time
+                             
+                             # Create screenshots directory
+                             screenshot_dir = "/tmp/esg_screenshots"
+                             os.makedirs(screenshot_dir, exist_ok=True)
+                             
+                             # Generate filename from company name
+                             safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                             safe_name = safe_name.replace(' ', '_')
+                             screenshot_filename = f"{safe_name}_{int(time.time())}.png"
+                             screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
+                             
+                             # Use Playwright to capture screenshot
+                             from playwright.sync_api import sync_playwright
+                             with sync_playwright() as p:
+                                 browser = p.chromium.launch(headless=True)
+                                 page = browser.new_page()
+                                 page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
+                                 page.wait_for_timeout(3000)  # Let page settle
+                                 page.screenshot(path=screenshot_path, full_page=False)  # Viewport only
+                                 browser.close()
+                                 
+                             log(f"Screenshot captured: {screenshot_path}")
+                         except Exception as e:
+                             log(f"Screenshot capture failed: {e}")
+                             screenshot_path = None
                          
+                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
+                         new_data['description'] = data['description'] # Preserve description
+                         new_data['screenshot'] = screenshot_path  # Add screenshot path
+                          
                          # Merge with existing reports if we had some? 
                          # Actually search_esg_info returns a fresh list. 
                          # If we want to KEEP existing reports that were NOT found in deep scan (e.g. from Google),
