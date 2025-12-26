@@ -204,7 +204,8 @@ class ESGScraper:
     def get_hub_links(self, tree, base_url):
         """Identify potential 'Report Hubs' or 'Archives' to traverse."""
         hubs = []
-        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources"]
+        # Expanded keywords for aggressive discovery
+        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources", "investor", "financial", "filing", "result", "quarterly", "annual"]
         
         for node in tree.css("a"):
             href = node.attributes.get("href")
@@ -222,20 +223,72 @@ class ESGScraper:
         unique_hubs = {h['url']: h for h in hubs}.values()
         return list(unique_hubs)
 
-    def scrape_page_content(self, page, url):
-        """Helper to get links from a specific page state."""
+    def expand_page_interaction(self, page):
+        """Aggressive interaction: Click 'Load More', Year Tabs, etc."""
+        print("   🔨 Attempting to expand page content...")
         try:
-             # Wait for body just in case
-            try: page.wait_for_selector("body", timeout=5000)
-            except: pass
+            # 1. Click "Load More" / "Show All" buttons
+            # Use a broad selector for buttons containing specific text
+            more_buttons = page.locator("button, a, div[role='button']").filter(has_text=re.compile(r"load more|show all|view all|archive", re.IGNORECASE))
+            count = more_buttons.count()
+            if count > 0:
+                print(f"      Found {count} expansion buttons. Clicking first one...")
+                try:
+                    more_buttons.first.click(timeout=3000)
+                    time.sleep(2)
+                except: pass
             
-            html = page.content()
-            links = self.get_report_links(html, url)
+            # 2. Click Recent Years (2024, 2023) if they look like filters
+            # This is risky as it might navigate away, but we want aggressive.
+            # We'll try to click text that is EXACTLY a year
+            for year in ["2024", "2023", "2025"]:
+                year_btn = page.locator(f"text=^{year}$")
+                if year_btn.count() > 0:
+                    print(f"      Clicking year filter: {year}")
+                    try:
+                        year_btn.first.click(timeout=3000)
+                        time.sleep(1.5)
+                    except: pass
+                    
+        except Exception as e:
+            print(f"      Interaction warning: {e}")
+
+    def scrape_page_content(self, page, url):
+        """Helper to get links from a specific page state, scanning ALL FRAMES."""
+        import re # Ensure re is available
+        links = []
+        hubs = []
+        
+        try:
+            # OPTIONAL: Interact to reveal content
+            self.expand_page_interaction(page)
             
-            # Identify hubs on this page
-            tree = HTMLParser(html)
-            hubs = self.get_hub_links(tree, url)
+            # 1. Scan Main Frame
+            html_main = page.content()
+            l_main = self.get_report_links(html_main, url)
+            h_main = self.get_hub_links(HTMLParser(html_main), url)
             
+            links.extend(l_main)
+            hubs.extend(h_main)
+            
+            # 2. Scan Sub-Frames (Aggressive)
+            frames = page.frames
+            if len(frames) > 1:
+                print(f"      Scanning {len(frames)-1} sub-frames...")
+                for frame in frames[1:]: # Skip main frame (index 0 usually)
+                    try:
+                        # Ensure frame is loaded
+                        if not frame.url or frame.url == "about:blank": continue
+                        
+                        f_html = frame.content()
+                        f_links = self.get_report_links(f_html, frame.url) # Use frame URL base
+                        
+                        if f_links:
+                            # Mark them coming from a frame
+                            for l in f_links: l['text'] += " [Frame]"
+                            links.extend(f_links)
+                    except: pass
+
             return links, hubs
         except Exception as e:
             print(f"Error scraping content from {url}: {e}")

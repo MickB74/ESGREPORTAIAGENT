@@ -1300,38 +1300,9 @@ with tab1:
                  with st.spinner(f"Deep scanning {data['website']['title']}..."):
                      try:
                          # ENABLE STRICT MODE: User wants ONLY internal links from this page
-                         # SCREENSHOT CAPTURE: Take a screenshot of the verified page
+                         # Screenshot disabled per user request
                          screenshot_path = None
-                         try:
-                             from esg_scraper import ESGScraper
-                             import os
-                             import time
-                             
-                             # Create screenshots directory
-                             screenshot_dir = "/tmp/esg_screenshots"
-                             os.makedirs(screenshot_dir, exist_ok=True)
-                             
-                             # Generate filename from company name
-                             safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).rstrip()
-                             safe_name = safe_name.replace(' ', '_')
-                             screenshot_filename = f"{safe_name}_{int(time.time())}.png"
-                             screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
-                             
-                             # Use Playwright to capture screenshot
-                             from playwright.sync_api import sync_playwright
-                             with sync_playwright() as p:
-                                 browser = p.chromium.launch(headless=True)
-                                 page = browser.new_page()
-                                 page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
-                                 page.wait_for_timeout(3000)  # Let page settle
-                                 page.screenshot(path=screenshot_path, full_page=False)  # Viewport only
-                                 browser.close()
-                                 
-                             print(f"Screenshot captured: {screenshot_path}")
-                         except Exception as e:
-                             print(f"Screenshot capture failed: {e}")
-                             st.warning(f"Screenshot failed: {e}")
-                             screenshot_path = None
+
                          
                          # FIX: Pass the URL string, not the dict object
                          url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
@@ -1363,12 +1334,8 @@ with tab1:
         if web:
             st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
             st.caption(web.get('body', ''))
-            
-            # Display screenshot if available
-            import os
-            if data.get('screenshot') and os.path.exists(data['screenshot']):
-                st.markdown("**📸 Page Preview:**")
-                st.image(data['screenshot'], use_container_width=True)
+            # Screenshot removed per request
+
         
         if data["reports"]:
             for idx, report in enumerate(data["reports"]):
