@@ -366,6 +366,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
+        official_homepage_url = None
         
         if known_url:
              # Fast Path: Use known URL as the "official domain" for hub scanning
@@ -401,6 +402,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
                 if company_name.split()[0].lower() in title.lower():
                      official_domain = domain_str
+                     official_homepage_url = url
                      log(f"Identified official domain: {official_domain}")
                      break
 
@@ -422,6 +424,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 
             log(f"Searching for website query: {website_query}")
             results["search_log"].append(f"Website Search: \"{website_query}\"")
+            
+            found_esg_site = False
             try:
                 web_search_results = search_web(website_query, max_results=10, ddgs_instance=ddgs)
                 for res in web_search_results:
@@ -436,9 +440,19 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         "href": url,
                         "body": res['body']
                     }
+                    found_esg_site = True
                     break
             except Exception as e:
                 print(f"Website search error: {e}")
+            
+            # Fallback to Homepage if ESG site not found
+            if not found_esg_site and official_homepage_url:
+                log(f"ESG specific site not found. Falling back to homepage: {official_homepage_url}")
+                results["website"] = {
+                    "title": f"{company_name} Official Homepage",
+                    "href": official_homepage_url,
+                    "body": "Official company homepage (ESG section not explicitly found)."
+                }
             
         # --- 2.5 Find Company Description ---
         try:
