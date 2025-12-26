@@ -282,7 +282,7 @@ def delete_link(index):
 
 # Function to perform searches
 # Function to perform searches
-def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None):
+def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None, strict_mode=False):
 
     import concurrent.futures
     import datetime
@@ -614,6 +614,10 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                  except Exception as e:
                      log(f"Fallback Site Search Error: {e}")
  
+         if strict_mode and results.get("website"):
+             log("Strict Mode: Skipping external search strategies (B, C, D). Returning only direct findings.")
+             return results
+ 
         # SECONDARY STRATEGY: Direct Search (Fill gaps)
         # Optimization: SKIP if we already have good results (> 3)
         if len(results["reports"]) < 4:
@@ -883,7 +887,8 @@ with tab1:
                      try:
                          # STEP 2: Deep Scan (Using known website)
                          # We pass fetch_reports=True and known_website to force the crawler
-                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'))
+                         # ENABLE STRICT MODE: User wants ONLY internal links from this page
+                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
                          new_data['description'] = data['description'] # Preserve description
                          
                          # Merge with existing reports if we had some? 
