@@ -65,16 +65,20 @@ class ESGScraper:
             if not href:
                 continue
                 
-            # 1. Filter: Must be a PDF
-            if href.lower().endswith(".pdf"):
-                # 2. Score: Does the text look like a report?
-                score = 0
-                for kw in REPORT_KEYWORDS:
-                    if kw in text or kw in href.lower():
-                        score += 1
-                
-                # Normalize URL
-                href = urljoin(base_url, href)
+            # 1. Score: Does the text look like a report?
+            score = 0
+            for kw in REPORT_KEYWORDS:
+                if kw in text or kw in href.lower():
+                    score += 1
+            
+            # Normalize URL
+            href = urljoin(base_url, href)
+
+            # 2. Filter: Must be a PDF OR have a good score
+            if href.lower().endswith(".pdf") or score >= 1:
+                # Boost score for PDF to keep them top priority
+                if href.lower().endswith(".pdf"):
+                    score += 2
                 
                 candidates.append({"url": href, "text": text, "score": score})
 

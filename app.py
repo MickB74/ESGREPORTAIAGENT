@@ -98,9 +98,24 @@ def verify_pdf_content(url, title, company_name, context="report"):
 
         # Content Type Check
         c_type = response.headers.get('Content-Type', '').lower()
-        if 'pdf' not in c_type and 'application/octet-stream' not in c_type:
+        
+        # ALLOW HTML now (User request: "all links from the main part of the page")
+        is_pdf = 'pdf' in c_type or 'application/octet-stream' in c_type
+        is_html = 'text/html' in c_type
+        
+        if not is_pdf and not is_html:
             response.close()
             return None
+            
+        # If HTML, just verify it's reachable and return (don't parse PDF)
+        if is_html:
+             response.close()
+             # We trust the link text filtering done before this call
+             return {
+                 "title": title,
+                 "href": url,
+                 "body": "Webpage Report / Resource"
+             }
 
         # Size Check
         content_length = response.headers.get('Content-Length')
@@ -513,18 +528,13 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
                         text = clean_title(link.get_text(strip=True))
 
-                        if normalized.lower().endswith('.pdf'):
-                            # BROADENED CRITERIA: If on the hub and is PDF, valid candidate unless explicitly skipped 
-                            # We skip ONLY if it matches negative terms (policy etc)
-                            if is_report_link(text, normalized):
-                                # Logic inside is_report_link handles negatives. 
-                                # It also enforces "report" keyword. 
-                                # But user said "I just want all reports on the site".
-                                # We'll trust "is_report_link" logic which I will relax slightly in a moment?
-                                # Actually, let's keep is_report_link but rename/relax it OR logic here.
-                                pass
+                        # BROADENED SCOPE: Check both PDF and HTML for relevance
+                        is_pdf = normalized.lower().endswith('.pdf')
+                        
+                        # 1. Relevance Check (Keywords)
+                        if is_report_link(text, normalized):
                             
-                            # Let's simple check negatives
+                            # 2. Negative Filter
                             is_negative = False
                             neg_terms = ['policy', 'charter', 'code of conduct', 'guidelines', 'presentation']
                             for n in neg_terms:
@@ -532,7 +542,16 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                             
                             if not is_negative:
                                 pdf_candidates.append({'href': normalized, 'title': text})
+                            
+                            # If it's a report link, we don't treat it as a hub to traverse?
+                            # Actually, maybe we should still traverse if it's a hub-like page?
+                            # But for now, let's capture it.
                             continue
+
+                        if is_pdf:
+                             # If it is a PDF but failed is_report_link (maybe missing keyword?), 
+                             # we might still want it if we are desperate, but is_report_link is the gatekeeper.
+                             pass
 
                         lower_text = text.lower()
                         hub_keywords = ['report', 'archive', 'download', 'library', 'sustainability', 'esg', 'impact', 'responsibility', 'csr']
