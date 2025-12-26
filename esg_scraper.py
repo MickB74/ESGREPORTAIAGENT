@@ -121,24 +121,67 @@ class ESGScraper:
             if img:
                 alt_text = img.attributes.get("alt", "").strip()
 
-            # Decision Logic:
-            generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link", "sustainability", "esg", "annual", "environmental", "social", "governance", "annual report", "sustainability report"]
+            # Enhanced Generic Detection
+            generic_terms = [
+                "download", "pdf", "click here", "read more", "view", "report", 
+                "file", "link", "learn more", "see more", "details", "here",
+                "more info", "accessibility", "opens in"
+            ]
             
-            # Initial base name selection
-            # If text is empty or super generic, prefer aria/title
-            is_text_generic = not text or text.lower() in generic_terms or len(text) < 4
+            # Enhanced Name Selection with URL Parsing
+            is_text_generic = not text or any(term in text.lower() for term in generic_terms) or len(text) < 4
             
             base_text = text
             if is_text_generic:
-                if aria: base_text = aria
-                elif title: base_text = title
-                elif alt_text: base_text = alt_text
+                # Try attributes first
+                if aria and not any(term in aria.lower() for term in generic_terms): 
+                    base_text = aria
+                elif title and not any(term in title.lower() for term in generic_terms): 
+                    base_text = title
+                elif alt_text: 
+                    base_text = alt_text
+                else:
+                    # Parse URL filename as last resort
+                    from urllib.parse import urlparse, unquote
+                    try:
+                        parsed = urlparse(href)
+                        path = unquote(parsed.path)
+                        filename = path.split('/')[-1]
+                        name_part = filename.rsplit('.', 1)[0] if '.' in filename else filename
+                        clean_name = re.sub(r'[-_]+', ' ', name_part)
+                        clean_name = re.sub(r'\s+', ' ', clean_name).strip()
+                        clean_name = ' '.join(word.capitalize() for word in clean_name.split())
+                        if len(clean_name) > 15:  # Only use if substantial
+                            base_text = clean_name
+                    except:
+                        pass
             
             # If we have basic text but attributes are much better/longer
             elif aria and len(aria) > len(text) + 5:
                 base_text = aria
+            
+            # Clean junk text
+            junk_patterns = [
+                r'\(opens in (?:a )?new (?:window|tab)\)',
+                r'opens in (?:a )?new (?:window|tab)',
+                r'\[read more\]',
+                r'►', r'◄', r'📄'
+            ]
+            for pattern in junk_patterns:
+                base_text = re.sub(pattern, '', base_text, flags=re.IGNORECASE)
+            base_text = re.sub(r'\s+', ' ', base_text).strip()
                 
-            if not base_text: base_text = "Unknown Link"
+            if not base_text or len(base_text) < 3: 
+                # Fallback to report type detection
+                url_lower = href.lower()
+                if 'annual' in url_lower:
+                    base_text = "Annual Report"
+                elif any(kw in url_lower for kw in ['sustainability', 'esg', 'csr']):
+                    base_text = "Sustainability Report"
+                elif any(kw in url_lower for kw in ['impact', 'social']):
+                    base_text = "Impact Report"
+                else:
+                    base_text = "Report"
 
             # 4. Contextual Enhancement Pipeline
             # A. Check URL for Year (often reliable: .../2023/report.pdf)
