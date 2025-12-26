@@ -526,7 +526,31 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         if link_domain and primary_domain and primary_domain not in link_domain:
                             continue
 
-                        text = clean_title(link.get_text(strip=True))
+                        # --- Enhanced Name Extraction ---
+                        visible_text = link.get_text(strip=True)
+                        aria = link.get('aria-label', '').strip()
+                        title_attr = link.get('title', '').strip()
+                        
+                        alt_text = ""
+                        img_tag = link.find('img')
+                        if img_tag:
+                            alt_text = img_tag.get('alt', '').strip()
+
+                        # Pick the most descriptive name
+                        generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
+                        is_generic = not visible_text or visible_text.lower() in generic_terms or len(visible_text) < 4
+                        
+                        candidate_text = visible_text
+                        if is_generic:
+                            if aria: candidate_text = aria
+                            elif title_attr: candidate_text = title_attr
+                            elif alt_text: candidate_text = alt_text
+                        elif aria and len(aria) > len(visible_text) + 5:
+                             # heuristic: if aria is significantly longer/better, use it
+                            candidate_text = aria
+                            
+                        text = clean_title(candidate_text)
+                        if not text: text = "Unknown Web Resource"
 
                         # BROADENED SCOPE: Check both PDF and HTML for relevance
                         is_pdf = normalized.lower().endswith('.pdf')

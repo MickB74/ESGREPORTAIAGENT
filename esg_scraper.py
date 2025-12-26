@@ -58,9 +58,47 @@ class ESGScraper:
         tree = HTMLParser(page_content)
         candidates = []
         
+        GENERIC_TERMS = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
+
+        def get_best_text(node):
+            # 1. Visible Text
+            text = node.text(strip=True)
+            
+            # 2. Attributes (aria-label, title) - often has the full context
+            aria = node.attributes.get("aria-label", "").strip()
+            title = node.attributes.get("title", "").strip()
+            
+            # 3. Image Alt Text (if link wraps an image)
+            alt_text = ""
+            img = node.css_first("img")
+            if img:
+                alt_text = img.attributes.get("alt", "").strip()
+
+            # Decision Logic:
+            # If text is empty or generic, prefer attributes
+            is_text_generic = not text or text.lower() in GENERIC_TERMS or len(text) < 4
+            
+            if is_text_generic:
+                if aria: return aria
+                if title: return title
+                if alt_text: return alt_text
+            
+            # If we have text but aria is strictly more descriptive (longer), use aria
+            if text and aria and len(aria) > len(text) + 5:
+                # heuristic: if aria is significantly longer, it's probably better
+                return aria
+
+            return text if text else (aria or title or alt_text or "Unknown Link")
+
         for node in tree.css("a"):
             href = node.attributes.get("href")
-            text = node.text(strip=True).lower()
+            text = get_best_text(node)
+            
+            # Clean text (remove newlines, extra spaces)
+            import re
+            text = re.sub(r'\s+', ' ', text).strip()
+            if not text: text = "Unknown Report Document"
+            text_lower = text.lower()
             
             if not href:
                 continue
@@ -68,7 +106,7 @@ class ESGScraper:
             # 1. Score: Does the text look like a report?
             score = 0
             for kw in REPORT_KEYWORDS:
-                if kw in text or kw in href.lower():
+                if kw in text_lower or kw in href.lower():
                     score += 1
             
             # Normalize URL
