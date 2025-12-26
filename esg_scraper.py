@@ -201,59 +201,133 @@ class ESGScraper:
         # We prioritize higher scores
         return sorted(candidates, key=lambda x: x['score'], reverse=True)
 
+    def get_hub_links(self, tree, base_url):
+        """Identify potential 'Report Hubs' or 'Archives' to traverse."""
+        hubs = []
+        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources"]
+        
+        for node in tree.css("a"):
+            href = node.attributes.get("href")
+            text = node.text(strip=True).lower()
+            if not href or len(text) < 3: continue
+            
+            # Check if text matches hub keywords
+            if any(kw in text for kw in HUB_KEYWORDS):
+                full_url = urljoin(base_url, href)
+                # Avoid navigating out of domain (simple check)
+                if base_url.split('/')[2] in full_url:
+                    hubs.append({"url": full_url, "text": text})
+        
+        # Deduplicate by URL
+        unique_hubs = {h['url']: h for h in hubs}.values()
+        return list(unique_hubs)
+
+    def scrape_page_content(self, page, url):
+        """Helper to get links from a specific page state."""
+        try:
+             # Wait for body just in case
+            try: page.wait_for_selector("body", timeout=5000)
+            except: pass
+            
+            html = page.content()
+            links = self.get_report_links(html, url)
+            
+            # Identify hubs on this page
+            tree = HTMLParser(html)
+            hubs = self.get_hub_links(tree, url)
+            
+            return links, hubs
+        except Exception as e:
+            print(f"Error scraping content from {url}: {e}")
+            return [], []
+
     def scrape_site(self, site, browser_context):
         """
-        Process a single site configuration.
+        Process a site with recursive Level 2 scanning for Hubs.
         """
         print(f"\n🌍 Processing: {site['name']}...")
         page = browser_context.new_page()
+        all_links = []
+        visited_urls = set()
         
         try:
-            wait_strategy = site.get("wait_until", "load") # Default to 'load', but can be 'domcontentloaded' or 'commit'
+            # 1. Visit Main Page
+            wait_strategy = site.get("wait_until", "load")
+            print(f"   ➡️ Visiting Main: {site['url']}")
             page.goto(site['url'], timeout=60000, wait_until=wait_strategy)
             
-            # --- STRATEGY: Click to Download ---
-            if "click_selector" in site:
-                print(f"   🖱️ Clicking selector: {site['click_selector']}")
-                try:
-                    page.click(site['click_selector'], timeout=5000)
-                    time.sleep(2) # Wait for reaction
-                except Exception as e:
-                    print(f"   ⚠️ Warning: Click failed on {site['name']}: {e}")
+            # Handle cookies/popups if possible (basic click)
+            try: 
+                page.click("button:has-text('Accept')", timeout=2000)
+            except: pass
 
-            # --- STRATEGY: Dynamic Wait ---
-            if "wait_for" in site:
-                try:
-                    page.wait_for_selector(site['wait_for'], timeout=15000)
-                except:
-                    print(f"   ⚠️ Warning: Timeout waiting for selector {site['wait_for']} on {site['name']}")
+            time.sleep(3) # Settle
+            
+            main_links, hubs = self.scrape_page_content(page, site['url'])
+            all_links.extend(main_links)
+            visited_urls.add(site['url'])
 
-            # Small sleep to ensure animations settle
-            time.sleep(3)
+            # 2. Level 2: Visit Hubs (Max 2)
+            if hubs:
+                print(f"   🔎 Found {len(hubs)} potential archives. Checking top 2...")
+                for hub in hubs[:2]:
+                    if hub['url'] in visited_urls: continue
+                    
+                    print(f"   ➡️ Visiting Hub: {hub['text'][:30]}...")
+                    try:
+                        page.goto(hub['url'], timeout=45000, wait_until="domcontentloaded")
+                        time.sleep(3)
+                        hub_links, _ = self.scrape_page_content(page, hub['url'])
+                        
+                        # Add new unique links
+                        existing_urls = {l['url'] for l in all_links}
+                        for hl in hub_links:
+                            if hl['url'] not in existing_urls:
+                                hl['text'] = f"[Hub: {hub['text']}] {hl['text']}" # Mark source
+                                all_links.append(hl)
+                                
+                        visited_urls.add(hub['url'])
+                    except Exception as e:
+                        print(f"   Failed to scrape hub {hub['url']}: {e}")
             
-            # Get the fully rendered HTML
-            html = page.content()
+            print(f"   ✅ Found {len(all_links)} total reports.")
             
-            # Analyze links
-            links = self.get_report_links(html, site['url'])
+            # Return top result for basic compatibility, but actually we want all
+            # The original code returned 'result' (one link). 
+            # We should probably return LIST of links if called from app?
+            # Existing contract returns dictionary of results.
+            # Let's return the full list if possible, or just the best one if fitting old contract.
+            # BUT: app.py calls this logic? 
+            # App.py imports ESGScraper... wait. 
+            # App.py calls `search_esg_info` which calls `ESGScraper`? 
+            # No, `debug_amat.py` works, but app.py currently only uses ESGScraper for SCREENSHOTS (in strict mode).
+            # The MAIN scan in app.py uses `requests` + `collect_links`.
+            # AHH: Task `Fix Applied Materials Scanning` said: "Update app.py to use Playwright/ESGScraper for 'Deep Scan'".
+            # Let's check `app.py` to see if it actually USES ESGScraper for scanning content.
+            # I suspect it DOES NOT yet, or I missed it.
             
-            print(f"   found {len(links)} potential PDF(s)")
+            # Re-reading `app.py`: 
+            # "new_data = search_esg_info(..., known_website=data['website'], strict_mode=True)"
+            # `search_esg_info` uses `requests` primarily.
             
-            if links:
-                best_link = links[0] # The one with the highest keyword score
-                print(f"   ⬇️  Downloading top match: {best_link['text'][:50]}...")
-                print(f"   🔗  URL: {best_link['url']}")
-                return best_link
-            else:
-                print("   ❌ No obvious PDF reports found.")
-                return None
-                
+            # WAIT. If I want "Better Scanning", I should ensure `app.py` uses `ESGScraper` (Playwright) 
+            # when `strict_mode` is on or as a fallback.
+            
+            # Logic here: I will return the best link as per old contract, 
+            # BUT I should probably expose a method `detect_all_reports`.
+            
+            if all_links:
+                # Sort by score
+                all_links.sort(key=lambda x: x['score'], reverse=True)
+                return all_links # Returning LIST now. Caller must handle!
+            return []
+
         except Exception as e:
             print(f"   🔥 Error scraping {site['name']}: {e}")
-            return None
+            return []
         finally:
             page.close()
-
+    
     def run(self, sites_config=SITES):
         with sync_playwright() as p:
             # Launch browser
@@ -264,9 +338,9 @@ class ESGScraper:
             
             results = {}
             for site in sites_config:
-                result = self.scrape_site(site, context)
-                if result:
-                    results[site['name']] = result
+                found_links = self.scrape_site(site, context)
+                if found_links:
+                    results[site['name']] = found_links
             
             browser.close()
             return results

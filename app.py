@@ -1,14 +1,6 @@
 import streamlit as st
 from ddgs import DDGS
 import time
-import json
-import os
-from urllib.parse import urlparse, urljoin
-import requests
-from bs4 import BeautifulSoup
-import pandas as pd
-import difflib
-
 
 # --- Auto-Install Playwright Browsers (for Cloud Env) ---
 @st.cache_resource
@@ -16,8 +8,19 @@ def install_playwright():
     import subprocess
     import sys
     try:
-        print("Installing Playwright browsers (chromium)...")
+        # Check if we need to install (skip if already done in session, handled by cache_resource)
+        # But we need to handle system deps which might need sudo/apt, which we can't do here easily.
+        # However, 'playwright install --with-deps' tries to install OS deps.
+        # On Streamlit Cloud, we might not have sudo.
+        # We will try 'playwright install chromium' first (browsers only).
+        print("Installing Playwright browsers...")
+        
+        # 1. Install Browsers
         subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        
+        # 2. Optional: Install Deps (often fails without sudo, but worth a try (dry run? no))
+        # subprocess.run([sys.executable, "-m", "playwright", "install-deps", "chromium"], check=False)
+        
         print("Playwright installation complete.")
     except Exception as e:
         print(f"Error installing Playwright: {e}")
@@ -452,37 +455,273 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             else:
                 website_query = f"{company_name} official ESG sustainability website"
                 
-            log(f"Searching for website query: {website_query}")
-            results["search_log"].append(f"Website Search: \"{website_query}\"")
+    # If STRICT MODE (Verified Site Scan), try Playwright FIRST for better results (JS, Deep Scan)
+    if strict_mode:
+        print("   🚀 Strict Mode: using Playwright Scraper first...")
+        try:
+             # Lazy load
+            from esg_scraper import ESGScraper
             
-            found_esg_site = False
+            # Configure flexible waiter
+            wait_tag = "body"
+            # Known configs
+            if "homedepot" in known_website: wait_tag = ".views-element-container"
+            
+            scraper = ESGScraper(headless=True)
+            # Create a site config on the fly
+            site_config = [{
+                "url": known_website, 
+                "name": "Verified_Site_Scan",
+                "wait_for": wait_tag 
+            }]
+            
+            # RUN SCRAPER
+            results = scraper.run(site_config)
+            
+            if results and results.get("Verified_Site_Scan"):
+                # Playwright found stuff!
+                links = results.get("Verified_Site_Scan")
+                if isinstance(links, dict): links = [links]
+                
+                # Convert to our app's format
+                import pandas as pd
+                candidates = []
+                for l in links:
+                    candidates.append({'title': l['text'], 'href': l['url']})
+                
+                if candidates:
+                    print(f"   ✅ Playwright found {len(candidates)} reports.")
+                    df = pd.DataFrame(candidates)
+                    return df.to_dict('records')
+
+        except Exception as e:
+            print(f"   ⚠️ Playwright Scan failed: {e}. Falling back to standard requests.")
+            # Fall through to standard requests logic below
+
+    # --- Standard Requests Logic (Fallback or Normal Mode) ---
+    search_results = []
+    if not strict_mode:
+        log(f"Searching for website query: {website_query}")
+        # Only do web search if we are NOT in strict mode
+        search_results = search_web(website_query, max_results=3, ddgs_instance=ddgs)
+    
+    # If strict mode, we start with just the known website
+    if strict_mode and known_website:
+        search_results = [{'href': known_website, 'title': 'Verified Site'}]
+
+    potential_domains = []
+    
+    # If we have a known website, prioritize it
+    if known_website and not strict_mode: # If strict mode, we ALREADY handled it above OR we are falling back to it
+         potential_domains.append(known_website) # We will scan it below
+    
+    # Add search results
+    for res in search_results:
+        potential_domains.append(res['href'])
+
+    # Deduplicate
+    # Keep order
+    unique_domains = []
+    seen = set()
+    for d in potential_domains:
+        if d not in seen:
+            unique_domains.append(d)
+            seen.add(d)
+
+    # 3. Deep Scan (Requests-based)
+    all_reports = []
+    max_scan = 1 if strict_mode else 3
+    
+    for url in unique_domains[:max_scan]:
+        try:
+            domain = urlparse(url).netloc
+            if not strict_mode:
+                if not is_likely_official_domain(url, company_name):
+                    continue
+            
+            print(f"   Scanning (Requests): {url}...")
+            # Use requests to get HTML
             try:
-                web_search_results = search_web(website_query, max_results=10, ddgs_instance=ddgs)
-                for res in web_search_results:
-                    url = res['href']
-                    if url.lower().endswith('.pdf'): continue
-                    if not official_domain:
-                         if not is_likely_official_domain(url, company_name): continue
-                         if 'bing.com' in url or 'google.com' in url: continue
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                resp = requests.get(url, headers=headers, timeout=15)
+                # ... (rest of logic handles parsing)
+                page_content = resp.text
+                page_url = resp.url # Effective URL
+                
+                parsed_base = urlparse(page_url) # Re-parse for current page
+                primary_domain = parsed_base.netloc
+
+                def normalize_href(base, href):
+                    if not href:
+                        return None
+                    if href.startswith("mailto:") or href.startswith("javascript:"):
+                        return None
+                    if href.startswith("#"):
+                        return None
+                    if href.startswith("//"):
+                        return f"{parsed_base.scheme}:{href}"
+                    if href.startswith("http"):
+                        return href
+                    return urljoin(base, href)
+
+                def collect_links(page_url, html_text):
+                    soup = BeautifulSoup(html_text, 'html.parser')
+                    pdf_candidates = []
+                    hubs = []
+                    for link in soup.find_all('a', href=True):
+                        raw_href = link['href']
+                        normalized = normalize_href(page_url, raw_href)
+                        if not normalized:
+                            continue
+
+                        link_domain = urlparse(normalized).netloc
+                        if link_domain and primary_domain and primary_domain not in link_domain:
+                            continue
+
+                        # --- Enhanced Name Extraction with Year Detection & Headers ---
+                        import re
                         
-                    results["website"] = {
-                        "title": res['title'],
-                        "href": url,
-                        "body": res['body']
-                    }
-                    found_esg_site = True
-                    break
+                        def extract_year_bs(text):
+                            years = re.findall(r'\b(202[0-9]|203[0])\b', str(text))
+                            return years[0] if years else None
+                        
+                        def get_preceding_header_bs(element):
+                            """Traverses backwards/up to find nearest header"""
+                            try:
+                                current = element.parent
+                                for _ in range(4): # Limit depth
+                                    if not current: break
+                                    prev = current.find_previous_sibling()
+                                    while prev:
+                                        if prev.name and prev.name.startswith('h') and len(prev.name) == 2:
+                                            return prev.get_text(strip=True)
+                                        prev = prev.find_previous_sibling()
+                                    current = current.parent
+                            except:
+                                return None
+                            return None
+
+                        def get_parent_context_bs(element):
+                            """Get parent context for year/info extraction"""
+                            parent = element.parent
+                            for _ in range(2):  # Go up 2 levels
+                                if parent and parent.name in ['div', 'p', 'li', 'td', 'section', 'article']:
+                                    parent_text = parent.get_text(strip=True)
+                                    if parent_text and len(parent_text) < 200:
+                                        return parent_text
+                                parent = parent.parent if parent else None
+                            return ""
+                        
+                        visible_text = link.get_text(strip=True)
+                        aria = link.get('aria-label', '').strip()
+                        title_attr = link.get('title', '').strip()
+                        
+                        alt_text = ""
+                        img_tag = link.find('img')
+                        if img_tag:
+                            alt_text = img_tag.get('alt', '').strip()
+
+                        # Pick the most descriptive name
+                        generic_terms = ["download", "pdf", "click here", "read more", "view", "report", "file", "link", "sustainability", "esg", "annual", "environmental", "social", "governance", "annual report", "sustainability report"]
+                        
+                        is_text_generic = not visible_text or visible_text.lower() in generic_terms or len(visible_text) < 4
+                        
+                        # 1. Base Name Selection
+                        candidate_text = visible_text
+                        if is_text_generic:
+                            if aria: candidate_text = aria
+                            elif title_attr: candidate_text = title_attr
+                            elif alt_text: candidate_text = alt_text
+                        elif aria and len(aria) > len(visible_text) + 5:
+                            candidate_text = aria
+                        
+                        if not candidate_text: candidate_text = "Unknown Web Resource"
+
+                        # 2. Contextual Enhancement Pipeline
+                        # A. Check URL for Year
+                        year_url = extract_year_bs(normalized)
+                        if year_url and year_url not in candidate_text:
+                            candidate_text = f"{candidate_text} ({year_url})"
+
+                        # B. Check Preceding Header (if generic)
+                        if len(candidate_text) < 30 or any(t in candidate_text.lower() for t in generic_terms):
+                            header = get_preceding_header_bs(link)
+                            if header and len(header) < 50:
+                                header = re.sub(r'\s+', ' ', header).strip()
+                                if header.lower() not in candidate_text.lower():
+                                    candidate_text = f"{header} - {candidate_text}"
+
+                        # C. Check Parent Content (last resort for year)
+                        if not extract_year_bs(candidate_text):
+                            context = get_parent_context_bs(link)
+                            year = extract_year_bs(context)
+                            if year and year not in candidate_text:
+                                candidate_text = f"{candidate_text} ({year})"
+                            
+                        text = clean_title(candidate_text)
+                        if not text: text = "Unknown Web Resource"
+
+                        # BROADENED SCOPE: Check both PDF and HTML for relevance
+                        is_pdf = normalized.lower().endswith('.pdf')
+                        
+                        # 1. Relevance Check (Keywords)
+                        if is_report_link(text, normalized):
+                            
+                            # 2. Negative Filter
+                            is_negative = False
+                            neg_terms = ['policy', 'charter', 'code of conduct', 'guidelines', 'presentation']
+                            for n in neg_terms:
+                                if n in text.lower(): is_negative = True
+                            
+                            if not is_negative:
+                                pdf_candidates.append({'href': normalized, 'title': text})
+                            
+                            # If it's a report link, we don't treat it as a hub to traverse?
+                            # Actually, maybe we should still traverse if it's a hub-like page?
+                            # But for now, let's capture it.
+                            continue
+
+                        if is_pdf:
+                             # If it is a PDF but failed is_report_link (maybe missing keyword?), 
+                             # we might still want it if we are desperate, but is_report_link is the gatekeeper.
+                             pass
+
+                        lower_text = text.lower()
+                        hub_keywords = ['report', 'archive', 'download', 'library', 'sustainability', 'esg', 'impact', 'responsibility', 'csr']
+                        if any(k in lower_text for k in hub_keywords):
+                            hubs.append(normalized)
+
+                    return pdf_candidates, hubs
+
+                scan_candidates, hub_links_to_follow = collect_links(page_url, page_content)
+
+                if scan_candidates:
+                    log(f"    Found {len(scan_candidates)} potential PDFs on {page_url}")
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                        futures = {executor.submit(verify_pdf_content, c['href'], c['title'], company_name): c for c in scan_candidates}
+                        for future in concurrent.futures.as_completed(futures):
+                            v = future.result()
+                            if v and v['href'] not in [r['href'] for r in results['reports']]:
+                                v['source'] = "Official Site"
+                                results["reports"].append(v)
+                                all_reports.append(v) # Add to all_reports for return
             except Exception as e:
-                print(f"Website search error: {e}")
-            
-            # Fallback to Homepage if ESG site not found
-            if not found_esg_site and official_homepage_url:
-                log(f"ESG specific site not found. Falling back to homepage: {official_homepage_url}")
-                results["website"] = {
-                    "title": f"{company_name} Official Homepage",
-                    "href": official_homepage_url,
-                    "body": "Official company homepage (ESG section not explicitly found)."
-                }
+                log(f"  Requests scan failed for {url}: {e}")
+        except Exception as e:
+            log(f"  Error processing domain {url}: {e}")
+    
+    # If we found reports via requests, return them
+    if all_reports:
+        return all_reports
+    
+    # Fallback to homepage if no ESG site found and not in strict mode
+    if not results.get("website") and official_homepage_url and not strict_mode:
+        log(f"ESG specific site not found. Falling back to homepage: {official_homepage_url}")
+        results["website"] = {
+            "title": f"{company_name} Official Homepage",
+            "href": official_homepage_url,
+            "body": "Official company homepage (ESG section not explicitly found)."
+        }
             
         # --- 2.5 Find Company Description ---
         try:
