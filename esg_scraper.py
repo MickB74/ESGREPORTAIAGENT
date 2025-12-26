@@ -60,6 +60,13 @@ class ESGScraper:
         candidates = []
         
         GENERIC_TERMS = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
+        
+        # Negative keywords to exclude (non-report pages)
+        EXCLUDE_KEYWORDS = [
+            "login", "career", "job", "apply", "search", "contact",
+            "privacy policy", "terms", "cookie", "faq", "about us",
+            "news", "press release", "blog", "financial advisor"
+        ]
 
         def extract_year(text):
             """Extract 4-digit year from text (2020-2030)"""
@@ -227,14 +234,24 @@ class ESGScraper:
                 if kw in text_lower or kw in href.lower():
                     score += 1
             
+            # Exclusion: Filter out non-report pages
+            excluded = False
+            for exc in EXCLUDE_KEYWORDS:
+                if exc in text_lower or exc in href.lower():
+                    excluded = True
+                    break
+            
+            if excluded:
+                continue
+            
             # Normalize URL
             href = urljoin(base_url, href)
 
             # 2. Filter: Must be a PDF OR have a good score
-            if href.lower().endswith(".pdf") or score >= 1:
+            if href.lower().endswith(".pdf") or score >= 2:  # Raised threshold from 1 to 2
                 # Boost score for PDF to keep them top priority
                 if href.lower().endswith(".pdf"):
-                    score += 2
+                    score += 3
                 
                 candidates.append({"url": href, "text": text, "score": score})
 
