@@ -270,7 +270,7 @@ class ESGScraper:
         """Identify potential 'Report Hubs' or 'Archives' to traverse."""
         hubs = []
         # Expanded keywords for aggressive discovery
-        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources", "investor", "financial", "filing", "result", "quarterly", "annual"]
+        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources", "investor", "financial", "filing", "result", "quarterly", "annual", "sustainability", "esg"]
         
         for node in tree.css("a"):
             href = node.attributes.get("href")
@@ -386,8 +386,8 @@ class ESGScraper:
 
             # 2. Level 2: Visit Hubs (Max 2)
             if hubs:
-                print(f"   🔎 Found {len(hubs)} potential archives. Checking top 2...")
-                for hub in hubs[:2]:
+                print(f"   🔎 Found {len(hubs)} potential archives. Checking top 3...")
+                for hub in hubs[:3]:
                     if hub['url'] in visited_urls: continue
                     
                     print(f"   ➡️ Visiting Hub: {hub['text'][:30]}...")
