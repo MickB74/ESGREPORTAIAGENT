@@ -487,12 +487,12 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 "wait_for": wait_tag 
             }]
             
-            # RUN SCRAPER
-            results = scraper.run(site_config)
+            # RUN SCRAPER - use different variable name to avoid overwriting results dict
+            scraper_results = scraper.run(site_config)
             
-            if results and results.get("Verified_Site_Scan"):
+            if scraper_results and scraper_results.get("Verified_Site_Scan"):
                 # Playwright found stuff!
-                links = results.get("Verified_Site_Scan")
+                links = scraper_results.get("Verified_Site_Scan")
                 if isinstance(links, dict): links = [links]
                 
                 # Convert to our app's format
