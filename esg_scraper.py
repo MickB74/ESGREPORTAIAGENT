@@ -1,5 +1,6 @@
 
 import time
+import re
 import os
 from playwright.sync_api import sync_playwright
 from selectolax.parser import HTMLParser
@@ -62,7 +63,6 @@ class ESGScraper:
 
         def extract_year(text):
             """Extract 4-digit year from text (2020-2030)"""
-            import re
             years = re.findall(r'\b(202[0-9]|203[0])\b', text)
             return years[0] if years else None
             
@@ -195,7 +195,6 @@ class ESGScraper:
                 header = get_preceding_header(node)
                 if header and len(header) < 50: # Don't prepend massive headers
                     # Clean header
-                    import re
                     header = re.sub(r'\s+', ' ', header).strip()
                     # Avoid duplication (e.g. Header="2023 Report", Name="2023 Report")
                     if header.lower() not in base_text.lower():
@@ -215,7 +214,6 @@ class ESGScraper:
             text = get_best_text(node)
             
             # Clean text (remove newlines, extra spaces)
-            import re
             text = re.sub(r'\s+', ' ', text).strip()
             if not text: text = "Unknown Report Document"
             text_lower = text.lower()
@@ -268,7 +266,6 @@ class ESGScraper:
 
     def expand_page_interaction(self, page):
         """Aggressive interaction: Click 'Load More', Year Tabs, etc."""
-        import re  # Import here for regex operations
         print("   🔨 Attempting to expand page content...")
         try:
             # 1. Click "Load More" / "Show All" buttons
@@ -299,7 +296,6 @@ class ESGScraper:
 
     def scrape_page_content(self, page, url):
         """Helper to get links from a specific page state, scanning ALL FRAMES."""
-        import re # Ensure re is available
         links = []
         hubs = []
         
