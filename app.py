@@ -1027,9 +1027,9 @@ with tab1:
                                  page.screenshot(path=screenshot_path, full_page=False)  # Viewport only
                                  browser.close()
                                  
-                             log(f"Screenshot captured: {screenshot_path}")
+                             print(f"Screenshot captured: {screenshot_path}")
                          except Exception as e:
-                             log(f"Screenshot capture failed: {e}")
+                             print(f"Screenshot capture failed: {e}")
                              screenshot_path = None
                          
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
