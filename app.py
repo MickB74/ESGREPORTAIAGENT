@@ -447,7 +447,9 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                      break
 
 
+
         # --- 2. Find ESG Website (Refined) ---
+        website_query = None
         if known_url:
             # Trusted Source
             results["website"] = {
@@ -507,9 +509,9 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
     # --- Standard Requests Logic (Fallback or Normal Mode) ---
     search_results = []
-    if not strict_mode:
+    if not strict_mode and website_query:
         log(f"Searching for website query: {website_query}")
-        # Only do web search if we are NOT in strict mode
+        # Only do web search if we are NOT in strict mode and have a query
         search_results = search_web(website_query, max_results=3, ddgs_instance=ddgs)
     
     # If strict mode, we start with just the known website
