@@ -10,6 +10,20 @@ import pandas as pd
 import difflib
 
 
+# --- Auto-Install Playwright Browsers (for Cloud Env) ---
+@st.cache_resource
+def install_playwright():
+    import subprocess
+    import sys
+    try:
+        print("Installing Playwright browsers (chromium)...")
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+        print("Playwright installation complete.")
+    except Exception as e:
+        print(f"Error installing Playwright: {e}")
+
+install_playwright()
+
 # ... (rest of imports/code) ...
 
 
