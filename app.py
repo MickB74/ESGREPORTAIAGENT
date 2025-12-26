@@ -411,7 +411,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         if known_url:
             # Trusted Source
             results["website"] = {
-                "title": f"{resolved_name} Sustainability Hub (Fast Track)",
+                "title": f"{resolved_name} Sustainability Hub (Verified Site)",
                 "href": known_url,
                 "body": "Official verified sustainability page."
             }
@@ -471,7 +471,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
              
         print("Starting Report Discovery...")
 
-        # PRIORITY STRATEGY: Scan The Official Hub (Fast Track)
+        # PRIORITY STRATEGY: Scan The Official Hub (Verified Site)
         # We do this FIRST to ensure authoritative reports are top of list.
         if results.get("website"):
             log("Strategy Priority: Scanning ESG Website for Reports...")
@@ -768,7 +768,7 @@ def update_input_from_select():
             st.session_state.company_symbol = sym
 
 # --- TABS LAYOUT ---
-tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Fast Track Data"])
+tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Verified Site Data"])
 
 # ... (Tab 1 and Tab 2 content remains, omitted here for brevity, I will match start of Tab 1) ...
 
@@ -916,9 +916,9 @@ with tab1:
     st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
 
 
-# --- TAB 2: Fast Track Data ---
+# --- TAB 2: Verified Site Data ---
 with tab2:
-    st.header("🚀 Fast Track Data (Known Hubs)")
+    st.header("🚀 Verified Site Data (Known Hubs)")
     st.markdown("This database is sourced from the official S&P 500 ESG Websites list.")
     
     csv_path = "SP500ESGWebsites.csv"
