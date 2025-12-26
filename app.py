@@ -1310,15 +1310,13 @@ with tab1:
                          # FIX: Pass the URL string, not the dict object
                          url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
                          if not url_to_scan: url_to_scan = data.get('href') # Fallback
-
-                         # CRITICAL: Clear cache to prevent returning stale data structure
-                         search_esg_info.clear()
                          
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
                          
                          # Defensive: Ensure new_data is a dict
                          if not isinstance(new_data, dict):
                              st.error(f"Internal error: Unexpected data type returned: {type(new_data)}")
+                             st.error(f"Data content: {str(new_data)[:200]}")
                              st.stop()
                          
                          new_data['description'] = data.get('description') # Preserve description
@@ -1335,7 +1333,11 @@ with tab1:
                          st.session_state.esg_data = new_data
                          st.rerun()
                      except Exception as e:
+                         import traceback
                          st.error(f"Scan error: {e}")
+                         st.error(f"Error type: {type(e).__name__}")
+                         with st.expander("Full Error Details"):
+                             st.code(traceback.format_exc())
 
         else:
             st.info("No specific ESG website found.")
