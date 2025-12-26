@@ -3,6 +3,7 @@ import time
 import os
 from playwright.sync_api import sync_playwright
 from selectolax.parser import HTMLParser
+from urllib.parse import urljoin
 
 # --- CONFIGURATION: The "Brain" of the Tool ---
 # This is where you adapt to new sites without rewriting the engine.
@@ -73,11 +74,7 @@ class ESGScraper:
                         score += 1
                 
                 # Normalize URL
-                if href.startswith("/"):
-                    href = f"{base_url.rstrip('/')}{href}"
-                elif not href.startswith("http"):
-                    # Handle relative paths that don't start with /
-                    href = f"{base_url.rstrip('/')}/{href}"
+                href = urljoin(base_url, href)
                 
                 candidates.append({"url": href, "text": text, "score": score})
 
