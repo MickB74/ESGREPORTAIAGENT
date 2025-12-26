@@ -724,9 +724,13 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
         except Exception as e:
             log(f"  Error processing domain {url}: {e}")
     
-    # If we found reports via requests, return them
+    # If we found reports via requests, return them in proper structure
     if all_reports:
-        return all_reports
+        return {
+            "reports": all_reports,
+            "website": {"title": "Scanned Site", "href": unique_domains[0] if unique_domains else known_website, "body": "Scanned via fallback"},
+            "search_log": ["Fallback: Requests-based scan"]
+        }
     
     # Fallback to homepage if no ESG site found and not in strict mode
     if not results.get("website") and official_homepage_url and not strict_mode:
