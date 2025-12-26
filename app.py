@@ -1030,6 +1030,7 @@ with tab1:
                              print(f"Screenshot captured: {screenshot_path}")
                          except Exception as e:
                              print(f"Screenshot capture failed: {e}")
+                             st.warning(f"Screenshot failed: {e}")
                              screenshot_path = None
                          
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=data['website'], symbol=data.get('symbol'), strict_mode=True)
