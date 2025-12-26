@@ -108,18 +108,18 @@ class ESGScraper:
 
         def get_best_text(node):
             # 1. Visible Text
-            text = node.text(strip=True)
-            href = node.attributes.get("href", "")
+            text = node.text(strip=True) or ""
+            href = node.attributes.get("href", "") or ""
             
             # 2. Attributes (aria-label, title) - often has the full context
-            aria = node.attributes.get("aria-label", "").strip()
-            title = node.attributes.get("title", "").strip()
+            aria = (node.attributes.get("aria-label") or "").strip()
+            title = (node.attributes.get("title") or "").strip()
             
             # 3. Image Alt Text (if link wraps an image)
             alt_text = ""
             img = node.css_first("img")
             if img:
-                alt_text = img.attributes.get("alt", "").strip()
+                alt_text = (img.attributes.get("alt") or "").strip()
 
             # Enhanced Generic Detection
             generic_terms = [
