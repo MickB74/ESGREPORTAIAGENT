@@ -7,5 +7,6 @@ playwright
 playwright
 selectolax
 pymongo
+certifi
 
 

@@ -4,6 +4,7 @@ from pymongo import MongoClient
 import pandas as pd
 from datetime import datetime
 import time
+import certifi
 
 class MongoHandler:
     def __init__(self):
@@ -17,7 +18,12 @@ class MongoHandler:
         try:
             uri = st.secrets["MONGO_URI"]
             # Connect with server selection timeout to fail fast if config is wrong
-            self.client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+            # Use certifi for SSL certificate verification to prevent handshake errors
+            self.client = MongoClient(
+                uri, 
+                serverSelectionTimeoutMS=5000,
+                tlsCAFile=certifi.where()
+            )
             
             # Default database name (can be anything, e.g. 'esg_agent')
             self.db = self.client.esg_agent
