@@ -385,10 +385,6 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     def log(msg):
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    import db_handler # Import handler
-
-
-    
     # ... (proceed to web search) ...
     results = {
         "company": company_name,
@@ -444,8 +440,11 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             resolved_name = company_name
             log(f"Using known website: {known_url}")
         else:
-            # --- OVERRIDE: Check Custom SQLite Hubs FIRST ---
-            custom_hub = db_handler.get_company_hub(company_name)
+            # --- OVERRIDE: Check Custom MongoDB Hubs FIRST ---
+            custom_hub = None
+            if "mongo" in st.session_state:
+                custom_hub = st.session_state.mongo.get_company_hub(company_name)
+            
             if custom_hub:
                 known_url = custom_hub
                 resolved_name = company_name
