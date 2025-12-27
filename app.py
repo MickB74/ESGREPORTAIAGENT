@@ -1316,7 +1316,7 @@ def get_symbol_from_map(company_name):
 
 # --- TABS LAYOUT ---
 # --- TABS LAYOUT ---
-tab_search, tab_saved, tab_db = st.tabs(["🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database"])
+tab_search, tab_saved, tab_db, tab_data = st.tabs(["🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database", "⚙️ Data Manager"])
 
 # ====================
 # TAB 1: SEARCH
@@ -1885,4 +1885,53 @@ with tab_db:
 
     if not links:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
+
+
+# ==========================================
+# TAB 4: DATA MANAGER (CSV Editor)
+# ==========================================
+with tab_data:
+    st.header("⚙️ Data manager")
+    st.info("Directly edit the source `SP500ESGWebsites.csv` file here. Changes require a map rebuild.")
+
+    csv_file = "SP500ESGWebsites.csv"
+    if os.path.exists(csv_file):
+        try:
+            # Load CSV
+            # Handle potential encoding issues if created by Excel
+            try:
+                df_csv = pd.read_csv(csv_file, encoding='utf-8')
+            except UnicodeDecodeError:
+                df_csv = pd.read_csv(csv_file, encoding='latin1')
+            
+            # Editor
+            st.caption(f"Editing: `{csv_file}`")
+            edited_df = st.data_editor(df_csv, num_rows="dynamic", use_container_width=True, key="data_editor_csv")
+            
+            col_save, col_cancel = st.columns([0.3, 0.7])
+            
+            with col_save:
+                # Save Button
+                if st.button("💾 Save Changes & Rebuild Map", type="primary", use_container_width=True):
+                    # Save to CSV
+                    edited_df.to_csv(csv_file, index=False)
+                    st.toast("✅ CSV Saved!")
+                    
+                    # Auto-Rebuild Map
+                    with st.spinner("Rebuilding map..."):
+                        import subprocess
+                        import sys
+                        # Run the build script
+                        res = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
+                        if res.returncode == 0:
+                            st.success("✅ Map Rebuilt and Active!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"Map Rebuild Failed: {res.stderr}")
+                            
+        except Exception as e:
+            st.error(f"Error loading CSV: {e}")
+    else:
+        st.error(f"File not found: {csv_file}")
 
