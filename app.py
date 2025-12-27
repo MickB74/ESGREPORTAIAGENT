@@ -1449,6 +1449,74 @@ with tab_search:
 
 
 
+        else:
+            st.info("No specific ESG website found.")
+        
+        st.divider()
+        
+        st.subheader("📄 Recent ESG Reports")
+        web = data.get("website")
+        if web:
+            st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
+            st.caption(web.get('body', ''))
+            
+            # Display screenshot if available
+            import os
+            if data.get('screenshot') and os.path.exists(data['screenshot']):
+                st.markdown("**📸 Page Preview:**")
+                st.image(data['screenshot'], use_column_width=True)
+
+        
+        if data["reports"]:
+            for idx, report in enumerate(data["reports"]):
+                # 2 Columns: Info, Save
+                r_col, r_save = st.columns([0.85, 0.15])
+                
+                with r_col:
+                    st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
+                    # Display full URL
+                    st.caption(f"🔗 {report['href']}")
+                    # Use .get() for optional 'body' key
+                    if report.get('body'):
+                        st.caption(report['body'])
+                
+                with r_save:
+                    # Label Input
+                    # Use unique key using idx
+                    user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="e.g. 2024 Report", label_visibility="collapsed")
+                    
+                    # Save Button
+                    if st.button("Save 💾", key=f"save_rep_{idx}", use_container_width=True):
+                        # Determine Label
+                        final_label = user_label if user_label else report['title']
+
+                        # 1. Save to Local (Sidebar) - Legacy
+                        save_link_to_file(final_label, report['href'], description=report.get('body', ''))
+                        
+                        # 2. Save to CSV/DB
+                        success, msg = db_handler.save_link(
+                            company=data['website']['title'] if data.get('website') else "Unknown",
+                            title=report['title'],
+                            url=report['href'],
+                            label=final_label,
+                            description=report.get('body', '')
+                        )
+                        
+                        
+                        if success:
+                            st.success(f"Saved to DB as '{final_label}'")
+                            # Force rerun to update sidebar immediately
+                            time.sleep(0.5) # Slight delay to let user see success message
+                            st.rerun()
+                        else:
+                            st.error(f"DB Error: {msg}")
+                        
+        else:
+            st.info("No PDF reports loaded yet.")
+
+    st.markdown("---")
+    st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
+
 # ==========================================
 # TAB 2: MY SAVED LINKS (Sidebar Bookmarks)
 # ==========================================
