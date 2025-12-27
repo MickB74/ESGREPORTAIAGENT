@@ -1284,48 +1284,51 @@ if companies_data:
 
 if 'company_input' not in st.session_state:
     st.session_state.company_input = ""
+if 'company_symbol' not in st.session_state:
+    st.session_state.company_symbol = None
 
-st.markdown("### 🏢 Select or Enter Company")
+def update_input_from_select():
+    selection = st.session_state.sp500_selector
+    if selection and selection != "Select from S&P 500 (Optional)...":
+        # Extract name part: "Apple Inc. (AAPL)" -> "Apple Inc."
+        parts = selection.rsplit('(', 1)
+        if len(parts) == 2:
+            name = parts[0].strip()
+            sym = parts[1].replace(')', '').strip()
+            st.session_state.company_input = name
+            st.session_state.company_symbol = sym
 
-# Add toggle for search mode
-search_mode = st.radio(
-    "Search method:",
-    ["Select from verified company database", "Enter any company name"],
-    horizontal=True,
-    key="search_mode"
+st.markdown("### 🏢 Company Selection")
+
+# Dropdown with search
+selected_display = st.selectbox(
+    "Choose a company:",
+    options=companies_options,
+    index=None,
+    placeholder="Type to search companies...",
+    key='company_select_dropdown'
 )
 
-if search_mode == "Select from verified company database":
-    # Original dropdown
-    selected_display = st.selectbox(
-        "Choose a company:",
-        options=companies_options,
-        index=None,
-        placeholder="Type to search companies...",
-        key='company_select_dropdown'
-    )
-    
-    if selected_display:
-        # Extract company name from "Company Name (TICKER)" format
-        company_name_from_dropdown = selected_display.split(" (")[0]
-        st.session_state.company_input = company_name_from_dropdown
-    else:
-        st.session_state.company_input = ""
+# Extract company name from "Company Name (TICKER)" format
+if selected_display:
+    company_name_from_dropdown = selected_display.split(" (")[0]
+    st.session_state.company_input = company_name_from_dropdown
 else:
-    # Free-text input
-    company_free_text = st.text_input(
-        "Enter company name:",
-        placeholder="e.g., Tesla, SpaceX, Stripe...",
-        key="company_free_text"
-    )
-    st.session_state.company_input = company_free_text.strip()
-    
-    if company_free_text:
-        st.info(f"💡 Searching for: **{company_free_text}**")
+    st.session_state.company_input = ""
+
+# Optional: Manual input override
+with st.expander("✏️ Or search for any company not in the database"):
+    custom_company = st.text_input("Company Name", 
+                                    value=st.session_state.company_input,
+                                    placeholder="e.g., Tesla, SpaceX, Stripe",
+                                    key='custom_company_input')
+    if st.button("Use This Name", key='use_custom'):
+        st.session_state.company_input = custom_company
+        st.rerun()
 
 # Show current selection
 if st.session_state.company_input:
-    st.success(f"🎯 Selected: **{st.session_state.company_input}**")
+    st.info(f"**Selected Company:** {st.session_state.company_input}")
 # --- Shared Helpers & Data ---
 # Prepare Symbol Map for Auto-fill (Global Scope for both tabs)
 sym_map = {}
