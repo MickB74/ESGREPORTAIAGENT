@@ -1669,18 +1669,16 @@ with tab_search:
                         # Use search term as company name for better grouping
                         c_name = st.session_state.get('current_company', "Unknown")
 
-                        # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=final_sym, company=c_name)
-                        
-                        # 2. Save to CSV/DB
-                        success, msg = db_handler.save_link(
-                            company=c_name,
-                            title=report['title'],
-                            url=report['href'],
-                            label=final_label,
-                            description=final_desc,
-                            symbol=final_sym
-                        )
+                        # 1. Save to MongoDB (Saved Links Collection)
+                        success, msg = mongo_db.save_link("saved_links", {
+                            "company": c_name,
+                            "title": report['title'],
+                            "url": report['href'],
+                            "label": final_label,
+                            "description": final_desc,
+                            "symbol": final_sym,
+                            "source": "Search Result"
+                        })
                         
                         
                         if success:
