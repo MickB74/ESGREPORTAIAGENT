@@ -1284,20 +1284,48 @@ if companies_data:
 
 if 'company_input' not in st.session_state:
     st.session_state.company_input = ""
-if 'company_symbol' not in st.session_state:
-    st.session_state.company_symbol = None
 
-def update_input_from_select():
-    selection = st.session_state.sp500_selector
-    if selection and selection != "Select from S&P 500 (Optional)...":
-        # Extract name part: "Apple Inc. (AAPL)" -> "Apple Inc."
-        parts = selection.rsplit('(', 1)
-        if len(parts) == 2:
-            name = parts[0].strip()
-            sym = parts[1].replace(')', '').strip()
-            st.session_state.company_input = name
-            st.session_state.company_symbol = sym
+st.markdown("### 🏢 Select or Enter Company")
 
+# Add toggle for search mode
+search_mode = st.radio(
+    "Search method:",
+    ["Select from S&P 500 list", "Enter any company name"],
+    horizontal=True,
+    key="search_mode"
+)
+
+if search_mode == "Select from S&P 500 list":
+    # Original dropdown
+    selected_display = st.selectbox(
+        "Choose a company:",
+        options=companies_options,
+        index=None,
+        placeholder="Type to search S&P 500 companies...",
+        key='company_select_dropdown'
+    )
+    
+    if selected_display:
+        # Extract company name from "Company Name (TICKER)" format
+        company_name_from_dropdown = selected_display.split(" (")[0]
+        st.session_state.company_input = company_name_from_dropdown
+    else:
+        st.session_state.company_input = ""
+else:
+    # Free-text input
+    company_free_text = st.text_input(
+        "Enter company name:",
+        placeholder="e.g., Tesla, Microsoft, Acme Corp...",
+        key="company_free_text"
+    )
+    st.session_state.company_input = company_free_text.strip()
+    
+    if company_free_text:
+        st.info(f"💡 Searching for: **{company_free_text}**")
+
+# Show current selection
+if st.session_state.company_input:
+    st.success(f"🎯 Selected: **{st.session_state.company_input}**")
 # --- Shared Helpers & Data ---
 # Prepare Symbol Map for Auto-fill (Global Scope for both tabs)
 sym_map = {}
