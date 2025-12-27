@@ -1324,7 +1324,45 @@ def get_symbol_from_map(company_name):
 
 # --- TABS LAYOUT ---
 # --- TABS LAYOUT ---
-tab_search, tab_saved, tab_db, tab_data = st.tabs(["🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database", "⚙️ Data Manager"])
+tab_intro, tab_search, tab_saved, tab_db, tab_data = st.tabs(["🏠 Introduction", "🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database", "⚙️ Data Manager"])
+
+# ====================
+# TAB 0: INTRODUCTION
+# ====================
+with tab_intro:
+    st.markdown("""
+    ### Welcome to the ESG Report AI Agent 🤖
+    
+    This powerful tool helps you discover, analyze, and manage Environmental, Social, and Governance (ESG) reports for companies, with a focus on S&P 500 data.
+    
+    ---
+    
+    #### 🚀 Key Features & How to Use
+    
+    **1. 🔍 Search & Analyze** (Main Tab)
+    *   **Find Reports**: Enter a company name or select from the S&P 500 list to automatically find their official ESG/Sustainability Hub.
+    *   **Deep Scan**: Use the "Deep Scan" feature to crawl verified hubs using advanced browser automation (Playwright) to uncover hidden PDF reports.
+    *   **Verify**: The tool automatically verifies PDF content to ensure it's relevant (checking for company names and keywords).
+    
+    **2. 🔖 My Saved Links**
+    *   **Bookmark**: Save important reports and links for later access.
+    *   **Edit**: Update titles, add notes, and assign stock symbols to your bookmarks.
+    *   **Persist**: Your saved links are stored locally, so you can pick up where you left off.
+    
+    **3. 📂 Verified Database**
+    *   **Trust**: Access a persistent database of verified ESG Hub URLs.
+    *   **Contribute**: When you verify a new hub in the Search tab, it gets added here to improve future searches for everyone.
+    
+    **4. ⚙️ Data Manager**
+    *   **S&P 500 Data**: View and manage the underlying dataset of S&P 500 companies.
+    *   **Edit**: Add new companies or update existing entries to keep your search targets accurate.
+    
+    ---
+    
+    #### 🌟 Getting Started
+    
+    👉 **Click on the "🔍 Search & Analyze" tab above to start your first search!**
+    """)
 
 # ====================
 # TAB 1: SEARCH
