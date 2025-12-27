@@ -1416,17 +1416,19 @@ with tab_search:
                          st.rerun()
 
 
-            # --- STEP 2 TRIGGER (Deep Scan) ---
-            # Offer deep scan if we have a verified site (Always visible now)
+        
+        # --- STEP 2 TRIGGER (Deep Scan) ---
+        # Offer deep scan if we have a verified site (Always visible now)
+        if web:
             st.divider()
             
-            # Dynamic Label: "Fetch" if empty, "Deep Scan" if we have some but want more
+            # Dynamic Label
             btn_label = "📄 Fetch Reports & Data" if not data["reports"] else "🕵️ Deep Scan Verified Site"
             
-            st.info(f"ℹ️ Verified Hub Found. click '{btn_label}' to crawl {data['website']['title']} for all PDF links.")
+            st.info(f"ℹ️ Verified Hub Found. click '{btn_label}' to crawl {web['title']} for all PDF links.")
             
             if st.button(btn_label, type="primary", use_container_width=True):
-                 with st.spinner(f"Deep scanning {data['website']['title']}..."):
+                 with st.spinner(f"Deep scanning {web['title']}..."):
                      try:
                          # ENABLE STRICT MODE: User wants ONLY internal links from this page
                          # SCREENSHOT CAPTURE
@@ -1445,38 +1447,28 @@ with tab_search:
                              with sync_playwright() as p:
                                  browser = p.chromium.launch(headless=True)
                                  page = browser.new_page()
-                                 page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
+                                 page.goto(web['href'], timeout=30000, wait_until="domcontentloaded")
                                  page.wait_for_timeout(2000)
                                  page.screenshot(path=screenshot_path, full_page=False)
                                  browser.close()
-                             print(f"✅ Screenshot: {screenshot_path}")
+                             # print(f"✅ Screenshot: {screenshot_path}")
                          except Exception as e:
                              print(f"⚠️ Screenshot failed: {e}")
                              screenshot_path = None
 
                          
-                         # FIX: Pass the URL string, not the dict object
-                         url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
-                         if not url_to_scan: url_to_scan = data.get('href') # Fallback
+                         # FIX: Pass the URL string
+                         url_to_scan = web['href']
                          
                          new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
                          
                          # Defensive: Ensure new_data is a dict
                          if not isinstance(new_data, dict):
                              st.error(f"Internal error: Unexpected data type returned: {type(new_data)}")
-                             st.error(f"Data content: {str(new_data)[:200]}")
                              st.stop()
                          
                          new_data['description'] = data.get('description') # Preserve description
-                         new_data['screenshot'] = screenshot_path  # Add screenshot path (always None for now)
-
-                         
-                         # Merge with existing reports if we had some? 
-                         # Actually search_esg_info returns a fresh list. 
-                         # If we want to KEEP existing reports that were NOT found in deep scan (e.g. from Google),
-                         # we might need merge logic. But usually Deep Scan is authoritative.
-                         # Let's just trust the fresh scan for now, or maybe append?
-                         # For now, replacing is cleaner to avoid duplicates, as deep scan *should* find everything on the site.
+                         new_data['screenshot'] = screenshot_path  # Add screenshot path
                          
                          st.session_state.esg_data = new_data
                          st.rerun()
@@ -1485,12 +1477,8 @@ with tab_search:
                          st.error(f"Deep scan failed: {e}")
                          import traceback
                          st.code(traceback.format_exc())
-
-
-
-
         else:
-            st.info("No specific ESG website found.")
+             st.info("No specific ESG website found.")
         
         st.divider()
         
