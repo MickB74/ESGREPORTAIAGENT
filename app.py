@@ -10,6 +10,9 @@ import pandas as pd
 import difflib
 import csv_handler
 
+# --- App Configuration (Must be first!) ---
+st.set_page_config(page_title="ESG Report Finder", page_icon="🌿")
+
 # --- Auto-Install Playwright Browsers (for Cloud Env) ---
 @st.cache_resource
 def install_playwright():
@@ -285,9 +288,9 @@ def clean_title(text):
     return text
 
 # --- Saved Links Logic ---
-LINKS_FILE = "saved_links.json"
+LINKS_FILE = os.path.join(os.path.dirname(__file__), "saved_links.json")
 
-def load_links():
+def load_links_from_disk():
     if not os.path.exists(LINKS_FILE):
         return []
     try:
@@ -296,28 +299,45 @@ def load_links():
     except:
         return []
 
+# Initialize Session State for Saved Links
+if 'saved_links' not in st.session_state:
+    st.session_state['saved_links'] = load_links_from_disk()
+
+def save_links_to_disk():
+    """Syncs session state to disk."""
+    try:
+        with open(LINKS_FILE, "w") as f:
+            json.dump(st.session_state['saved_links'], f)
+        return True
+    except Exception as e:
+        print(f"Error saving links: {e}")
+        return False
+
 def save_link_to_file(title, url, description=None):
-    links = load_links()
-    # Check if exists
+    # Use Session State as Source of Truth
+    links = st.session_state['saved_links']
+    
+    # Check if exists and update
     for link in links:
         if link['href'] == url:
-            return False # Already saved
+            link['title'] = title
+            if description:
+                link['description'] = description
+            save_links_to_disk() # Sync
+            return True # Updated existing
     
     new_link = {"title": title, "href": url}
     if description:
         new_link["description"] = description
         
     links.append(new_link)
-    with open(LINKS_FILE, "w") as f:
-        json.dump(links, f)
+    save_links_to_disk() # Sync
     return True
 
 def delete_link(index):
-    links = load_links()
-    if 0 <= index < len(links):
-        removed = links.pop(index)
-        with open(LINKS_FILE, "w") as f:
-            json.dump(links, f)
+    if 0 <= index < len(st.session_state['saved_links']):
+        st.session_state['saved_links'].pop(index)
+        save_links_to_disk() # Sync
         return True
     return False
 
@@ -1216,8 +1236,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
     return results
 
-# --- UI Setup ---
-st.set_page_config(page_title="ESG Report Finder", page_icon="🌿")
+
 
 # Function to load S&P 500 companies
 @st.cache_data
@@ -1463,11 +1482,13 @@ with tab1:
                     
                     # Save Button
                     if st.button("Save 💾", key=f"save_rep_{idx}", use_container_width=True):
+                        # Determine Label
+                        final_label = user_label if user_label else report['title']
+
                         # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(report['title'], report['href'], description=report.get('body', ''))
+                        save_link_to_file(final_label, report['href'], description=report.get('body', ''))
                         
                         # 2. Save to CSV
-                        final_label = user_label if user_label else report['title']
                         success, msg = csv_handler.save_link(
                             company=data['website']['title'] if data.get('website') else "Unknown",
                             title=report['title'],
@@ -1476,8 +1497,12 @@ with tab1:
                             description=report.get('body', '')
                         )
                         
+                        
                         if success:
                             st.success(f"Saved to CSV as '{final_label}'")
+                            # Force rerun to update sidebar immediately
+                            time.sleep(0.5) # Slight delay to let user see success message
+                            st.rerun()
                         else:
                             st.error(f"CSV Error: {msg}")
                         
@@ -1588,7 +1613,8 @@ with st.sidebar:
     
 
 
-    saved_links = load_links()
+    # Display Saved Links from Session State
+    saved_links = st.session_state['saved_links']
     if saved_links:
         for i, link in enumerate(saved_links):
             col_link, col_del = st.columns([0.8, 0.2])
