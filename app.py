@@ -1307,9 +1307,17 @@ def get_symbol_from_map(company_name):
     # 1. Exact Match
     if clean_name in sym_map:
         return sym_map[clean_name]
-    # 2. Fuzzy Match
+    # 2. Substring Match (Strong)
+    # Check if the input is a meaningful substring of a company name
+    # e.g. "Disney" in "The Walt Disney Company"
+    if len(clean_name) > 3:
+        for name, sym in sym_map.items():
+            if clean_name in name:
+                return sym
+                
+    # 3. Fuzzy Match
     import difflib
-    matches = difflib.get_close_matches(clean_name, sym_map.keys(), n=1, cutoff=0.7)
+    matches = difflib.get_close_matches(clean_name, sym_map.keys(), n=1, cutoff=0.6)
     if matches:
         return sym_map[matches[0]]
     return None
