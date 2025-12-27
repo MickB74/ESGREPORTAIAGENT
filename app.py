@@ -1472,7 +1472,7 @@ with tab_search:
         with col_web:
              if web:
                  # Check if it's a custom override for label
-                 is_custom = db_handler.get_company_hub(data.get('company',""))
+                 is_custom = mongo_db.get_company_hub(data.get('company',""))
                  prefix = "🛡️ **Custom Hub:**" if is_custom else "**🌐 Verified ESG Hub:**"
                  st.markdown(f"{prefix} [{web['title']}]({web['href']})")
                  if web.get('body'): st.caption(web['body'])
@@ -1497,7 +1497,7 @@ with tab_search:
                         if new_hub_url:
                             # Save to Company Hubs DB
                             c_name = st.session_state.get("current_company", data.get("company", "Unknown"))
-                            success, msg = db_handler.save_company_hub(c_name, new_hub_url)
+                            success, msg = mongo_db.save_company_hub(c_name, new_hub_url)
                             if success:
                                 st.success("✅ Hub Updated! Refreshing...")
                                 st.session_state.show_hub_editor_top = False
@@ -1516,7 +1516,10 @@ with tab_search:
         # Display these BELOW the verified hub as requested
         try:
             bk_company = data.get("company", st.session_state.current_company)
-            saved_bks, bk_err = db_handler.get_links_by_company(bk_company)
+            # Filter from all saved links (in memory for now)
+            all_bks = mongo_db.get_all_links("saved_links")
+            saved_bks = [l for l in all_bks if l.get('company', '').lower() == bk_company.lower()]
+            
             if saved_bks:
                 st.markdown("---")
                 st.caption("🔖 **Your Bookmarked Links:**")

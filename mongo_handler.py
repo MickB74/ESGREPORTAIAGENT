@@ -118,3 +118,36 @@ class MongoHandler:
             return {"total": total, "companies": companies}
         except Exception:
             return {"total": 0, "companies": 0}
+
+    # -------------------------------------------------------------------------
+    # HUB OVERRIDES
+    # -------------------------------------------------------------------------
+    def get_company_hub(self, company: str) -> str:
+        """Get the verified hub URL for a company if exists."""
+        col = self._get_collection("company_hubs")
+        if col is None: return None
+        
+        try:
+            doc = col.find_one({"company": company.lower()})
+            return doc.get('url') if doc else None
+        except Exception:
+            return None
+
+    def save_company_hub(self, company: str, url: str) -> tuple[bool, str]:
+        """Save a verified hub URL for a company (overrides defaults)."""
+        col = self._get_collection("company_hubs")
+        if col is None: return False, "No DB Connection"
+        
+        try:
+            col.update_one(
+                {'company': company.lower()},
+                {'$set': {
+                    'company': company.lower(), 
+                    'url': url,
+                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }},
+                upsert=True
+            )
+            return True, "Hub updated in Cloud DB."
+        except Exception as e:
+            return False, f"Error: {e}"
