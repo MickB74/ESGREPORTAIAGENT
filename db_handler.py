@@ -252,6 +252,7 @@ def get_stats() -> Dict:
             "unique_companies": companies
         }
         
+    except Exception as e:
         return {"total_links": 0, "unique_companies": 0, "error": str(e)}
 
 def clear_database() -> Tuple[bool, str]:
