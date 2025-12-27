@@ -1697,7 +1697,7 @@ with tab_saved:
         st.subheader("Bulk Actions")
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("💾 Save All to Database", use_container_width=True):
+            if st.button("💾 Save All to Database", use_container_width=True, key="save_all_to_db"):
                 success_count = 0
                 for link in saved_links:
                     success, _ = db_handler.save_link(
@@ -1712,7 +1712,7 @@ with tab_saved:
                 st.success(f"✅ Saved {success_count}/{len(saved_links)} links to database!")
         
         with col_b:
-            if st.button("🗑️ Clear All Bookmarks", use_container_width=True):
+            if st.button("🗑️ Clear All Bookmarks", use_container_width=True, key="clear_all_bookmarks"):
                 st.session_state['saved_links'] = []
                 save_links_to_disk()
                 st.rerun()
