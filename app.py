@@ -1290,18 +1290,18 @@ st.markdown("### 🏢 Select or Enter Company")
 # Add toggle for search mode
 search_mode = st.radio(
     "Search method:",
-    ["Select from S&P 500 list", "Enter any company name"],
+    ["Select from verified company database", "Enter any company name"],
     horizontal=True,
     key="search_mode"
 )
 
-if search_mode == "Select from S&P 500 list":
+if search_mode == "Select from verified company database":
     # Original dropdown
     selected_display = st.selectbox(
         "Choose a company:",
         options=companies_options,
         index=None,
-        placeholder="Type to search S&P 500 companies...",
+        placeholder="Type to search companies...",
         key='company_select_dropdown'
     )
     
@@ -1315,7 +1315,7 @@ else:
     # Free-text input
     company_free_text = st.text_input(
         "Enter company name:",
-        placeholder="e.g., Tesla, Microsoft, Acme Corp...",
+        placeholder="e.g., Tesla, SpaceX, Stripe...",
         key="company_free_text"
     )
     st.session_state.company_input = company_free_text.strip()
@@ -1831,7 +1831,7 @@ with tab_db:
 # ==========================================
 with tab_data:
     st.header("⚙️ Data manager")
-    st.caption("Manage the master list of S&P 500 companies used for search suggestions. Synced to **MongoDB Atlas**.")
+    st.caption("Manage your verified company database. Add companies to make them searchable and pre-populate their ESG sites.")
 
     # --- ADD NEW COMPANY FORM ---
     with st.expander("➕ Add New Company", expanded=False):
