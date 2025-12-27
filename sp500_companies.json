@@ -1,23 +1,39 @@
 [
     {
         "Symbol": "MMM",
-        "Security": "3M"
+        "Security": "3M Company"
     },
     {
         "Symbol": "AOS",
-        "Security": "A. O. Smith"
+        "Security": "A. O. Smith Corporation"
+    },
+    {
+        "Symbol": "AME",
+        "Security": "AMETEK, Inc."
+    },
+    {
+        "Symbol": "ANSS",
+        "Security": "ANSYS, Inc."
+    },
+    {
+        "Symbol": "APA",
+        "Security": "APA Corporation"
+    },
+    {
+        "Symbol": "T",
+        "Security": "AT&T Inc."
+    },
+    {
+        "Symbol": "ABBV",
+        "Security": "AbbVie Inc."
     },
     {
         "Symbol": "ABT",
         "Security": "Abbott Laboratories"
     },
     {
-        "Symbol": "ABBV",
-        "Security": "AbbVie"
-    },
-    {
         "Symbol": "ACN",
-        "Security": "Accenture"
+        "Security": "Accenture plc"
     },
     {
         "Symbol": "ADBE",
@@ -25,31 +41,27 @@
     },
     {
         "Symbol": "AMD",
-        "Security": "Advanced Micro Devices"
-    },
-    {
-        "Symbol": "AES",
-        "Security": "AES Corporation"
+        "Security": "Advanced Micro Devices, Inc."
     },
     {
         "Symbol": "AFL",
-        "Security": "Aflac"
+        "Security": "Aflac Incorporated"
     },
     {
         "Symbol": "A",
-        "Security": "Agilent Technologies"
+        "Security": "Agilent Technologies, Inc."
     },
     {
         "Symbol": "APD",
-        "Security": "Air Products"
+        "Security": "Air Products and Chemicals, Inc."
     },
     {
         "Symbol": "ABNB",
-        "Security": "Airbnb"
+        "Security": "Airbnb, Inc."
     },
     {
         "Symbol": "AKAM",
-        "Security": "Akamai Technologies"
+        "Security": "Akamai Technologies, Inc."
     },
     {
         "Symbol": "ALB",
@@ -57,99 +69,87 @@
     },
     {
         "Symbol": "ARE",
-        "Security": "Alexandria Real Estate Equities"
+        "Security": "Alexandria Real Estate Equities, Inc."
     },
     {
         "Symbol": "ALGN",
-        "Security": "Align Technology"
+        "Security": "Align Technology, Inc."
     },
     {
         "Symbol": "ALLE",
-        "Security": "Allegion"
+        "Security": "Allegion plc"
     },
     {
         "Symbol": "LNT",
-        "Security": "Alliant Energy"
-    },
-    {
-        "Symbol": "ALL",
-        "Security": "Allstate"
-    },
-    {
-        "Symbol": "GOOGL",
-        "Security": "Alphabet Inc. (Class A)"
+        "Security": "Alliant Energy Corporation"
     },
     {
         "Symbol": "GOOG",
-        "Security": "Alphabet Inc. (Class C)"
+        "Security": "Alphabet Inc."
+    },
+    {
+        "Symbol": "GOOGL",
+        "Security": "Alphabet Inc."
     },
     {
         "Symbol": "MO",
-        "Security": "Altria"
+        "Security": "Altria Group, Inc."
     },
     {
         "Symbol": "AMZN",
-        "Security": "Amazon"
+        "Security": "Amazon.com, Inc."
     },
     {
         "Symbol": "AMCR",
-        "Security": "Amcor"
+        "Security": "Amcor plc"
     },
     {
         "Symbol": "AEE",
-        "Security": "Ameren"
+        "Security": "Ameren Corporation"
     },
     {
         "Symbol": "AEP",
-        "Security": "American Electric Power"
+        "Security": "American Electric Power Company, Inc."
     },
     {
         "Symbol": "AXP",
-        "Security": "American Express"
+        "Security": "American Express Company"
     },
     {
         "Symbol": "AIG",
-        "Security": "American International Group"
+        "Security": "American International Group, Inc."
     },
     {
         "Symbol": "AMT",
-        "Security": "American Tower"
+        "Security": "American Tower Corporation"
     },
     {
         "Symbol": "AWK",
-        "Security": "American Water Works"
+        "Security": "American Water Works Company, Inc."
     },
     {
         "Symbol": "AMP",
-        "Security": "Ameriprise Financial"
-    },
-    {
-        "Symbol": "AME",
-        "Security": "Ametek"
+        "Security": "Ameriprise Financial, Inc."
     },
     {
         "Symbol": "AMGN",
-        "Security": "Amgen"
+        "Security": "Amgen Inc."
     },
     {
         "Symbol": "APH",
-        "Security": "Amphenol"
+        "Security": "Amphenol Corporation"
     },
     {
         "Symbol": "ADI",
-        "Security": "Analog Devices"
+        "Security": "Analog Devices, Inc."
     },
     {
         "Symbol": "AON",
         "Security": "Aon plc"
     },
     {
-        "Symbol": "APA",
-        "Security": "APA Corporation"
-    },
-    {
         "Symbol": "APO",
-        "Security": "Apollo Global Management"
+        "Security": "Apollo Global Management, Inc."
     },
     {
         "Symbol": "AAPL",
@@ -157,27 +157,23 @@
     },
     {
         "Symbol": "AMAT",
-        "Security": "Applied Materials"
-    },
-    {
-        "Symbol": "APP",
-        "Security": "AppLovin"
+        "Security": "Applied Materials, Inc."
     },
     {
         "Symbol": "APTV",
-        "Security": "Aptiv"
+        "Security": "Aptiv PLC"
     },
     {
         "Symbol": "ACGL",
-        "Security": "Arch Capital Group"
+        "Security": "Arch Capital Group Ltd."
     },
     {
         "Symbol": "ADM",
-        "Security": "Archer Daniels Midland"
+        "Security": "Archer-Daniels-Midland Company"
     },
     {
         "Symbol": "ANET",
-        "Security": "Arista Networks"
+        "Security": "Arista Networks Inc"
     },
     {
         "Symbol": "AJG",
@@ -185,43 +181,43 @@
     },
     {
         "Symbol": "AIZ",
-        "Security": "Assurant"
-    },
-    {
-        "Symbol": "T",
-        "Security": "AT&T"
+        "Security": "Assurant, Inc."
     },
     {
         "Symbol": "ATO",
-        "Security": "Atmos Energy"
-    },
-    {
-        "Symbol": "ADSK",
-        "Security": "Autodesk"
-    },
-    {
-        "Symbol": "ADP",
-        "Security": "Automatic Data Processing"
+        "Security": "Atmos Energy Corporation"
     },
     {
         "Symbol": "AZO",
-        "Security": "AutoZone"
+        "Security": "AutoZone, Inc."
+    },
+    {
+        "Symbol": "ADSK",
+        "Security": "Autodesk, Inc."
+    },
+    {
+        "Symbol": "ADP",
+        "Security": "Automatic Data Processing, Inc."
     },
     {
         "Symbol": "AVB",
-        "Security": "AvalonBay Communities"
+        "Security": "AvalonBay Communities, Inc."
     },
     {
         "Symbol": "AVY",
-        "Security": "Avery Dennison"
+        "Security": "Avery Dennison Corporation"
     },
     {
         "Symbol": "AXON",
-        "Security": "Axon Enterprise"
+        "Security": "Axon Enterprise, Inc."
+    },
+    {
+        "Symbol": "BXP",
+        "Security": "BXP, Inc."
     },
     {
         "Symbol": "BKR",
-        "Security": "Baker Hughes"
+        "Security": "Baker Hughes Company"
     },
     {
         "Symbol": "BALL",
@@ -229,123 +225,139 @@
     },
     {
         "Symbol": "BAC",
-        "Security": "Bank of America"
+        "Security": "Bank of America Corporation"
     },
     {
         "Symbol": "BAX",
-        "Security": "Baxter International"
+        "Security": "Baxter International Inc."
     },
     {
         "Symbol": "BDX",
-        "Security": "Becton Dickinson"
+        "Security": "Becton, Dickinson and Company"
     },
     {
         "Symbol": "BRK.B",
-        "Security": "Berkshire Hathaway"
+        "Security": "Berkshire Hathaway Inc."
     },
     {
         "Symbol": "BBY",
-        "Security": "Best Buy"
+        "Security": "Best Buy Co., Inc."
     },
     {
         "Symbol": "TECH",
-        "Security": "Bio-Techne"
+        "Security": "Bio-Techne Corporation"
     },
     {
         "Symbol": "BIIB",
-        "Security": "Biogen"
+        "Security": "Biogen Inc."
     },
     {
         "Symbol": "BLK",
-        "Security": "BlackRock"
+        "Security": "BlackRock, Inc."
     },
     {
         "Symbol": "BX",
         "Security": "Blackstone Inc."
     },
     {
-        "Symbol": "XYZ",
-        "Security": "Block, Inc."
-    },
-    {
-        "Symbol": "BK",
-        "Security": "BNY Mellon"
-    },
-    {
-        "Symbol": "BA",
-        "Security": "Boeing"
-    },
-    {
         "Symbol": "BKNG",
-        "Security": "Booking Holdings"
+        "Security": "Booking Holdings Inc."
     },
     {
         "Symbol": "BSX",
-        "Security": "Boston Scientific"
+        "Security": "Boston Scientific Corporation"
     },
     {
         "Symbol": "BMY",
-        "Security": "Bristol Myers Squibb"
+        "Security": "Bristol-Myers Squibb Company"
     },
     {
         "Symbol": "AVGO",
-        "Security": "Broadcom"
+        "Security": "Broadcom Inc."
     },
     {
         "Symbol": "BR",
-        "Security": "Broadridge Financial Solutions"
+        "Security": "Broadridge Financial Solutions, Inc."
     },
     {
         "Symbol": "BRO",
-        "Security": "Brown & Brown"
+        "Security": "Brown & Brown, Inc."
     },
     {
         "Symbol": "BF.B",
-        "Security": "Brown\u2013Forman"
+        "Security": "Brown-Forman Corporation"
     },
     {
         "Symbol": "BLDR",
-        "Security": "Builders FirstSource"
+        "Security": "Builders FirstSource, Inc."
     },
     {
         "Symbol": "BG",
-        "Security": "Bunge Global"
-    },
-    {
-        "Symbol": "BXP",
-        "Security": "BXP, Inc."
+        "Security": "Bunge Global SA"
     },
     {
         "Symbol": "CHRW",
-        "Security": "C.H. Robinson"
+        "Security": "C.H. Robinson Worldwide, Inc."
+    },
+    {
+        "Symbol": "CBRE",
+        "Security": "CBRE Group, Inc."
+    },
+    {
+        "Symbol": "CDW",
+        "Security": "CDW Corporation"
+    },
+    {
+        "Symbol": "CF",
+        "Security": "CF Industries Holdings, Inc."
+    },
+    {
+        "Symbol": "CME",
+        "Security": "CME Group Inc."
+    },
+    {
+        "Symbol": "CMS",
+        "Security": "CMS Energy Corporation"
+    },
+    {
+        "Symbol": "CSX",
+        "Security": "CSX Corporation"
+    },
+    {
+        "Symbol": "CVS",
+        "Security": "CVS Health Corporation"
     },
     {
         "Symbol": "CDNS",
-        "Security": "Cadence Design Systems"
+        "Security": "Cadence Design Systems, Inc."
+    },
+    {
+        "Symbol": "CZR",
+        "Security": "Caesars Entertainment, Inc."
     },
     {
         "Symbol": "CPT",
         "Security": "Camden Property Trust"
     },
     {
-        "Symbol": "CPB",
-        "Security": "Campbell's Company (The)"
+        "Symbol": "COF",
+        "Security": "Capital One Financial Corporation"
     },
     {
-        "Symbol": "COF",
-        "Security": "Capital One"
+        "Symbol": "KMX",
+        "Security": "CarMax, Inc."
     },
     {
         "Symbol": "CAH",
-        "Security": "Cardinal Health"
+        "Security": "Cardinal Health, Inc."
     },
     {
         "Symbol": "CCL",
-        "Security": "Carnival"
+        "Security": "Carnival Corporation & plc"
     },
     {
         "Symbol": "CARR",
-        "Security": "Carrier Global"
+        "Security": "Carrier Global Corporation"
     },
     {
         "Symbol": "CAT",
@@ -353,19 +365,11 @@
     },
     {
         "Symbol": "CBOE",
-        "Security": "Cboe Global Markets"
-    },
-    {
-        "Symbol": "CBRE",
-        "Security": "CBRE Group"
-    },
-    {
-        "Symbol": "CDW",
-        "Security": "CDW Corporation"
+        "Security": "Cboe Global Markets, Inc."
     },
     {
         "Symbol": "COR",
-        "Security": "Cencora"
+        "Security": "Cencora, Inc."
     },
     {
         "Symbol": "CNC",
@@ -373,23 +377,15 @@
     },
     {
         "Symbol": "CNP",
-        "Security": "CenterPoint Energy"
-    },
-    {
-        "Symbol": "CF",
-        "Security": "CF Industries"
+        "Security": "CenterPoint Energy, Inc."
     },
     {
         "Symbol": "CRL",
-        "Security": "Charles River Laboratories"
-    },
-    {
-        "Symbol": "SCHW",
-        "Security": "Charles Schwab Corporation"
+        "Security": "Charles River Laboratories International, Inc."
     },
     {
         "Symbol": "CHTR",
-        "Security": "Charter Communications"
+        "Security": "Charter Communications, Inc."
     },
     {
         "Symbol": "CVX",
@@ -397,7 +393,7 @@
     },
     {
         "Symbol": "CMG",
-        "Security": "Chipotle Mexican Grill"
+        "Security": "Chipotle Mexican Grill, Inc."
     },
     {
         "Symbol": "CB",
@@ -405,67 +401,51 @@
     },
     {
         "Symbol": "CHD",
-        "Security": "Church & Dwight"
-    },
-    {
-        "Symbol": "CI",
-        "Security": "Cigna"
+        "Security": "Church & Dwight Co., Inc."
     },
     {
         "Symbol": "CINF",
-        "Security": "Cincinnati Financial"
+        "Security": "Cincinnati Financial Corporation"
     },
     {
         "Symbol": "CTAS",
-        "Security": "Cintas"
+        "Security": "Cintas Corporation"
     },
     {
         "Symbol": "CSCO",
-        "Security": "Cisco"
+        "Security": "Cisco Systems, Inc."
     },
     {
         "Symbol": "C",
-        "Security": "Citigroup"
+        "Security": "Citigroup Inc."
     },
     {
         "Symbol": "CFG",
-        "Security": "Citizens Financial Group"
+        "Security": "Citizens Financial Group, Inc."
     },
     {
-        "Symbol": "CLX",
-        "Security": "Clorox"
-    },
-    {
-        "Symbol": "CME",
-        "Security": "CME Group"
-    },
-    {
-        "Symbol": "CMS",
-        "Security": "CMS Energy"
-    },
-    {
-        "Symbol": "KO",
-        "Security": "Coca-Cola Company (The)"
+        "Symbol": "CSGP",
+        "Security": "CoStar Group, Inc."
     },
     {
         "Symbol": "CTSH",
-        "Security": "Cognizant"
+        "Security": "Cognizant Technology Solutions Corporation"
     },
     {
         "Symbol": "COIN",
-        "Security": "Coinbase"
+        "Security": "Coinbase Global, Inc."
     },
     {
         "Symbol": "CL",
-        "Security": "Colgate-Palmolive"
+        "Security": "Colgate-Palmolive Company"
     },
     {
         "Symbol": "CMCSA",
-        "Security": "Comcast"
+        "Security": "Comcast Corporation"
     },
     {
         "Symbol": "CAG",
-        "Security": "Conagra Brands"
+        "Security": "Conagra Brands, Inc."
     },
     {
         "Symbol": "COP",
@@ -473,67 +453,63 @@
     },
     {
         "Symbol": "ED",
-        "Security": "Consolidated Edison"
+        "Security": "Consolidated Edison, Inc."
     },
     {
         "Symbol": "STZ",
-        "Security": "Constellation Brands"
+        "Security": "Constellation Brands, Inc."
     },
     {
         "Symbol": "CEG",
-        "Security": "Constellation Energy"
-    },
-    {
-        "Symbol": "COO",
-        "Security": "Cooper Companies (The)"
+        "Security": "Constellation Energy Corporation"
     },
     {
         "Symbol": "CPRT",
-        "Security": "Copart"
+        "Security": "Copart, Inc."
     },
     {
         "Symbol": "GLW",
-        "Security": "Corning Inc."
+        "Security": "Corning Incorporated"
     },
     {
         "Symbol": "CPAY",
-        "Security": "Corpay"
+        "Security": "Corpay, Inc."
     },
     {
         "Symbol": "CTVA",
-        "Security": "Corteva"
-    },
-    {
-        "Symbol": "CSGP",
-        "Security": "CoStar Group"
+        "Security": "Corteva, Inc."
     },
     {
         "Symbol": "COST",
-        "Security": "Costco"
+        "Security": "Costco Wholesale Corporation"
     },
     {
         "Symbol": "CTRA",
-        "Security": "Coterra"
+        "Security": "Coterra Energy Inc."
     },
     {
         "Symbol": "CRWD",
-        "Security": "CrowdStrike"
+        "Security": "CrowdStrike Holdings, Inc."
     },
     {
         "Symbol": "CCI",
-        "Security": "Crown Castle"
-    },
-    {
-        "Symbol": "CSX",
-        "Security": "CSX Corporation"
+        "Security": "Crown Castle Inc."
     },
     {
         "Symbol": "CMI",
-        "Security": "Cummins"
+        "Security": "Cummins Inc."
     },
     {
-        "Symbol": "CVS",
-        "Security": "CVS Health"
+        "Symbol": "DHI",
+        "Security": "D.R. Horton, Inc."
+    },
+    {
+        "Symbol": "DTG",
+        "Security": "DTE Energy Company"
+    },
+    {
+        "Symbol": "DVA",
+        "Security": "DaVita Inc."
     },
     {
         "Symbol": "DHR",
@@ -541,23 +517,15 @@
     },
     {
         "Symbol": "DRI",
-        "Security": "Darden Restaurants"
-    },
-    {
-        "Symbol": "DDOG",
-        "Security": "Datadog"
-    },
-    {
-        "Symbol": "DVA",
-        "Security": "DaVita"
+        "Security": "Darden Restaurants, Inc."
     },
     {
         "Symbol": "DAY",
-        "Security": "Dayforce"
+        "Security": "Dayforce Inc."
     },
     {
         "Symbol": "DECK",
-        "Security": "Deckers Brands"
+        "Security": "Deckers Outdoor Corporation"
     },
     {
         "Symbol": "DE",
@@ -565,47 +533,47 @@
     },
     {
         "Symbol": "DELL",
-        "Security": "Dell Technologies"
+        "Security": "Dell Technologies Inc."
     },
     {
         "Symbol": "DAL",
-        "Security": "Delta Air Lines"
+        "Security": "Delta Air Lines, Inc."
     },
     {
         "Symbol": "DVN",
-        "Security": "Devon Energy"
+        "Security": "Devon Energy Corporation"
     },
     {
         "Symbol": "DXCM",
-        "Security": "Dexcom"
+        "Security": "DexCom, Inc."
     },
     {
         "Symbol": "FANG",
-        "Security": "Diamondback Energy"
+        "Security": "Diamondback Energy, Inc."
     },
     {
         "Symbol": "DLR",
-        "Security": "Digital Realty"
+        "Security": "Digital Realty Trust, Inc."
     },
     {
         "Symbol": "DG",
-        "Security": "Dollar General"
+        "Security": "Dollar General Corporation"
     },
     {
         "Symbol": "DLTR",
-        "Security": "Dollar Tree"
+        "Security": "Dollar Tree, Inc."
     },
     {
         "Symbol": "D",
-        "Security": "Dominion Energy"
+        "Security": "Dominion Energy, Inc."
     },
     {
         "Symbol": "DPZ",
-        "Security": "Domino's"
+        "Security": "Domino's Pizza, Inc."
     },
     {
         "Symbol": "DASH",
-        "Security": "DoorDash"
+        "Security": "DoorDash, Inc."
     },
     {
         "Symbol": "DOV",
@@ -616,32 +584,36 @@
         "Security": "Dow Inc."
     },
     {
-        "Symbol": "DHI",
-        "Security": "D. R. Horton"
-    },
-    {
-        "Symbol": "DTE",
-        "Security": "DTE Energy"
+        "Symbol": "DD",
+        "Security": "DuPont de Nemours, Inc."
     },
     {
         "Symbol": "DUK",
-        "Security": "Duke Energy"
+        "Security": "Duke Energy Corporation"
     },
     {
-        "Symbol": "DD",
-        "Security": "DuPont"
+        "Symbol": "EOG",
+        "Security": "EOG Resources, Inc."
+    },
+    {
+        "Symbol": "EPAM",
+        "Security": "EPAM Systems, Inc."
+    },
+    {
+        "Symbol": "EQT",
+        "Security": "EQT Corporation"
+    },
+    {
+        "Symbol": "EMN",
+        "Security": "Eastman Chemical Company"
     },
     {
         "Symbol": "ETN",
-        "Security": "Eaton Corporation"
-    },
-    {
-        "Symbol": "EBAY",
-        "Security": "eBay Inc."
+        "Security": "Eaton Corporation plc"
     },
     {
         "Symbol": "ECL",
-        "Security": "Ecolab"
+        "Security": "Ecolab Inc."
     },
     {
         "Symbol": "EIX",
@@ -649,47 +621,39 @@
     },
     {
         "Symbol": "EW",
-        "Security": "Edwards Lifesciences"
+        "Security": "Edwards Lifesciences Corporation"
     },
     {
         "Symbol": "EA",
-        "Security": "Electronic Arts"
+        "Security": "Electronic Arts Inc."
     },
     {
         "Symbol": "ELV",
-        "Security": "Elevance Health"
+        "Security": "Elevance Health, Inc."
     },
     {
-        "Symbol": "EME",
-        "Security": "Emcor"
+        "Symbol": "LLY",
+        "Security": "Eli Lilly and Company"
     },
     {
         "Symbol": "EMR",
-        "Security": "Emerson Electric"
+        "Security": "Emerson Electric Co."
+    },
+    {
+        "Symbol": "ENPH",
+        "Security": "Enphase Energy, Inc."
     },
     {
         "Symbol": "ETR",
-        "Security": "Entergy"
-    },
-    {
-        "Symbol": "EOG",
-        "Security": "EOG Resources"
-    },
-    {
-        "Symbol": "EPAM",
-        "Security": "EPAM Systems"
-    },
-    {
-        "Symbol": "EQT",
-        "Security": "EQT Corporation"
+        "Security": "Entergy Corporation"
     },
     {
         "Symbol": "EFX",
-        "Security": "Equifax"
+        "Security": "Equifax Inc."
     },
     {
         "Symbol": "EQIX",
-        "Security": "Equinix"
+        "Security": "Equinix, Inc."
     },
     {
         "Symbol": "EQR",
@@ -697,23 +661,19 @@
     },
     {
         "Symbol": "ERIE",
-        "Security": "Erie Indemnity"
+        "Security": "Erie Indemnity Company"
     },
     {
         "Symbol": "ESS",
-        "Security": "Essex Property Trust"
-    },
-    {
-        "Symbol": "EL",
-        "Security": "Est\u00e9e Lauder Companies (The)"
+        "Security": "Essex Property Trust, Inc."
     },
     {
         "Symbol": "EG",
-        "Security": "Everest Group"
+        "Security": "Everest Group, Ltd."
     },
     {
         "Symbol": "EVRG",
-        "Security": "Evergy"
+        "Security": "Evergy, Inc."
     },
     {
         "Symbol": "ES",
@@ -721,27 +681,27 @@
     },
     {
         "Symbol": "EXC",
-        "Security": "Exelon"
+        "Security": "Exelon Corporation"
     },
     {
         "Symbol": "EXE",
-        "Security": "Expand Energy"
+        "Security": "Expand Energy Corporation"
     },
     {
         "Symbol": "EXPE",
-        "Security": "Expedia Group"
+        "Security": "Expedia Group, Inc."
     },
     {
         "Symbol": "EXPD",
-        "Security": "Expeditors International"
+        "Security": "Expeditors International of Washington, Inc."
     },
     {
         "Symbol": "EXR",
-        "Security": "Extra Space Storage"
+        "Security": "Extra Space Storage Inc."
     },
     {
         "Symbol": "XOM",
-        "Security": "ExxonMobil"
+        "Security": "Exxon Mobil Corporation"
     },
     {
         "Symbol": "FFIV",
@@ -749,27 +709,27 @@
     },
     {
         "Symbol": "FDS",
-        "Security": "FactSet"
+        "Security": "FactSet Research Systems Inc."
     },
     {
         "Symbol": "FICO",
-        "Security": "Fair Isaac"
+        "Security": "Fair Isaac Corporation"
     },
     {
         "Symbol": "FAST",
-        "Security": "Fastenal"
+        "Security": "Fastenal Company"
+    },
+    {
+        "Symbol": "FDX",
+        "Security": "FedEx Corporation"
     },
     {
         "Symbol": "FRT",
         "Security": "Federal Realty Investment Trust"
     },
     {
-        "Symbol": "FDX",
-        "Security": "FedEx"
-    },
-    {
         "Symbol": "FIS",
-        "Security": "Fidelity National Information Services"
+        "Security": "Fidelity National Information Services, Inc."
     },
     {
         "Symbol": "FITB",
@@ -777,15 +737,15 @@
     },
     {
         "Symbol": "FSLR",
-        "Security": "First Solar"
+        "Security": "First Solar, Inc."
     },
     {
         "Symbol": "FE",
-        "Security": "FirstEnergy"
+        "Security": "FirstEnergy Corp."
     },
     {
-        "Symbol": "FISV",
-        "Security": "Fiserv"
+        "Symbol": "FI",
+        "Security": "Fiserv, Inc."
     },
     {
         "Symbol": "F",
@@ -793,67 +753,67 @@
     },
     {
         "Symbol": "FTNT",
-        "Security": "Fortinet"
+        "Security": "Fortinet, Inc."
     },
     {
         "Symbol": "FTV",
-        "Security": "Fortive"
+        "Security": "Fortive Corporation"
     },
     {
         "Symbol": "FOXA",
-        "Security": "Fox Corporation (Class A)"
+        "Security": "Fox Corporation"
     },
     {
         "Symbol": "FOX",
-        "Security": "Fox Corporation (Class B)"
+        "Security": "Fox Corporation"
     },
     {
         "Symbol": "BEN",
-        "Security": "Franklin Resources"
+        "Security": "Franklin Resources, Inc."
     },
     {
         "Symbol": "FCX",
-        "Security": "Freeport-McMoRan"
-    },
-    {
-        "Symbol": "GRMN",
-        "Security": "Garmin"
-    },
-    {
-        "Symbol": "IT",
-        "Security": "Gartner"
-    },
-    {
-        "Symbol": "GE",
-        "Security": "GE Aerospace"
+        "Security": "Freeport-McMoRan Inc."
     },
     {
         "Symbol": "GEHC",
-        "Security": "GE HealthCare"
+        "Security": "GE HealthCare Technologies Inc."
     },
     {
         "Symbol": "GEV",
-        "Security": "GE Vernova"
+        "Security": "GE Vernova Inc."
+    },
+    {
+        "Symbol": "GRMN",
+        "Security": "Garmin Ltd."
+    },
+    {
+        "Symbol": "IT",
+        "Security": "Gartner, Inc."
     },
     {
         "Symbol": "GEN",
-        "Security": "Gen Digital"
+        "Security": "Gen Digital Inc."
     },
     {
         "Symbol": "GNRC",
-        "Security": "Generac"
+        "Security": "Generac Holdings Inc."
     },
     {
         "Symbol": "GD",
-        "Security": "General Dynamics"
+        "Security": "General Dynamics Corporation"
+    },
+    {
+        "Symbol": "GE",
+        "Security": "General Electric Company"
     },
     {
         "Symbol": "GIS",
-        "Security": "General Mills"
+        "Security": "General Mills, Inc."
     },
     {
         "Symbol": "GM",
-        "Security": "General Motors"
+        "Security": "General Motors Company"
     },
     {
         "Symbol": "GPC",
@@ -861,87 +821,75 @@
     },
     {
         "Symbol": "GILD",
-        "Security": "Gilead Sciences"
+        "Security": "Gilead Sciences, Inc."
     },
     {
         "Symbol": "GPN",
-        "Security": "Global Payments"
+        "Security": "Global Payments Inc."
     },
     {
         "Symbol": "GL",
-        "Security": "Globe Life"
+        "Security": "Globe Life Inc."
     },
     {
         "Symbol": "GDDY",
-        "Security": "GoDaddy"
-    },
-    {
-        "Symbol": "GS",
-        "Security": "Goldman Sachs"
-    },
-    {
-        "Symbol": "HAL",
-        "Security": "Halliburton"
-    },
-    {
-        "Symbol": "HIG",
-        "Security": "Hartford (The)"
-    },
-    {
-        "Symbol": "HAS",
-        "Security": "Hasbro"
+        "Security": "GoDaddy Inc."
     },
     {
         "Symbol": "HCA",
-        "Security": "HCA Healthcare"
-    },
-    {
-        "Symbol": "DOC",
-        "Security": "Healthpeak Properties"
-    },
-    {
-        "Symbol": "HSIC",
-        "Security": "Henry Schein"
-    },
-    {
-        "Symbol": "HSY",
-        "Security": "Hershey Company (The)"
-    },
-    {
-        "Symbol": "HPE",
-        "Security": "Hewlett Packard Enterprise"
-    },
-    {
-        "Symbol": "HLT",
-        "Security": "Hilton Worldwide"
-    },
-    {
-        "Symbol": "HOLX",
-        "Security": "Hologic"
-    },
-    {
-        "Symbol": "HD",
-        "Security": "Home Depot (The)"
-    },
-    {
-        "Symbol": "HON",
-        "Security": "Honeywell"
-    },
-    {
-        "Symbol": "HRL",
-        "Security": "Hormel Foods"
-    },
-    {
-        "Symbol": "HST",
-        "Security": "Host Hotels & Resorts"
-    },
-    {
-        "Symbol": "HWM",
-        "Security": "Howmet Aerospace"
+        "Security": "HCA Healthcare, Inc."
     },
     {
         "Symbol": "HPQ",
         "Security": "HP Inc."
+    },
+    {
+        "Symbol": "HAL",
+        "Security": "Halliburton Company"
+    },
+    {
+        "Symbol": "HAS",
+        "Security": "Hasbro, Inc."
+    },
+    {
+        "Symbol": "DOC",
+        "Security": "Healthpeak Properties, Inc."
+    },
+    {
+        "Symbol": "HSIC",
+        "Security": "Henry Schein, Inc."
+    },
+    {
+        "Symbol": "HES",
+        "Security": "Hess Corporation"
+    },
+    {
+        "Symbol": "HPE",
+        "Security": "Hewlett Packard Enterprise Company"
+    },
+    {
+        "Symbol": "HLT",
+        "Security": "Hilton Worldwide Holdings Inc."
+    },
+    {
+        "Symbol": "HOLX",
+        "Security": "Hologic, Inc."
+    },
+    {
+        "Symbol": "HON",
+        "Security": "Honeywell International Inc."
+    },
+    {
+        "Symbol": "HRL",
+        "Security": "Hormel Foods Corporation"
+    },
+    {
+        "Symbol": "HST",
+        "Security": "Host Hotels & Resorts, Inc."
+    },
+    {
+        "Symbol": "HWM",
+        "Security": "Howmet Aerospace Inc."
     },
     {
         "Symbol": "HUBB",
@@ -949,19 +897,15 @@
     },
     {
         "Symbol": "HUM",
-        "Security": "Humana"
+        "Security": "Humana Inc."
     },
     {
         "Symbol": "HBAN",
-        "Security": "Huntington Bancshares"
+        "Security": "Huntington Bancshares Incorporated"
     },
     {
         "Symbol": "HII",
-        "Security": "Huntington Ingalls Industries"
-    },
-    {
-        "Symbol": "IBM",
-        "Security": "IBM"
+        "Security": "Huntington Ingalls Industries, Inc."
     },
     {
         "Symbol": "IEX",
@@ -969,19 +913,23 @@
     },
     {
         "Symbol": "IDXX",
-        "Security": "Idexx Laboratories"
+        "Security": "IDEXX Laboratories, Inc."
+    },
+    {
+        "Symbol": "IQV",
+        "Security": "IQVIA Holdings Inc."
     },
     {
         "Symbol": "ITW",
-        "Security": "Illinois Tool Works"
+        "Security": "Illinois Tool Works Inc."
     },
     {
         "Symbol": "INCY",
-        "Security": "Incyte"
+        "Security": "Incyte Corporation"
     },
     {
         "Symbol": "IR",
-        "Security": "Ingersoll Rand"
+        "Security": "Ingersoll Rand Inc."
     },
     {
         "Symbol": "PODD",
@@ -989,63 +937,63 @@
     },
     {
         "Symbol": "INTC",
-        "Security": "Intel"
-    },
-    {
-        "Symbol": "IBKR",
-        "Security": "Interactive Brokers"
+        "Security": "Intel Corporation"
     },
     {
         "Symbol": "ICE",
-        "Security": "Intercontinental Exchange"
+        "Security": "Intercontinental Exchange, Inc."
+    },
+    {
+        "Symbol": "IBM",
+        "Security": "International Business Machines Corporation"
     },
     {
         "Symbol": "IFF",
-        "Security": "International Flavors & Fragrances"
+        "Security": "International Flavors & Fragrances Inc."
     },
     {
         "Symbol": "IP",
-        "Security": "International Paper"
+        "Security": "International Paper Company"
     },
     {
         "Symbol": "INTU",
-        "Security": "Intuit"
+        "Security": "Intuit Inc."
     },
     {
         "Symbol": "ISRG",
-        "Security": "Intuitive Surgical"
+        "Security": "Intuitive Surgical, Inc."
     },
     {
         "Symbol": "IVZ",
-        "Security": "Invesco"
+        "Security": "Invesco Ltd."
     },
     {
         "Symbol": "INVH",
-        "Security": "Invitation Homes"
-    },
-    {
-        "Symbol": "IQV",
-        "Security": "IQVIA"
+        "Security": "Invitation Homes Inc."
     },
     {
         "Symbol": "IRM",
-        "Security": "Iron Mountain"
+        "Security": "Iron Mountain Incorporated"
     },
     {
         "Symbol": "JBHT",
-        "Security": "J.B. Hunt"
+        "Security": "J.B. Hunt Transport Services, Inc."
+    },
+    {
+        "Symbol": "JPM",
+        "Security": "JPMorgan Chase & Co."
     },
     {
         "Symbol": "JBL",
-        "Security": "Jabil"
+        "Security": "Jabil Inc."
     },
     {
         "Symbol": "JKHY",
-        "Security": "Jack Henry & Associates"
+        "Security": "Jack Henry & Associates, Inc."
     },
     {
         "Symbol": "J",
-        "Security": "Jacobs Solutions"
+        "Security": "Jacobs Solutions Inc."
     },
     {
         "Symbol": "JNJ",
@@ -1053,11 +1001,15 @@
     },
     {
         "Symbol": "JCI",
-        "Security": "Johnson Controls"
+        "Security": "Johnson Controls International plc"
     },
     {
-        "Symbol": "JPM",
-        "Security": "JPMorgan Chase"
+        "Symbol": "KKR",
+        "Security": "KKR & Co. Inc."
+    },
+    {
+        "Symbol": "KLAC",
+        "Security": "KLA Corporation"
     },
     {
         "Symbol": "K",
@@ -1065,11 +1017,11 @@
     },
     {
         "Symbol": "KVUE",
-        "Security": "Kenvue"
+        "Security": "Kenvue Inc."
     },
     {
         "Symbol": "KDP",
-        "Security": "Keurig Dr Pepper"
+        "Security": "Keurig Dr Pepper Inc."
     },
     {
         "Symbol": "KEY",
@@ -1077,71 +1029,59 @@
     },
     {
         "Symbol": "KEYS",
-        "Security": "Keysight Technologies"
+        "Security": "Keysight Technologies, Inc."
     },
     {
         "Symbol": "KMB",
-        "Security": "Kimberly-Clark"
+        "Security": "Kimberly-Clark Corporation"
     },
     {
         "Symbol": "KIM",
-        "Security": "Kimco Realty"
+        "Security": "Kimco Realty Corporation"
     },
     {
         "Symbol": "KMI",
-        "Security": "Kinder Morgan"
+        "Security": "Kinder Morgan, Inc."
     },
     {
-        "Symbol": "KKR",
-        "Security": "KKR & Co."
-    },
-    {
-        "Symbol": "KLAC",
-        "Security": "KLA Corporation"
-    },
-    {
-        "Symbol": "KHC",
-        "Security": "Kraft Heinz"
-    },
-    {
-        "Symbol": "KR",
-        "Security": "Kroger"
+        "Symbol": "KD",
+        "Security": "Kyndryl Holdings, Inc."
     },
     {
         "Symbol": "LHX",
-        "Security": "L3Harris"
+        "Security": "L3Harris Technologies, Inc."
+    },
+    {
+        "Symbol": "LKQ",
+        "Security": "LKQ Corporation"
     },
     {
         "Symbol": "LH",
-        "Security": "Labcorp"
+        "Security": "Labcorp Holdings Inc."
     },
     {
         "Symbol": "LRCX",
-        "Security": "Lam Research"
+        "Security": "Lam Research Corporation"
     },
     {
         "Symbol": "LW",
-        "Security": "Lamb Weston"
+        "Security": "Lamb Weston Holdings, Inc."
     },
     {
         "Symbol": "LVS",
-        "Security": "Las Vegas Sands"
+        "Security": "Las Vegas Sands Corp."
     },
     {
         "Symbol": "LDOS",
-        "Security": "Leidos"
+        "Security": "Leidos Holdings, Inc."
     },
     {
         "Symbol": "LEN",
-        "Security": "Lennar"
+        "Security": "Lennar Corporation"
     },
     {
         "Symbol": "LII",
-        "Security": "Lennox International"
-    },
-    {
-        "Symbol": "LLY",
-        "Security": "Lilly (Eli)"
+        "Security": "Lennox International Inc."
     },
     {
         "Symbol": "LIN",
@@ -1149,15 +1089,11 @@
     },
     {
         "Symbol": "LYV",
-        "Security": "Live Nation Entertainment"
-    },
-    {
-        "Symbol": "LKQ",
-        "Security": "LKQ Corporation"
+        "Security": "Live Nation Entertainment, Inc."
     },
     {
         "Symbol": "LMT",
-        "Security": "Lockheed Martin"
+        "Security": "Lockheed Martin Corporation"
     },
     {
         "Symbol": "L",
@@ -1165,55 +1101,63 @@
     },
     {
         "Symbol": "LOW",
-        "Security": "Lowe's"
-    },
-    {
-        "Symbol": "LULU",
-        "Security": "Lululemon Athletica"
+        "Security": "Lowe's Companies, Inc."
     },
     {
         "Symbol": "LYB",
-        "Security": "LyondellBasell"
+        "Security": "LyondellBasell Industries N.V."
     },
     {
         "Symbol": "MTB",
-        "Security": "M&T Bank"
+        "Security": "M&T Bank Corporation"
+    },
+    {
+        "Symbol": "MGM",
+        "Security": "MGM Resorts International"
+    },
+    {
+        "Symbol": "MSCI",
+        "Security": "MSCI Inc."
     },
     {
         "Symbol": "MPC",
-        "Security": "Marathon Petroleum"
+        "Security": "Marathon Petroleum Corporation"
+    },
+    {
+        "Symbol": "MKTX",
+        "Security": "MarketAxess Holdings Inc."
     },
     {
         "Symbol": "MAR",
-        "Security": "Marriott International"
+        "Security": "Marriott International, Inc."
     },
     {
         "Symbol": "MMC",
-        "Security": "Marsh McLennan"
+        "Security": "Marsh & McLennan Companies, Inc."
     },
     {
         "Symbol": "MLM",
-        "Security": "Martin Marietta Materials"
+        "Security": "Martin Marietta Materials, Inc."
     },
     {
         "Symbol": "MAS",
-        "Security": "Masco"
+        "Security": "Masco Corporation"
     },
     {
         "Symbol": "MA",
-        "Security": "Mastercard"
+        "Security": "Mastercard Incorporated"
     },
     {
         "Symbol": "MTCH",
-        "Security": "Match Group"
+        "Security": "Match Group, Inc."
     },
     {
         "Symbol": "MKC",
-        "Security": "McCormick & Company"
+        "Security": "McCormick & Company, Incorporated"
     },
     {
         "Symbol": "MCD",
-        "Security": "McDonald's"
+        "Security": "McDonald's Corporation"
     },
     {
         "Symbol": "MCK",
@@ -1221,55 +1165,51 @@
     },
     {
         "Symbol": "MDT",
-        "Security": "Medtronic"
+        "Security": "Medtronic plc"
     },
     {
         "Symbol": "MRK",
-        "Security": "Merck & Co."
-    },
-    {
-        "Symbol": "META",
-        "Security": "Meta Platforms"
+        "Security": "Merck & Co., Inc."
     },
     {
         "Symbol": "MET",
-        "Security": "MetLife"
+        "Security": "MetLife, Inc."
+    },
+    {
+        "Symbol": "META",
+        "Security": "Meta Platforms, Inc."
     },
     {
         "Symbol": "MTD",
-        "Security": "Mettler Toledo"
-    },
-    {
-        "Symbol": "MGM",
-        "Security": "MGM Resorts"
+        "Security": "Mettler-Toledo International Inc."
     },
     {
         "Symbol": "MCHP",
-        "Security": "Microchip Technology"
+        "Security": "Microchip Technology Incorporated"
     },
     {
         "Symbol": "MU",
-        "Security": "Micron Technology"
+        "Security": "Micron Technology, Inc."
     },
     {
         "Symbol": "MSFT",
-        "Security": "Microsoft"
+        "Security": "Microsoft Corporation"
     },
     {
         "Symbol": "MAA",
-        "Security": "Mid-America Apartment Communities"
+        "Security": "Mid-America Apartment Communities, Inc."
     },
     {
         "Symbol": "MRNA",
-        "Security": "Moderna"
+        "Security": "Moderna, Inc."
     },
     {
         "Symbol": "MHK",
-        "Security": "Mohawk Industries"
+        "Security": "Mohawk Industries, Inc."
     },
     {
         "Symbol": "MOH",
-        "Security": "Molina Healthcare"
+        "Security": "Molina Healthcare, Inc."
     },
     {
         "Symbol": "TAP",
@@ -1277,15 +1217,15 @@
     },
     {
         "Symbol": "MDLZ",
-        "Security": "Mondelez International"
+        "Security": "Mondelez International, Inc."
     },
     {
         "Symbol": "MPWR",
-        "Security": "Monolithic Power Systems"
+        "Security": "Monolithic Power Systems, Inc."
     },
     {
         "Symbol": "MNST",
-        "Security": "Monster Beverage"
+        "Security": "Monster Beverage Corporation"
     },
     {
         "Symbol": "MCO",
@@ -1296,84 +1236,20 @@
         "Security": "Morgan Stanley"
     },
     {
-        "Symbol": "MOS",
-        "Security": "Mosaic Company (The)"
-    },
-    {
         "Symbol": "MSI",
-        "Security": "Motorola Solutions"
-    },
-    {
-        "Symbol": "MSCI",
-        "Security": "MSCI Inc."
-    },
-    {
-        "Symbol": "NDAQ",
-        "Security": "Nasdaq, Inc."
-    },
-    {
-        "Symbol": "NTAP",
-        "Security": "NetApp"
-    },
-    {
-        "Symbol": "NFLX",
-        "Security": "Netflix"
-    },
-    {
-        "Symbol": "NEM",
-        "Security": "Newmont"
-    },
-    {
-        "Symbol": "NWSA",
-        "Security": "News Corp (Class A)"
-    },
-    {
-        "Symbol": "NWS",
-        "Security": "News Corp (Class B)"
-    },
-    {
-        "Symbol": "NEE",
-        "Security": "NextEra Energy"
+        "Security": "Motorola Solutions, Inc."
     },
     {
         "Symbol": "NKE",
-        "Security": "Nike, Inc."
-    },
-    {
-        "Symbol": "NI",
-        "Security": "NiSource"
-    },
-    {
-        "Symbol": "NDSN",
-        "Security": "Nordson Corporation"
-    },
-    {
-        "Symbol": "NSC",
-        "Security": "Norfolk Southern"
-    },
-    {
-        "Symbol": "NTRS",
-        "Security": "Northern Trust"
-    },
-    {
-        "Symbol": "NOC",
-        "Security": "Northrop Grumman"
-    },
-    {
-        "Symbol": "NCLH",
-        "Security": "Norwegian Cruise Line Holdings"
+        "Security": "NIKE, Inc."
     },
     {
         "Symbol": "NRG",
-        "Security": "NRG Energy"
-    },
-    {
-        "Symbol": "NUE",
-        "Security": "Nucor"
+        "Security": "NRG Energy, Inc."
     },
     {
         "Symbol": "NVDA",
-        "Security": "Nvidia"
+        "Security": "NVIDIA Corporation"
     },
     {
         "Symbol": "NVR",
@@ -1381,31 +1257,87 @@
     },
     {
         "Symbol": "NXPI",
-        "Security": "NXP Semiconductors"
+        "Security": "NXP Semiconductors N.V."
+    },
+    {
+        "Symbol": "NDAQ",
+        "Security": "Nasdaq, Inc."
+    },
+    {
+        "Symbol": "NTAP",
+        "Security": "NetApp, Inc."
+    },
+    {
+        "Symbol": "NFLX",
+        "Security": "Netflix, Inc."
+    },
+    {
+        "Symbol": "NEM",
+        "Security": "Newmont Corporation"
+    },
+    {
+        "Symbol": "NWS",
+        "Security": "News Corporation"
+    },
+    {
+        "Symbol": "NWSA",
+        "Security": "News Corporation"
+    },
+    {
+        "Symbol": "NEE",
+        "Security": "NextEra Energy, Inc."
+    },
+    {
+        "Symbol": "NI",
+        "Security": "NiSource Inc."
+    },
+    {
+        "Symbol": "NDSN",
+        "Security": "Nordson Corporation"
+    },
+    {
+        "Symbol": "NSC",
+        "Security": "Norfolk Southern Corporation"
+    },
+    {
+        "Symbol": "NTRS",
+        "Security": "Northern Trust Corporation"
+    },
+    {
+        "Symbol": "NOCO",
+        "Security": "Northrop Grumman Corporation"
+    },
+    {
+        "Symbol": "NCLH",
+        "Security": "Norwegian Cruise Line Holdings Ltd."
+    },
+    {
+        "Symbol": "NUE",
+        "Security": "Nucor Corporation"
     },
     {
         "Symbol": "ORLY",
-        "Security": "O\u2019Reilly Automotive"
-    },
-    {
-        "Symbol": "OXY",
-        "Security": "Occidental Petroleum"
-    },
-    {
-        "Symbol": "ODFL",
-        "Security": "Old Dominion"
-    },
-    {
-        "Symbol": "OMC",
-        "Security": "Omnicom Group"
+        "Security": "O'Reilly Automotive, Inc."
     },
     {
         "Symbol": "ON",
-        "Security": "ON Semiconductor"
+        "Security": "ON Semiconductor Corporation"
     },
     {
         "Symbol": "OKE",
-        "Security": "Oneok"
+        "Security": "ONEOK, Inc."
+    },
+    {
+        "Symbol": "OXY",
+        "Security": "Occidental Petroleum Corporation"
+    },
+    {
+        "Symbol": "ODFL",
+        "Security": "Old Dominion Freight Line, Inc."
+    },
+    {
+        "Symbol": "OMC",
+        "Security": "Omnicom Group Inc."
     },
     {
         "Symbol": "ORCL",
@@ -1413,11 +1345,27 @@
     },
     {
         "Symbol": "OTIS",
-        "Security": "Otis Worldwide"
+        "Security": "Otis Worldwide Corporation"
     },
     {
         "Symbol": "PCAR",
-        "Security": "Paccar"
+        "Security": "PACCAR Inc"
+    },
+    {
+        "Symbol": "PCG",
+        "Security": "PG&E Corporation"
+    },
+    {
+        "Symbol": "PPG",
+        "Security": "PPG Industries, Inc."
+    },
+    {
+        "Symbol": "PPL",
+        "Security": "PPL Corporation"
+    },
+    {
+        "Symbol": "PTC",
+        "Security": "PTC Inc."
     },
     {
         "Symbol": "PKG",
@@ -1425,51 +1373,47 @@
     },
     {
         "Symbol": "PLTR",
-        "Security": "Palantir Technologies"
+        "Security": "Palantir Technologies Inc."
     },
     {
         "Symbol": "PANW",
-        "Security": "Palo Alto Networks"
+        "Security": "Palo Alto Networks, Inc."
     },
     {
-        "Symbol": "PSKY",
-        "Security": "Paramount Skydance Corporation"
+        "Symbol": "PARA",
+        "Security": "Paramount Global"
     },
     {
         "Symbol": "PH",
-        "Security": "Parker Hannifin"
-    },
-    {
-        "Symbol": "PAYX",
-        "Security": "Paychex"
-    },
-    {
-        "Symbol": "PAYC",
-        "Security": "Paycom"
+        "Security": "Parker-Hannifin Corporation"
     },
     {
         "Symbol": "PYPL",
-        "Security": "PayPal"
+        "Security": "PayPal Holdings, Inc."
+    },
+    {
+        "Symbol": "PAYX",
+        "Security": "Paychex, Inc."
+    },
+    {
+        "Symbol": "PAYC",
+        "Security": "Paycom Software, Inc."
     },
     {
         "Symbol": "PNR",
-        "Security": "Pentair"
+        "Security": "Pentair plc"
     },
     {
         "Symbol": "PEP",
-        "Security": "PepsiCo"
+        "Security": "PepsiCo, Inc."
     },
     {
         "Symbol": "PFE",
-        "Security": "Pfizer"
-    },
-    {
-        "Symbol": "PCG",
-        "Security": "PG&E Corporation"
+        "Security": "Pfizer Inc."
     },
     {
         "Symbol": "PM",
-        "Security": "Philip Morris International"
+        "Security": "Philip Morris International Inc."
     },
     {
         "Symbol": "PSX",
@@ -1477,51 +1421,27 @@
     },
     {
         "Symbol": "PNW",
-        "Security": "Pinnacle West Capital"
-    },
-    {
-        "Symbol": "PNC",
-        "Security": "PNC Financial Services"
+        "Security": "Pinnacle West Capital Corporation"
     },
     {
         "Symbol": "POOL",
         "Security": "Pool Corporation"
     },
     {
-        "Symbol": "PPG",
-        "Security": "PPG Industries"
-    },
-    {
-        "Symbol": "PPL",
-        "Security": "PPL Corporation"
-    },
-    {
         "Symbol": "PFG",
-        "Security": "Principal Financial Group"
-    },
-    {
-        "Symbol": "PG",
-        "Security": "Procter & Gamble"
-    },
-    {
-        "Symbol": "PGR",
-        "Security": "Progressive Corporation"
+        "Security": "Principal Financial Group, Inc."
     },
     {
         "Symbol": "PLD",
-        "Security": "Prologis"
+        "Security": "Prologis, Inc."
     },
     {
         "Symbol": "PRU",
-        "Security": "Prudential Financial"
+        "Security": "Prudential Financial, Inc."
     },
     {
         "Symbol": "PEG",
-        "Security": "Public Service Enterprise Group"
-    },
-    {
-        "Symbol": "PTC",
-        "Security": "PTC Inc."
+        "Security": "Public Service Enterprise Group Incorporated"
     },
     {
         "Symbol": "PSA",
@@ -1529,23 +1449,23 @@
     },
     {
         "Symbol": "PHM",
-        "Security": "PulteGroup"
-    },
-    {
-        "Symbol": "PWR",
-        "Security": "Quanta Services"
+        "Security": "PulteGroup, Inc."
     },
     {
         "Symbol": "QCOM",
-        "Security": "Qualcomm"
+        "Security": "QUALCOMM Incorporated"
+    },
+    {
+        "Symbol": "PWR",
+        "Security": "Quanta Services, Inc."
     },
     {
         "Symbol": "DGX",
-        "Security": "Quest Diagnostics"
+        "Security": "Quest Diagnostics Incorporated"
     },
     {
-        "Symbol": "Q",
-        "Security": "Qnity Electronics"
+        "Symbol": "RTX",
+        "Security": "RTX Corporation"
     },
     {
         "Symbol": "RL",
@@ -1553,23 +1473,19 @@
     },
     {
         "Symbol": "RJF",
-        "Security": "Raymond James Financial"
-    },
-    {
-        "Symbol": "RTX",
-        "Security": "RTX Corporation"
+        "Security": "Raymond James Financial, Inc."
     },
     {
         "Symbol": "O",
-        "Security": "Realty Income"
+        "Security": "Realty Income Corporation"
     },
     {
         "Symbol": "REG",
-        "Security": "Regency Centers"
+        "Security": "Regency Centers Corporation"
     },
     {
         "Symbol": "REGN",
-        "Security": "Regeneron Pharmaceuticals"
+        "Security": "Regeneron Pharmaceuticals, Inc."
     },
     {
         "Symbol": "RF",
@@ -1577,23 +1493,19 @@
     },
     {
         "Symbol": "RSG",
-        "Security": "Republic Services"
+        "Security": "Republic Services, Inc."
     },
     {
         "Symbol": "RMD",
-        "Security": "ResMed"
+        "Security": "ResMed Inc."
     },
     {
         "Symbol": "RVTY",
-        "Security": "Revvity"
-    },
-    {
-        "Symbol": "HOOD",
-        "Security": "Robinhood Markets"
+        "Security": "Revvity, Inc."
     },
     {
         "Symbol": "ROK",
-        "Security": "Rockwell Automation"
+        "Security": "Rockwell Automation, Inc."
     },
     {
         "Symbol": "ROL",
@@ -1601,39 +1513,39 @@
     },
     {
         "Symbol": "ROP",
-        "Security": "Roper Technologies"
+        "Security": "Roper Technologies, Inc."
     },
     {
         "Symbol": "ROST",
-        "Security": "Ross Stores"
+        "Security": "Ross Stores, Inc."
     },
     {
         "Symbol": "RCL",
-        "Security": "Royal Caribbean Group"
+        "Security": "Royal Caribbean Cruises Ltd."
     },
     {
         "Symbol": "SPGI",
-        "Security": "S&P Global"
-    },
-    {
-        "Symbol": "CRM",
-        "Security": "Salesforce"
-    },
-    {
-        "Symbol": "SNDK",
-        "Security": "Sandisk"
+        "Security": "S&P Global Inc."
     },
     {
         "Symbol": "SBAC",
-        "Security": "SBA Communications"
+        "Security": "SBA Communications Corporation"
+    },
+    {
+        "Symbol": "STE",
+        "Security": "STERIS plc"
+    },
+    {
+        "Symbol": "CRM",
+        "Security": "Salesforce, Inc."
     },
     {
         "Symbol": "SLB",
-        "Security": "Schlumberger"
+        "Security": "Schlumberger Limited"
     },
     {
         "Symbol": "STX",
-        "Security": "Seagate Technology"
+        "Security": "Seagate Technology Holdings plc"
     },
     {
         "Symbol": "SRE",
@@ -1641,55 +1553,39 @@
     },
     {
         "Symbol": "NOW",
-        "Security": "ServiceNow"
-    },
-    {
-        "Symbol": "SHW",
-        "Security": "Sherwin-Williams"
+        "Security": "ServiceNow, Inc."
     },
     {
         "Symbol": "SPG",
-        "Security": "Simon Property Group"
+        "Security": "Simon Property Group, Inc."
     },
     {
         "Symbol": "SWKS",
-        "Security": "Skyworks Solutions"
-    },
-    {
-        "Symbol": "SJM",
-        "Security": "J.M. Smucker Company (The)"
+        "Security": "Skyworks Solutions, Inc."
     },
     {
         "Symbol": "SW",
-        "Security": "Smurfit Westrock"
+        "Security": "Smurfit Westrock Plc"
     },
     {
         "Symbol": "SNA",
-        "Security": "Snap-on"
-    },
-    {
-        "Symbol": "SOLS",
-        "Security": "Solstice Advanced Materials"
+        "Security": "Snap-on Incorporated"
     },
     {
         "Symbol": "SOLV",
-        "Security": "Solventum"
-    },
-    {
-        "Symbol": "SO",
-        "Security": "Southern Company"
+        "Security": "Solventum Corporation"
     },
     {
         "Symbol": "LUV",
-        "Security": "Southwest Airlines"
+        "Security": "Southwest Airlines Co."
     },
     {
         "Symbol": "SWK",
-        "Security": "Stanley Black & Decker"
+        "Security": "Stanley Black & Decker, Inc."
     },
     {
         "Symbol": "SBUX",
-        "Security": "Starbucks"
+        "Security": "Starbucks Corporation"
     },
     {
         "Symbol": "STT",
@@ -1697,11 +1593,7 @@
     },
     {
         "Symbol": "STLD",
-        "Security": "Steel Dynamics"
-    },
-    {
-        "Symbol": "STE",
-        "Security": "Steris"
+        "Security": "Steel Dynamics, Inc."
     },
     {
         "Symbol": "SYK",
@@ -1709,7 +1601,7 @@
     },
     {
         "Symbol": "SMCI",
-        "Security": "Supermicro"
+        "Security": "Super Micro Computer, Inc."
     },
     {
         "Symbol": "SYF",
@@ -1717,23 +1609,31 @@
     },
     {
         "Symbol": "SNPS",
-        "Security": "Synopsys"
+        "Security": "Synopsys, Inc."
     },
     {
         "Symbol": "SYY",
-        "Security": "Sysco"
+        "Security": "Sysco Corporation"
     },
     {
         "Symbol": "TMUS",
-        "Security": "T-Mobile US"
+        "Security": "T-Mobile US, Inc."
     },
     {
         "Symbol": "TROW",
-        "Security": "T. Rowe Price"
+        "Security": "T. Rowe Price Group, Inc."
+    },
+    {
+        "Symbol": "TEL",
+        "Security": "TE Connectivity plc"
+    },
+    {
+        "Symbol": "TKO",
+        "Security": "TKO Group Holdings, Inc."
     },
     {
         "Symbol": "TTWO",
-        "Security": "Take-Two Interactive"
+        "Security": "Take-Two Interactive Software, Inc."
     },
     {
         "Symbol": "TPR",
@@ -1741,23 +1641,19 @@
     },
     {
         "Symbol": "TRGP",
-        "Security": "Targa Resources"
+        "Security": "Targa Resources Corp."
     },
     {
         "Symbol": "TGT",
         "Security": "Target Corporation"
     },
     {
-        "Symbol": "TEL",
-        "Security": "TE Connectivity"
-    },
-    {
         "Symbol": "TDY",
-        "Security": "Teledyne Technologies"
+        "Security": "Teledyne Technologies Incorporated"
     },
     {
         "Symbol": "TER",
-        "Security": "Teradyne"
+        "Security": "Teradyne, Inc."
     },
     {
         "Symbol": "TSLA",
@@ -1765,7 +1661,7 @@
     },
     {
         "Symbol": "TXN",
-        "Security": "Texas Instruments"
+        "Security": "Texas Instruments Incorporated"
     },
     {
         "Symbol": "TPL",
@@ -1773,39 +1669,139 @@
     },
     {
         "Symbol": "TXT",
-        "Security": "Textron"
+        "Security": "Textron Inc."
     },
     {
-        "Symbol": "TMO",
-        "Security": "Thermo Fisher Scientific"
+        "Symbol": "AES",
+        "Security": "The AES Corporation"
+    },
+    {
+        "Symbol": "ALL",
+        "Security": "The Allstate Corporation"
+    },
+    {
+        "Symbol": "BK",
+        "Security": "The Bank of New York Mellon Corporation"
+    },
+    {
+        "Symbol": "BA",
+        "Security": "The Boeing Company"
+    },
+    {
+        "Symbol": "CPB",
+        "Security": "The Campbell's Company"
+    },
+    {
+        "Symbol": "SCHW",
+        "Security": "The Charles Schwab Corporation"
+    },
+    {
+        "Symbol": "CI",
+        "Security": "The Cigna Group"
+    },
+    {
+        "Symbol": "CLX",
+        "Security": "The Clorox Company"
+    },
+    {
+        "Symbol": "KO",
+        "Security": "The Coca-Cola Company"
+    },
+    {
+        "Symbol": "COO",
+        "Security": "The Cooper Companies, Inc."
+    },
+    {
+        "Symbol": "EL",
+        "Security": "The Est\u00c3\u00a9e Lauder Companies Inc."
+    },
+    {
+        "Symbol": "GS",
+        "Security": "The Goldman Sachs Group, Inc."
+    },
+    {
+        "Symbol": "HIG",
+        "Security": "The Hartford Insurance Group, Inc."
+    },
+    {
+        "Symbol": "HSY",
+        "Security": "The Hershey Company"
+    },
+    {
+        "Symbol": "HD",
+        "Security": "The Home Depot, Inc."
+    },
+    {
+        "Symbol": "IPG",
+        "Security": "The Interpublic Group of Companies, Inc."
+    },
+    {
+        "Symbol": "SJM",
+        "Security": "The J. M. Smucker Company"
+    },
+    {
+        "Symbol": "KHC",
+        "Security": "The Kraft Heinz Company"
+    },
+    {
+        "Symbol": "KR",
+        "Security": "The Kroger Co."
+    },
+    {
+        "Symbol": "MOS",
+        "Security": "The Mosaic Company"
+    },
+    {
+        "Symbol": "PNC",
+        "Security": "The PNC Financial Services Group, Inc."
+    },
+    {
+        "Symbol": "PG",
+        "Security": "The Procter & Gamble Company"
+    },
+    {
+        "Symbol": "PGR",
+        "Security": "The Progressive Corporation"
+    },
+    {
+        "Symbol": "SHW",
+        "Security": "The Sherwin-Williams Company"
+    },
+    {
+        "Symbol": "SO",
+        "Security": "The Southern Company"
     },
     {
         "Symbol": "TJX",
-        "Security": "TJX Companies"
-    },
-    {
-        "Symbol": "TKO",
-        "Security": "TKO Group Holdings"
-    },
-    {
-        "Symbol": "TTD",
-        "Security": "Trade Desk (The)"
-    },
-    {
-        "Symbol": "TSCO",
-        "Security": "Tractor Supply"
-    },
-    {
-        "Symbol": "TT",
-        "Security": "Trane Technologies"
-    },
-    {
-        "Symbol": "TDG",
-        "Security": "TransDigm Group"
+        "Security": "The TJX Companies, Inc."
     },
     {
         "Symbol": "TRV",
-        "Security": "Travelers Companies (The)"
+        "Security": "The Travelers Companies, Inc."
+    },
+    {
+        "Symbol": "DIS",
+        "Security": "The Walt Disney Company"
+    },
+    {
+        "Symbol": "WMB",
+        "Security": "The Williams Companies, Inc."
+    },
+    {
+        "Symbol": "TMO",
+        "Security": "Thermo Fisher Scientific Inc."
+    },
+    {
+        "Symbol": "TSCO",
+        "Security": "Tractor Supply Company"
+    },
+    {
+        "Symbol": "TT",
+        "Security": "Trane Technologies plc"
+    },
+    {
+        "Symbol": "TDG",
+        "Security": "TransDigm Group Incorporated"
     },
     {
         "Symbol": "TRMB",
@@ -1813,31 +1809,31 @@
     },
     {
         "Symbol": "TFC",
-        "Security": "Truist Financial"
+        "Security": "Truist Financial Corporation"
     },
     {
         "Symbol": "TYL",
-        "Security": "Tyler Technologies"
+        "Security": "Tyler Technologies, Inc."
     },
     {
         "Symbol": "TSN",
-        "Security": "Tyson Foods"
+        "Security": "Tyson Foods, Inc."
     },
     {
         "Symbol": "USB",
         "Security": "U.S. Bancorp"
     },
     {
-        "Symbol": "UBER",
-        "Security": "Uber"
-    },
-    {
         "Symbol": "UDR",
         "Security": "UDR, Inc."
     },
     {
+        "Symbol": "UBER",
+        "Security": "Uber Technologies, Inc."
+    },
+    {
         "Symbol": "ULTA",
-        "Security": "Ulta Beauty"
+        "Security": "Ulta Beauty, Inc."
     },
     {
         "Symbol": "UNP",
@@ -1845,59 +1841,59 @@
     },
     {
         "Symbol": "UAL",
-        "Security": "United Airlines Holdings"
+        "Security": "United Airlines Holdings, Inc."
     },
     {
         "Symbol": "UPS",
-        "Security": "United Parcel Service"
+        "Security": "United Parcel Service, Inc."
     },
     {
         "Symbol": "URI",
-        "Security": "United Rentals"
+        "Security": "United Rentals, Inc."
     },
     {
         "Symbol": "UNH",
-        "Security": "UnitedHealth Group"
+        "Security": "UnitedHealth Group Incorporated"
     },
     {
         "Symbol": "UHS",
-        "Security": "Universal Health Services"
-    },
-    {
-        "Symbol": "VLO",
-        "Security": "Valero Energy"
-    },
-    {
-        "Symbol": "VTR",
-        "Security": "Ventas"
-    },
-    {
-        "Symbol": "VLTO",
-        "Security": "Veralto"
-    },
-    {
-        "Symbol": "VRSN",
-        "Security": "Verisign"
-    },
-    {
-        "Symbol": "VRSK",
-        "Security": "Verisk Analytics"
-    },
-    {
-        "Symbol": "VZ",
-        "Security": "Verizon"
-    },
-    {
-        "Symbol": "VRTX",
-        "Security": "Vertex Pharmaceuticals"
-    },
-    {
-        "Symbol": "VTRS",
-        "Security": "Viatris"
+        "Security": "Universal Health Services, Inc."
     },
     {
         "Symbol": "VICI",
-        "Security": "Vici Properties"
+        "Security": "VICI Properties Inc."
+    },
+    {
+        "Symbol": "VLO",
+        "Security": "Valero Energy Corporation"
+    },
+    {
+        "Symbol": "VTR",
+        "Security": "Ventas, Inc."
+    },
+    {
+        "Symbol": "VLTO",
+        "Security": "Veralto Corporation"
+    },
+    {
+        "Symbol": "VRSN",
+        "Security": "VeriSign, Inc."
+    },
+    {
+        "Symbol": "VRSK",
+        "Security": "Verisk Analytics, Inc."
+    },
+    {
+        "Symbol": "VZ",
+        "Security": "Verizon Communications Inc."
+    },
+    {
+        "Symbol": "VRTX",
+        "Security": "Vertex Pharmaceuticals Incorporated"
+    },
+    {
+        "Symbol": "VTRS",
+        "Security": "Viatris Inc."
     },
     {
         "Symbol": "V",
@@ -1917,67 +1913,63 @@
     },
     {
         "Symbol": "GWW",
-        "Security": "W. W. Grainger"
+        "Security": "W.W. Grainger, Inc."
     },
     {
-        "Symbol": "WAB",
-        "Security": "Wabtec"
+        "Symbol": "WEC",
+        "Security": "WEC Energy Group, Inc."
+    },
+    {
+        "Symbol": "WBA",
+        "Security": "Walgreens Boots Alliance, Inc."
     },
     {
         "Symbol": "WMT",
-        "Security": "Walmart"
-    },
-    {
-        "Symbol": "DIS",
-        "Security": "Walt Disney Company (The)"
+        "Security": "Walmart Inc."
     },
     {
         "Symbol": "WBD",
-        "Security": "Warner Bros. Discovery"
+        "Security": "Warner Bros. Discovery, Inc."
     },
     {
         "Symbol": "WM",
-        "Security": "Waste Management"
+        "Security": "Waste Management, Inc."
     },
     {
         "Symbol": "WAT",
         "Security": "Waters Corporation"
     },
     {
-        "Symbol": "WEC",
-        "Security": "WEC Energy Group"
-    },
-    {
         "Symbol": "WFC",
-        "Security": "Wells Fargo"
+        "Security": "Wells Fargo & Company"
     },
     {
         "Symbol": "WELL",
-        "Security": "Welltower"
+        "Security": "Welltower Inc."
     },
     {
         "Symbol": "WST",
-        "Security": "West Pharmaceutical Services"
+        "Security": "West Pharmaceutical Services, Inc."
     },
     {
         "Symbol": "WDC",
-        "Security": "Western Digital"
+        "Security": "Western Digital Corporation"
+    },
+    {
+        "Symbol": "WAB",
+        "Security": "Westinghouse Air Brake Technologies Corporation"
     },
     {
         "Symbol": "WY",
-        "Security": "Weyerhaeuser"
+        "Security": "Weyerhaeuser Company"
     },
     {
         "Symbol": "WSM",
         "Security": "Williams-Sonoma, Inc."
     },
     {
-        "Symbol": "WMB",
-        "Security": "Williams Companies"
-    },
-    {
         "Symbol": "WTW",
-        "Security": "Willis Towers Watson"
+        "Security": "Willis Towers Watson Public Limited Company"
     },
     {
         "Symbol": "WDAY",
@@ -1985,11 +1977,11 @@
     },
     {
         "Symbol": "WYNN",
-        "Security": "Wynn Resorts"
+        "Security": "Wynn Resorts, Limited"
     },
     {
         "Symbol": "XEL",
-        "Security": "Xcel Energy"
+        "Security": "Xcel Energy Inc."
     },
     {
         "Symbol": "XYL",
@@ -1997,18 +1989,26 @@
     },
     {
         "Symbol": "YUM",
-        "Security": "Yum! Brands"
+        "Security": "Yum! Brands, Inc."
     },
     {
         "Symbol": "ZBRA",
-        "Security": "Zebra Technologies"
+        "Security": "Zebra Technologies Corporation"
     },
     {
         "Symbol": "ZBH",
-        "Security": "Zimmer Biomet"
+        "Security": "Zimmer Biomet Holdings, Inc."
     },
     {
         "Symbol": "ZTS",
-        "Security": "Zoetis"
+        "Security": "Zoetis Inc."
+    },
+    {
+        "Symbol": "EBAY",
+        "Security": "eBay Inc."
+    },
+    {
+        "Symbol": "LULU",
+        "Security": "lululemon athletica inc."
     }
 ]

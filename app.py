@@ -1,5 +1,5 @@
 import streamlit as st
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 import time
 import datetime
 import json
@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import difflib
-# import db_handler # Deprecated
+# MongoDB Handler
 from mongo_handler import MongoHandler
 
 # Initialize MongoDB Handler
