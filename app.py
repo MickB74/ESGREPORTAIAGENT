@@ -1501,7 +1501,7 @@ with tab_search:
         if data["reports"]:
             for idx, report in enumerate(data["reports"]):
                 # 2 Columns: Info, Save
-                r_col, r_save = st.columns([0.75, 0.25])
+                r_col, r_save = st.columns([0.7, 0.3])
                 
                 with r_col:
                     st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
@@ -1514,6 +1514,11 @@ with tab_search:
                 with r_save:
                     # Label Input
                     user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="Label (e.g. 2024 Report)", label_visibility="collapsed")
+                    
+                    # Symbol Input
+                    def_sym = data.get('symbol', '')
+                    user_symbol = st.text_input("Symbol", value=def_sym if def_sym else "", key=f"sym_{idx}", placeholder="Stock Symbol (Optional)", label_visibility="collapsed")
+                    
                     # Note Input
                     user_note = st.text_input("Note", value="", key=f"note_{idx}", placeholder="Note (Optional)", label_visibility="collapsed")
                     
@@ -1522,9 +1527,10 @@ with tab_search:
                         # Determine Label
                         final_label = user_label if user_label else report['title']
                         final_desc = user_note if user_note else report.get('body', '')
+                        final_sym = user_symbol
 
                         # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=data.get('symbol', ''))
+                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=final_sym)
                         
                         # 2. Save to CSV/DB
                         # Use search term as company name for better grouping
@@ -1536,7 +1542,7 @@ with tab_search:
                             url=report['href'],
                             label=final_label,
                             description=final_desc,
-                            symbol=data.get('symbol', '')
+                            symbol=final_sym
                         )
                         
                         
