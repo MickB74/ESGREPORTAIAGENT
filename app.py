@@ -1687,6 +1687,37 @@ with tab_db:
         )
         
         st.caption(f"Showing {len(links)} records from {db_handler.DB_FILE}")
-    else:
+
+    # --- Danger Zone ---
+    st.divider()
+    with st.expander("⚠️ Danger Zone", expanded=False):
+        st.warning("This will delete ALL data from the Verified Link Database. This action cannot be undone.")
+        
+        # Confirmation Logic
+        if "confirm_clear" not in st.session_state:
+            st.session_state.confirm_clear = False
+            
+        if st.button("🗑️ Clear Entire Database", type="primary", key="btn_clear_db"):
+            st.session_state.confirm_clear = True
+            
+        if st.session_state.confirm_clear:
+            st.error("🚨 Are you ABSOLUTELY sure? This deletes everything!")
+            col_y, col_n = st.columns(2)
+            with col_y:
+                if st.button("Yes, Delete Everything", type="primary", key="btn_confirm_delete"):
+                    success, msg = db_handler.clear_database()
+                    if success:
+                        st.success(msg)
+                        st.session_state.confirm_clear = False
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(msg)
+            with col_n:
+                if st.button("Cancel", key="btn_cancel_delete"):
+                    st.session_state.confirm_clear = False
+                    st.rerun()
+
+    if not links:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
 

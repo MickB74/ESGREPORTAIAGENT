@@ -205,5 +205,30 @@ def get_stats() -> Dict:
             "unique_companies": companies
         }
         
-    except Exception as e:
         return {"total_links": 0, "unique_companies": 0, "error": str(e)}
+
+def clear_database() -> Tuple[bool, str]:
+    """
+    Delete ALL records from the links table.
+    
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    try:
+        if not os.path.exists(DB_FILE):
+             return True, "Database already empty."
+             
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM links")
+        deleted_count = cursor.rowcount
+        
+        # Optional: Reset ID sequence? 
+        # cursor.execute("DELETE FROM sqlite_sequence WHERE name='links'")
+        
+        conn.commit()
+        conn.close()
+        return True, f"Database cleared. Removed {deleted_count} records."
+    except Exception as e:
+        return False, f"Database Error: {e}"
