@@ -1836,8 +1836,11 @@ with tab_data:
     st.divider()
     
     # --- DISPLAY TABLE ---
-    if companies_data:
-        df_co = pd.DataFrame(companies_data)
+    # Fetch fresh data from MongoDB (don't rely on cached module variable)
+    current_companies = mongo_db.get_all_companies()
+    
+    if current_companies:
+        df_co = pd.DataFrame(current_companies)
         
         # Filter Logic
         filter_q = st.text_input("🔎 Search Companies", placeholder="Type symbol or name...", key="dm_filter_mongo")
