@@ -440,29 +440,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 except Exception as e:
                     log(f"Map lookup error: {e}")
 
-        # --- [MOVED] Check Google Sheets Database ---
-        if resolved_name:
-            st.markdown("---")
-            res_col1, res_col2 = st.columns([0.8, 0.2])
-            with res_col1:
-                st.subheader(f"Results for: {resolved_name}")
-            
-            # Load from CSV
-            try:
-                # Use resolved_name which is now defined
-                saved_csv_links, csv_error = db_handler.get_links_by_company(resolved_name)
-                
-                if csv_error: 
-                    st.warning(f"CSV Error: {csv_error}")
-                    
-                if saved_csv_links:
-                    with st.expander(f"📂 Saved Verified Links ({len(saved_csv_links)})", expanded=True):
-                        for i, row in enumerate(saved_csv_links):
-                            display_text = row.get('Label') if row.get('Label') else row.get('Title')
-                            st.markdown(f"**{i+1}. [{display_text}]({row['URL']})**")
-                            st.caption(f"📅 Saved: {row.get('Timestamp')} | 🏷️ {row.get('Title')}")
-            except Exception as e:
-                print(f"CSV error: {e}")
+        # [MOVED] Saved links display logic moved to main UI loop
 
         # --- 1. Official Domain Identification ---
         domain_query = f"{company_name} official corporate website"
@@ -1414,6 +1392,21 @@ with tab_search:
                      if st.button("Cancel", key="cancel_hub_top"):
                          st.session_state.show_hub_editor_top = False
                          st.rerun()
+
+        # --- Saved Bookmarks (Manual) ---
+        # Display these BELOW the verified hub as requested
+        try:
+            bk_company = data.get("company", st.session_state.current_company)
+            saved_bks, bk_err = db_handler.get_links_by_company(bk_company)
+            if saved_bks:
+                st.markdown("---")
+                st.caption("🔖 **Your Bookmarked Links:**")
+                for i, row in enumerate(saved_bks):
+                    lbl = row.get('Label') or row.get('Title') or "Link"
+                    st.markdown(f"- [{lbl}]({row['URL']})  `{row.get('Timestamp', '')[:10]}`")
+        except Exception as e:
+            print(f"Bookmark error: {e}")
+
 
 
         
