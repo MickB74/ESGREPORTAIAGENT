@@ -1330,6 +1330,20 @@ def get_symbol_from_map(company_name):
 
 # --- TABS LAYOUT ---
 # --- TABS LAYOUT ---
+# --- SIDEBAR STATUS ---
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/000000/leaf.png", width=60)
+    st.title("ESG Agent 🌿")
+    st.markdown("---")
+    
+    # DB Status
+    if "mongo" in st.session_state and st.session_state.mongo.client:
+        st.success("🟢 **Cloud DB Online**")
+    else:
+        st.error("🔴 **Cloud DB Offline**")
+    st.markdown("---")
+
+# --- TABS LAYOUT ---
 tab_intro, tab_search, tab_saved, tab_db, tab_data = st.tabs(["🏠 Introduction", "🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database", "⚙️ Data Manager"])
 
 # ====================
