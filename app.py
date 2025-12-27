@@ -423,23 +423,22 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 try:
                     with open("company_map.json", "r") as f:
                         cmap = json.load(f)
-                
-                # 1. Exact Match
-                if company_name.lower() in cmap:
-                    known_url = cmap[company_name.lower()]
-                    resolved_name = company_name
-                    log(f"Found known sustainability hub (exact): {known_url}")
-                else:
-                    # 2. Fuzzy Match (Handle typos like 'appel' -> 'apple')
-                    # Lowered cutoff to 0.6 to catch 'appel' -> 'apple' (ratio is 0.8 but better safe)
-                    matches = difflib.get_close_matches(company_name.lower(), cmap.keys(), n=1, cutoff=0.6)
-                    if matches:
-                        resolved_name = matches[0]
-                        known_url = cmap[resolved_name]
-                        log(f"Found known sustainability hub (fuzzy '{resolved_name}'): {known_url}")
-                        
-            except Exception as e:
-                 log(f"Map lookup error: {e}")
+                    
+                    # 1. Exact Match
+                    if company_name.lower() in cmap:
+                        known_url = cmap[company_name.lower()]
+                        resolved_name = company_name
+                        log(f"Found known sustainability hub (exact): {known_url}")
+                    else:
+                        # 2. Fuzzy Match
+                        matches = difflib.get_close_matches(company_name.lower(), cmap.keys(), n=1, cutoff=0.6)
+                        if matches:
+                            resolved_name = matches[0]
+                            known_url = cmap[resolved_name]
+                            log(f"Found known sustainability hub (fuzzy '{resolved_name}'): {known_url}")
+                            
+                except Exception as e:
+                     log(f"Map lookup error: {e}")
 
         # --- [MOVED] Check Google Sheets Database ---
         if resolved_name:
