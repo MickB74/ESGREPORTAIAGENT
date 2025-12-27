@@ -1464,52 +1464,55 @@ with tab_search:
         
         st.subheader("📄 Recent ESG Reports")
         web = data.get("website")
-        if web:
-            # Hub Display & Edit Logic
-            col_web, col_edit = st.columns([0.85, 0.15])
-            with col_web:
+        web = data.get("website")
+        
+        # --- Verified Hub Section (Always Visible) ---
+        col_web, col_edit = st.columns([0.85, 0.15])
+        with col_web:
+             if web:
                  st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
-                 st.caption(web.get('body', ''))
-            with col_edit:
-                 if st.button("✏️ Edit", key="edit_verified_hub", help="Correct this link if it's wrong"):
-                     st.session_state.show_hub_editor = True
-            
-            # Editor
-            if st.session_state.get("show_hub_editor"):
-                with st.expander("Correct Verified Site URL", expanded=True):
-                    new_hub_url = st.text_input("Correct URL:", value=web['href'])
-                    
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("💾 Save Correction", type="primary"):
-                            if new_hub_url:
-                                success, msg = db_handler.save_company_hub(st.session_state.current_company, new_hub_url)
-                                if success:
-                                    st.success("✅ Hub Updated! Re-running search...")
-                                    st.session_state.show_hub_editor = False
-                                    time.sleep(1)
-                                    # Trigger re-search? actually st.rerun() will re-render, but data is already loaded.
-                                    # We need to FORCE a reload of data?
-                                    # search_esg_info is called in the main loop if company selected.
-                                    # We should probably clear local generic data?
-                                    # st.rerun() is simple enough, user might need to click search again?
-                                    # Let's simple st.rerun() and let the info box say "Updated". 
-                                    # Actually better to clear esg_data so it fetches fresh?
-                                    # st.session_state.pop('esg_data', None)
-                                    # st.rerun()
-                                    st.rerun()
-                                else:
-                                    st.error(msg)
-                    with c2:
-                         if st.button("Cancel", key="cancel_hub_edit"):
-                             st.session_state.show_hub_editor = False
-                             st.rerun()
-            
-            # Display screenshot if available
-            import os
-            if data.get('screenshot') and os.path.exists(data['screenshot']):
-                st.markdown("**📸 Page Preview:**")
-                st.image(data['screenshot'], use_column_width=True)
+                 if web.get('body'): st.caption(web['body'])
+             else:
+                 st.warning("⚠️ No Verified ESG Hub found for this company.")
+                 
+        with col_edit:
+             btn_label = "✏️ Edit" if web else "➕ Add"
+             if st.button(btn_label, key="edit_verified_hub", help="Set or Correct the Verified Hub URL"):
+                 st.session_state.show_hub_editor = True
+        
+        # Editor (Shared)
+        if st.session_state.get("show_hub_editor"):
+            with st.expander("Configure Verified Site URL", expanded=True):
+                st.info("Provide the correct direct URL to the company's ESG/Sustainability Hub or Reports page. This will be used for all future searches.")
+                current_val = web['href'] if web else ""
+                new_hub_url = st.text_input("Correct URL:", value=current_val, placeholder="https://www.company.com/sustainability")
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("💾 Save & Re-Scan", type="primary"):
+                        if new_hub_url:
+                            # Save to Company Hubs DB
+                            c_name = st.session_state.get("current_company", data.get("company", "Unknown"))
+                            success, msg = db_handler.save_company_hub(c_name, new_hub_url)
+                            if success:
+                                st.success("✅ Hub Updated! Re-running search...")
+                                st.session_state.show_hub_editor = False
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+                        else:
+                            st.warning("Please enter a URL")
+                with c2:
+                     if st.button("Cancel", key="cancel_hub_edit"):
+                         st.session_state.show_hub_editor = False
+                         st.rerun()
+        
+        # Screenshot
+        import os
+        if web and data.get('screenshot') and os.path.exists(data['screenshot']):
+            st.markdown("**📸 Page Preview:**")
+            st.image(data['screenshot'], use_column_width=True)
 
         
         if data["reports"]:
