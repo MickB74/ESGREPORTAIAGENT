@@ -95,9 +95,55 @@ with open(CSV_FILE, 'r', encoding='utf-8', errors='replace') as f:
              
         count += 1
 
+
 # Save to json within the app structure
 with open(OUTPUT_FILE, "w") as f:
     json.dump(company_map, f, indent=2)
 
 print(f"Successfully processed {count} rows.")
 print(f"Created {OUTPUT_FILE} with {len(company_map)} keys (tickers, full names, clean names).")
+
+
+# --- GENERATE sp500_companies.json FOR DROPDOWN ---
+SP500_OUTPUT = "sp500_companies.json"
+
+sp500_list = []
+seen_tickers = set()
+
+# Re-read or just use built-up data? We need original rows for Security/Symbol
+# Let's read the CSV again cleanly for this purpose to be safe and clear.
+with open(CSV_FILE, 'r', encoding='utf-8', errors='replace') as f:
+    reader = csv.reader(f)
+    try:
+        next(reader) # Skip Header
+    except:
+        pass
+        
+    for row in reader:
+        if len(row) < 6: continue
+        
+        # CSV Structure:
+        # 0: Long Symbol
+        # 1: Short Ticker (NVDA)
+        # 2: CAPS NAME
+        # 3: Description
+        # 4: Company Name (NVIDIA Corporation)
+        # 5: Website
+        
+        ticker = row[1].strip()
+        name = row[4].strip()
+        
+        if ticker and name and ticker not in seen_tickers:
+            sp500_list.append({
+                "Symbol": ticker,
+                "Security": name
+            })
+            seen_tickers.add(ticker)
+
+# Sort by Security Name
+sp500_list.sort(key=lambda x: x['Security'])
+
+with open(SP500_OUTPUT, "w") as f:
+    json.dump(sp500_list, f, indent=4)
+
+print(f"Created {SP500_OUTPUT} with {len(sp500_list)} entries for dropdown.")

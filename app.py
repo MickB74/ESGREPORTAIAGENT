@@ -1904,17 +1904,67 @@ with tab_data:
             except UnicodeDecodeError:
                 df_csv = pd.read_csv(csv_file, encoding='latin1')
             
+            # Filter Logic
+            filter_query = st.text_input("🔎 Filter by Company or Symbol", placeholder="Type to search...", key="dm_filter")
+            
+            if filter_query:
+                # Case-insensitive search
+                mask = df_csv.apply(lambda row: row.astype(str).str.contains(filter_query, case=False).any(), axis=1)
+                df_display = df_csv[mask]
+            else:
+                df_display = df_csv
+
             # Editor
-            st.caption(f"Editing: `{csv_file}`")
-            edited_df = st.data_editor(df_csv, num_rows="dynamic", use_container_width=True, key="data_editor_csv")
+            st.caption(f"Editing: `{csv_file}` (Showing {len(df_display)} / {len(df_csv)} rows)")
+            
+            # Helper to make columns wider
+            edited_df = st.data_editor(
+                df_display, 
+                num_rows="dynamic", 
+                use_container_width=True, 
+                key="data_editor_csv"
+            )
             
             col_save, col_cancel = st.columns([0.3, 0.7])
             
             with col_save:
                 # Save Button
                 if st.button("💾 Save Changes & Rebuild Map", type="primary", use_container_width=True):
+                    # MERGE LOGIC: Update original DF with edited rows (match by Index)
+                    # Note: st.data_editor returns the dataframe with the original index if not reset.
+                    # We can use .update() or combine_first(). 
+                    
+                    # 1. Update existing rows
+                    df_csv.update(edited_df)
+                    
+                    # 2. Handle New Rows (added in filtered view)
+                    # New rows in st.data_editor usually have a new index. 
+                    # We need to find rows in edited_df that represent NEW additions.
+                    # If the user ADDS a row in a filtered view, it might be tricky.
+                    # Simple approach: If filter is ACTIVE, warn about adding rows? 
+                    # Streamlit's data_editor with dynamic rows handles this by appending.
+                    # Let's try to append rows that are in edited_df but not in df_csv's original index?
+                    # Actually, .update() only updates overlapping indices.
+                    
+                    # Better Strategy:
+                    # If filter is empty, simpler.
+                    if not filter_query:
+                        final_df = edited_df
+                    else:
+                        # If filtered, we must be careful.
+                        # It is safer to overwrite the modified rows in the original DF.
+                        # Using the index is key.
+                        final_df = df_csv.copy()
+                        final_df.update(edited_df)
+                        
+                        # Check for added rows (indices not in original)
+                        new_indices = edited_df.index.difference(df_csv.index)
+                        if not new_indices.empty:
+                            new_rows = edited_df.loc[new_indices]
+                            final_df = pd.concat([final_df, new_rows])
+
                     # Save to CSV
-                    edited_df.to_csv(csv_file, index=False)
+                    final_df.to_csv(csv_file, index=False)
                     st.toast("✅ CSV Saved!")
                     
                     # Auto-Rebuild Map
@@ -1925,6 +1975,8 @@ with tab_data:
                         res = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
                         if res.returncode == 0:
                             st.success("✅ Map Rebuilt and Active!")
+                            # FORCE DROPDOWN RELOAD
+                            st.cache_data.clear()
                             time.sleep(1)
                             st.rerun()
                         else:
