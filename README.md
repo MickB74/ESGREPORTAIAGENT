@@ -1,17 +1,30 @@
 # ESG Report Finder Agent 🌿
 
-A Streamlit-powered AI agent designed to help users quickly find, view, and save ESG (Environmental, Social, and Governance) resources for companies.
+A powerful, agentic AI tool designed to streamline the discovery, management, and analysis of corporate ESG (Environmental, Social, and Governance) resources.
 
-## Features
+## 🌟 Features
 
-- **Smart Search**: Uses DuckDuckGo Search to find:
-    - 🌐 **Investor Relations / ESG Websites**: Direct links to sustainability portals.
-    - 📄 **ESG Reports**: The two most recent PDF sustainability reports.
-    - 📋 **CDP Submissions**: Recent Climate Change questionnaires and responses.
-- **Save Links**: Easily save important findings to a persistent sidebar list for quick access later.
-- **Clean UI**: Simple, user-friendly interface built with Streamlit.
+### 1. 🔍 Search & Analyze
+- **Intelligent Discovery**: Uses a multi-stage search strategy (Direct Map -> Google/DDG Search -> Official Site Crawl) to find the most accurate resources.
+- **Auto-Detection**: Identifying official Investor Relations pages, Sustainability Hubs, and the latest PDF Reports (2024/2023).
+- **Smart Auto-fill**: Automatically detects stock symbols and matches "Disney" to "The Walt Disney Company".
 
-## Installation
+### 2. 🔖 My Saved Links
+- **Personalized Bookmarks**: Save important reports and hubs to a persistent list.
+- **Editable Metadata**: Edit the title, symbol, and add notes to your saved links before finalizing them.
+
+### 3. 📂 Verified Database
+- **S&P 500 Index**: Access a verified database of ~500 customized ESG website links.
+- **Quick Jump**: One-click access to the official sustainability pages of major US corporations.
+- **Map Rebuild**: Capability to regenerate the internal lookup map from the source CSV.
+
+### 4. ⚙️ Data Manager (New!)
+- **Direct CSV Editing**: View and modify the source `SP500ESGWebsites.csv` file directly within the app.
+- **Filtering & Sorting**: Instantly filter by Company Name or Ticker (ignoring descriptions to reduce noise) and sort alphabetically.
+- **➕ Add New Company**: A dedicated form to easily add new companies. It automatically handles data formatting (e.g., generating the 'Long Symbol' and 'CAPS NAME').
+- **Robust Persistence**: Advanced saving logic ensures edits, deletions, and additions are saved correctly, even when treating filtered views.
+
+## 🛠️ Installation
 
 1.  **Clone the repository**:
     ```bash
@@ -20,37 +33,37 @@ A Streamlit-powered AI agent designed to help users quickly find, view, and save
     ```
 
 2.  **Install dependencies**:
-    Ensure you have Python installed, then run:
     ```bash
     pip install -r requirements.txt
     ```
 
-## Usage
+## 🚀 Usage
 
 1.  **Run the application**:
     ```bash
     streamlit run app.py
     ```
 
-2.  **Search**:
-    - Enter a company name (e.g., "Apple", "Tesla") in the text box.
-    - Click **Find Reports**.
+2.  **Workflow**:
+    - **Search**: Enter a company name in Tab 1.
+    - **Verify**: Check individual reports.
+    - **Manage Data**: Go to Tab 4 ("Data Manager") to fix missing or incorrect URLs in the master database.
 
-3.  **Explore & Save**:
-    - View the search results in the structured layout.
-    - Click the **Save** button next to any resource to add it to your "Saved Links" sidebar.
-    - You can also manually add links in the sidebar.
+## 📁 Project Structure
 
-## Project Structure
+- `app.py`: The main Streamlit application powered by Python.
+- `SP500ESGWebsites.csv`: The **Master Source of Truth** for company data (Ticker, Name, Website).
+- `scripts/build_company_map.py`: Helper script that compiles the CSV into JSON maps for fast lookups.
+- `company_map.json`: Generated lookup file for the search engine.
+- `sp500_companies.json`: Generated list for the UI dropdowns.
+- `saved_links.json`: Your personal list of bookmarked resources.
 
-- `app.py`: Main application logic and UI.
-- `requirements.txt`: Python dependencies.
-- `saved_links.json`: JSON file where your saved links are stored (created automatically upon first save).
+## 📦 Dependencies
 
-## Dependencies
-
-- [Streamlit](https://streamlit.io/)
-- [duckduckgo-search](https://pypi.org/project/duckduckgo-search/)
+- **Streamlit**: For the interactive web interface.
+- **Pandas**: For robust data manipulation and CSV handling.
+- **DuckDuckGo Search**: For anonymous, real-time web searching.
+- **BeautifulSoup4**: For parsing HTML and extracting context.
 
 ---
 *Built with ❤️ for easier ESG research.*
