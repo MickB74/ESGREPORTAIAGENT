@@ -1103,8 +1103,19 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                          # It found something!
                          found_links = scrape_results[company_name]
                          
-                         # Iterate through all found links
+                         # Deduplicate and Limit
+                         seen_urls = set(r['href'] for r in results["reports"])
+                         count_added = 0
+                         
+                         # Filter out obvious duplicates and limit count
+                         unique_found = []
                          for link in found_links:
+                             if link['url'] not in seen_urls:
+                                 unique_found.append(link)
+                                 seen_urls.add(link['url'])
+                         
+                         # Iterate through unique found links (limited to top 20)
+                         for link in unique_found[:20]:
                              pw_report = {
                                  "title": link['text'],
                                  "href": link['url'],
@@ -1113,6 +1124,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                              }
                              results["reports"].append(pw_report)
                              log(f"Playwright found report: {pw_report['title']}")
+                             
+                         log(f"Deep Scan: Added {len(unique_found[:20])} unique reports (filtered from {len(found_links)})")
                          
                 except Exception as e:
                     log(f"Playwright Scan Error: {e}")
