@@ -1948,41 +1948,35 @@ with tab_data:
             with col_save:
                 # Save Button
                 if st.button("💾 Save Changes & Rebuild Map", type="primary", use_container_width=True):
-                    # MERGE LOGIC: Update original DF with edited rows (match by Index)
-                    # Note: st.data_editor returns the dataframe with the original index if not reset.
-                    # We can use .update() or combine_first(). 
+                    # ROBUST CRUD LOGIC
+                    # 1. Identify indices
+                    original_indices = set(df_display.index)
+                    current_indices = set(edited_df.index)
                     
-                    # 1. Update existing rows
-                    df_csv.update(edited_df)
+                    # 2. Handle Deletions: Indices in original but not in current
+                    deleted_indices = original_indices - current_indices
+                    if deleted_indices:
+                        st.toast(f"Deleting {len(deleted_indices)} rows...")
+                        df_csv = df_csv.drop(index=list(deleted_indices))
                     
-                    # 2. Handle New Rows (added in filtered view)
-                    # New rows in st.data_editor usually have a new index. 
-                    # We need to find rows in edited_df that represent NEW additions.
-                    # If the user ADDS a row in a filtered view, it might be tricky.
-                    # Simple approach: If filter is ACTIVE, warn about adding rows? 
-                    # Streamlit's data_editor with dynamic rows handles this by appending.
-                    # Let's try to append rows that are in edited_df but not in df_csv's original index?
-                    # Actually, .update() only updates overlapping indices.
-                    
-                    # Better Strategy:
-                    # If filter is empty, simpler.
-                    if not filter_query:
-                        final_df = edited_df
-                    else:
-                        # If filtered, we must be careful.
-                        # It is safer to overwrite the modified rows in the original DF.
-                        # Using the index is key.
-                        final_df = df_csv.copy()
-                        final_df.update(edited_df)
+                    # 3. Handle Updates: Indices common to both
+                    common_indices = original_indices.intersection(current_indices)
+                    if common_indices:
+                        df_csv.update(edited_df.loc[list(common_indices)])
                         
-                        # Check for added rows (indices not in original)
-                        new_indices = edited_df.index.difference(df_csv.index)
-                        if not new_indices.empty:
-                            new_rows = edited_df.loc[new_indices]
-                            final_df = pd.concat([final_df, new_rows])
-
+                    # 4. Handle Additions: Indices in current but not in original (New rows)
+                    # Streamlit adds new rows with a new index (usually RangeIndex specific to the view)
+                    # If we are in 'dynamic' mode, new rows might have indices that conflict or are new.
+                    # edited_df will contain the new rows.
+                    added_indices = current_indices - original_indices
+                    if added_indices:
+                        new_rows = edited_df.loc[list(added_indices)]
+                        st.toast(f"Adding {len(new_rows)} new rows...")
+                        # Append new rows to master DF (ignore index to let Pandas handle it)
+                        df_csv = pd.concat([df_csv, new_rows], ignore_index=True)
+                        
                     # Save to CSV
-                    final_df.to_csv(csv_file, index=False)
+                    df_csv.to_csv(csv_file, index=False)
                     st.toast("✅ CSV Saved!")
                     
                     # Auto-Rebuild Map
