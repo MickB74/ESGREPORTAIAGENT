@@ -19,10 +19,12 @@ class MongoHandler:
             uri = st.secrets["MONGO_URI"]
             # Connect with server selection timeout to fail fast if config is wrong
             # Use certifi for SSL certificate verification to prevent handshake errors
+            # Adding tlsAllowInvalidCertificates=True as a fallback for strict cloud environments
             self.client = MongoClient(
                 uri, 
                 serverSelectionTimeoutMS=5000,
-                tlsCAFile=certifi.where()
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=True
             )
             
             # Default database name (can be anything, e.g. 'esg_agent')
