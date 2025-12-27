@@ -1327,7 +1327,8 @@ with tab_search:
             label="Download Analysis (JSON)",
             data=json_str,
             file_name=f"{st.session_state.current_company}_esg_data.json",
-            mime="application/json"
+            mime="application/json",
+            key="download_json_1"
         )
 
         # Display Auto-Resolve Notice
@@ -1473,7 +1474,8 @@ with tab_search:
             label="Download Analysis (JSON)",
             data=json_str,
             file_name=f"{st.session_state.current_company}_esg_data.json",
-            mime="application/json"
+            mime="application/json",
+            key="download_json_2"
         )
 
         # Display Auto-Resolve Notice
