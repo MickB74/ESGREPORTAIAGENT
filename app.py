@@ -1327,12 +1327,10 @@ def get_symbol_from_map(company_name):
         return sym_map[matches[0]]
     return None
 
-# --- TABS LAYOUT ---
-# --- TABS LAYOUT ---
 # --- SIDEBAR STATUS ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/leaf.png", width=60)
-    st.title("ESG Agent 🌿")
+    st.title("ESG Agent v2.1 🌿")
     st.markdown("---")
     
     # DB Status
