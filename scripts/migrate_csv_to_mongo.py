@@ -20,19 +20,43 @@ def migrate():
     
     # Simpler: We'll make this script compatible with 'streamlit run' for easy execution with secrets
     
-    if "MONGO_URI" not in st.secrets:
-        st.error("❌ MONGO_URI not found in secrets.")
+def migrate():
+    print("🚀 Starting Migration: CSV -> MongoDB Atlas")
+    
+    # 1. Connect to Mongo
+    # Robust Secret Loading
+    uri = st.secrets.get("MONGO_URI")
+    if not uri and "mongo" in st.secrets:
+         uri = st.secrets["mongo"].get("uri")
+         
+    if not uri:
+        st.error("❌ MONGO_URI not found in secrets (checked 'MONGO_URI' and 'mongo.uri').")
         return
 
-    mongo = MongoHandler()
-    if not mongo.client:
-        st.error("❌ Could not connect to MongoDB.")
+    # Initialize Handler with global st.mongo if available or new
+    # We can't easily inject the URI into MongoHandler if it expects st.secrets["MONGO_URI"] hardcoded.
+    # So we must ensure st.secrets has it, or we instantiate pymongo manually here.
+    # Manual is safer for a script.
+    
+    try:
+        import pymongo
+        import certifi
+        client = pymongo.MongoClient(uri, tlsCAFile=certifi.where(), tlsAllowInvalidCertificates=True)
+        # Verify connection
+        client.admin.command('ping')
+        print("✅ Connected to MongoDB.")
+        
+        # Get DB (default from URI or specific)
+        db = client.get_default_database()
+        
+    except Exception as e:
+        st.error(f"❌ Could not connect to MongoDB: {e}")
         return
 
     # 2. Read CSV
     csv_file = "SP500ESGWebsites.csv"
     if not os.path.exists(csv_file):
-        st.error(f"❌ '{csv_file}' not found.")
+        st.error(f"❌ '{csv_file}' not found in {os.getcwd()}.")
         return
         
     try:
@@ -40,13 +64,10 @@ def migrate():
     except:
         df = pd.read_csv(csv_file, encoding='latin1', on_bad_lines='skip')
         
+    st.info(f"📄 Read {len(df)} rows from CSV.")
     print(f"📄 Read {len(df)} rows from CSV.")
     
     # 3. Transform
-    # Clean up column names usually found in this file
-    # Typical: Symbol, Symbol.1 (duplicate), Name, Company Description, Company Name, Website
-    # We want standard keys: Symbol, Security, Name, Description, Website
-    
     records = []
     for _, row in df.iterrows():
         # Heuristic for columns
@@ -59,22 +80,41 @@ def migrate():
         # Ensure we have a valid record
         rec = {
             "Symbol": str(symbol).strip().upper(),
-            "Security": str(name).strip(),
+            "Security": str(security).strip(),
             "Company Name": str(name).strip(),
             "Company Description": str(row.get('Company Description', '')),
             "Website": str(row.get('Website', ''))
         }
         records.append(rec)
         
-    # 4. Push to Mongo
-    success, msg = mongo.bulk_write_companies(records)
+    # 4. Push to Mongo (Directly using pymongo to avoid handler dependency/complexity)
+    try:
+        col = db["companies"]
+        # Clear old
+        col.delete_many({})
+        # Insert
+        if records:
+            col.insert_many(records)
+            msg = f"Inserted {len(records)} companies."
+            success = True
+        else:
+            msg = "No records to insert."
+            success = False
+            
+    except Exception as e:
+        success = False
+        msg = str(e)
     
     if success:
         st.success(f"✅ Migration Complete! {msg}")
         print(f"✅ Migration Complete! {msg}")
+        with open("migration.log", "w") as f:
+            f.write(f"SUCCESS: {msg}")
     else:
         st.error(f"❌ Migration Failed: {msg}")
         print(f"❌ Migration Failed: {msg}")
+        with open("migration.log", "w") as f:
+            f.write(f"FAILURE: {msg}")
 
 if __name__ == "__main__":
     migrate()
