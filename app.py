@@ -1417,7 +1417,7 @@ with tab_search:
                          new_data['description'] = data.get('description') # Preserve description
                          new_data['screenshot'] = screenshot_path  # Add screenshot path (always None for now)
 
-                          
+                         
                          # Merge with existing reports if we had some? 
                          # Actually search_esg_info returns a fresh list. 
                          # If we want to KEEP existing reports that were NOT found in deep scan (e.g. from Google),
@@ -1427,6 +1427,11 @@ with tab_search:
                          
                          st.session_state.esg_data = new_data
                          st.rerun()
+                     
+                     except Exception as e:
+                         st.error(f"Deep scan failed: {e}")
+                         import traceback
+                         st.code(traceback.format_exc())
 
 
 
