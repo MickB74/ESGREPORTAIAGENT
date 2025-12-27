@@ -1298,37 +1298,7 @@ def update_input_from_select():
             st.session_state.company_input = name
             st.session_state.company_symbol = sym
 
-st.markdown("### 🏢 Company Selection")
-
-# Dropdown with search
-selected_display = st.selectbox(
-    "Choose a company:",
-    options=companies_options,
-    index=None,
-    placeholder="Type to search companies...",
-    key='company_select_dropdown'
-)
-
-# Extract company name from "Company Name (TICKER)" format
-if selected_display:
-    company_name_from_dropdown = selected_display.split(" (")[0]
-    st.session_state.company_input = company_name_from_dropdown
-else:
-    st.session_state.company_input = ""
-
-# Optional: Manual input override
-with st.expander("✏️ Or search for any company not in the database"):
-    custom_company = st.text_input("Company Name", 
-                                    value=st.session_state.company_input,
-                                    placeholder="e.g., Tesla, SpaceX, Stripe",
-                                    key='custom_company_input')
-    if st.button("Use This Name", key='use_custom'):
-        st.session_state.company_input = custom_company
-        st.rerun()
-
-# Show current selection
-if st.session_state.company_input:
-    st.info(f"**Selected Company:** {st.session_state.company_input}")
+# Company selection UI is now only in the Search & Analyze tab
 # --- Shared Helpers & Data ---
 # Prepare Symbol Map for Auto-fill (Global Scope for both tabs)
 sym_map = {}
@@ -1844,6 +1814,7 @@ with tab_data:
             new_ticker = c1.text_input("Ticker Symbol", placeholder="e.g. TSLA", max_chars=10).strip().upper()
             new_name = c2.text_input("Company Name", placeholder="e.g. Tesla Inc.").strip()
             new_website = st.text_input("Website URL", placeholder="e.g. https://www.tesla.com/impact")
+            new_description = st.text_area("Company Description", placeholder="e.g. Tesla is a diversified technology company. The Company is a manufacturer and seller of electric vehicles...", height=100)
             
             submitted = st.form_submit_button("Save to MongoDB")
             
@@ -1855,7 +1826,8 @@ with tab_data:
                         "Symbol": new_ticker,
                         "Security": new_name,
                         "Company Name": new_name,
-                        "Website": new_website
+                        "Website": new_website,
+                        "Company Description": new_description
                     })
                     if success:
                         st.success("✅ Added! Refreshing...")
@@ -1880,13 +1852,47 @@ with tab_data:
             df_display = df_co[mask]
         else:
             df_display = df_co
-            
-        st.dataframe(
-            df_display, 
+        
+        st.caption(f"Showing {len(df_display)} of {len(df_co)} companies. **Click cells to edit.**")
+        
+        # Editable table
+        edited_df = st.data_editor(
+            df_display,
             use_container_width=True,
-            hide_index=True 
+            hide_index=True,
+            num_rows="dynamic",  # Allow adding/deleting rows
+            key="company_editor"
         )
-        st.caption(f"Showing {len(df_display)} companies.")
+        
+        # Save changes button
+        col1, col2, col3 = st.columns([1, 1, 2])
+        with col1:
+            if st.button("💾 Save Changes", type="primary"):
+                with st.spinner("Saving..."):
+                    # Check for deleted rows
+                    deleted_symbols = set(df_display['Symbol']) - set(edited_df['Symbol'])
+                    
+                    # Update each modified/new row
+                    for _, row in edited_df.iterrows():
+                        company_dict = row.to_dict()
+                        success, msg = mongo_db.save_company(company_dict)
+                        if not success:
+                            st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
+                    
+                    # Delete removed rows
+                    if deleted_symbols:
+                        for symbol in deleted_symbols:
+                            # Note: Need to add delete_company method to mongo_handler
+                            st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
+                    
+                    st.success(f"✅ Saved changes!")
+                    time.sleep(0.5)
+                    st.rerun()
+        
+        with col2:
+            if st.button("🔄 Refresh"):
+                st.rerun()
+                
     else:
         st.warning("⚠️ No companies found in MongoDB.")
         if st.button("🚀 Run Initial Migration (CSV -> Mongo)"):
