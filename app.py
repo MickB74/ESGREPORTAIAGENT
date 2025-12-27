@@ -1860,6 +1860,7 @@ with tab_data:
                  success, msg = mongo_db.migrate_companies_from_csv()
                  if success:
                      st.success(f"✅ {msg}")
+                     st.cache_data.clear()  # Clear cached companies_data
                      time.sleep(1)
                      st.rerun()
                  else:
