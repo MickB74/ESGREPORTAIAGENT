@@ -1617,9 +1617,24 @@ with st.sidebar:
     saved_links = st.session_state['saved_links']
     if saved_links:
         for i, link in enumerate(saved_links):
-            col_link, col_del = st.columns([0.8, 0.2])
+            col_link, col_csv, col_del = st.columns([0.6, 0.2, 0.2])
             with col_link:
                 st.markdown(f"[{link['title']}]({link['href']})")
+            
+            with col_csv:
+                if st.button("💾", key=f"csv_{i}", help="Push to CSV"):
+                    success, msg = csv_handler.save_link(
+                        company="Sidebar/Manual",
+                        title=link['title'],
+                        url=link['href'],
+                        label=link['title'],
+                        description=link.get('description', '')
+                    )
+                    if success:
+                        st.toast(f"✅ Saved to CSV!")
+                    else:
+                        st.error(f"Error: {msg}")
+
             with col_del:
                 if st.button("🗑️", key=f"del_{i}", help="Delete link"):
                     delete_link(i)
