@@ -1491,11 +1491,7 @@ with tab_search:
             st.markdown("**📸 Page Preview:**")
             st.image(data['screenshot'], use_column_width=True)
         
-        # Screenshot
-        import os
-        if web and data.get('screenshot') and os.path.exists(data['screenshot']):
-            st.markdown("**📸 Page Preview:**")
-            st.image(data['screenshot'], use_column_width=True)
+
 
         
         if data["reports"]:
