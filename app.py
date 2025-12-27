@@ -438,7 +438,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                             log(f"Found known sustainability hub (fuzzy '{resolved_name}'): {known_url}")
                             
                 except Exception as e:
-                     log(f"Map lookup error: {e}")
+                    log(f"Map lookup error: {e}")
 
         # --- [MOVED] Check Google Sheets Database ---
         if resolved_name:
