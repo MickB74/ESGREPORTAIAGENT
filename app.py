@@ -1268,13 +1268,12 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 # Function to load S&P 500 companies
 @st.cache_data
 def load_sp500_companies():
-    try:
-        with open('sp500_companies.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
+    # Attempt to load from MongoDB first
+    if "mongo" in st.session_state:
+        return st.session_state.mongo.get_all_companies()
+    return []
 
-# Load companies
+# Load companies (This will now pull from Cloud)
 companies_data = load_sp500_companies()
 companies_options = []
 if companies_data:
@@ -1799,179 +1798,75 @@ with tab_db:
 
 
 # ==========================================
-# TAB 4: DATA MANAGER (CSV Editor)
+# TAB 4: DATA MANAGER (MongoDB Companies)
 # ==========================================
 with tab_data:
     st.header("⚙️ Data manager")
-    st.info("Directly edit the source `SP500ESGWebsites.csv` file here. Changes require a map rebuild.")
+    st.caption("Manage the master list of S&P 500 companies used for search suggestions. Synced to **MongoDB Atlas**.")
 
-    csv_file = "SP500ESGWebsites.csv"
-    
     # --- ADD NEW COMPANY FORM ---
     with st.expander("➕ Add New Company", expanded=False):
-        st.caption("Quickly add a new company. Derived fields (e.g. ALL CAPS NAME) will be generated automatically.")
-        with st.form("add_company_form"):
+        st.caption("Add a new company to the global list.")
+        with st.form("add_company_mongo_form"):
             c1, c2 = st.columns(2)
             new_ticker = c1.text_input("Ticker Symbol", placeholder="e.g. TSLA", max_chars=10).strip().upper()
             new_name = c2.text_input("Company Name", placeholder="e.g. Tesla Inc.").strip()
             new_website = st.text_input("Website URL", placeholder="e.g. https://www.tesla.com/impact")
-            new_desc = st.text_area("Description (Optional)", placeholder="Company description...")
             
-            submitted = st.form_submit_button("Add Company & Rebuild")
+            submitted = st.form_submit_button("Save to MongoDB")
             
             if submitted:
-                if not new_ticker or not new_name or not new_website:
-                    st.error("❌ Ticker, Name, and Website are required.")
+                if not new_ticker or not new_name:
+                    st.error("❌ Ticker and Name are required.")
                 else:
-                    # Append to CSV
-                    try:
-                        # Construct fields
-                        # CSV Headers: Symbol,Symbol,Name,Company Description,Company Name,Website
-                        # We must approximate the first 'Symbol' col (Long Symbol)
-                        long_symbol = f"{new_name} ({new_ticker})"
-                        caps_name = new_name.upper()
-                        
-                        # Use csv module to append safely
-                        import csv
-                        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
-                            writer = csv.writer(f)
-                            writer.writerow([
-                                long_symbol,
-                                new_ticker,
-                                caps_name,
-                                new_desc,
-                                new_name,
-                                new_website
-                            ])
-                        
-                        st.success(f"✅ Added {new_name} to database!")
-                        
-                        # Trigger Rebuild
-                        with st.spinner("Rebuilding map..."):
-                            import subprocess
-                            import sys
-                            res = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
-                            if res.returncode == 0:
-                                st.cache_data.clear()
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error(f"Rebuild Failed: {res.stderr}")
-                                
-                    except Exception as e:
-                        st.error(f"Error adding company: {e}")
-    if os.path.exists(csv_file):
-        try:
-            # Load CSV with robust error handling
-            try:
-                # Primary: UTF-8, Python Engine, Skip Bad Lines
-                df_csv = pd.read_csv(csv_file, encoding='utf-8', engine='python', on_bad_lines='skip')
-            except UnicodeDecodeError:
-                # Secondary: Latin1, Python Engine, Skip Bad Lines
-                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='skip')
-            except Exception as e:
-                # Fallback: Retry with Latin1 and skipping bad lines explicitly
-                st.warning(f"Standard load failed ({e}), trying strict mode with skipping...")
-                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='skip')
-            
-            # Filter & Sort Logic
-            c_filter, c_sort = st.columns([0.7, 0.3])
-            with c_filter:
-                filter_query = st.text_input("🔎 Filter by Company or Symbol", placeholder="Type to search...", key="dm_filter")
-            with c_sort:
-                st.write("") # Spacer
-                st.write("") 
-                sort_az = st.checkbox("Sort A-Z (Company Name)", key="dm_sort")
-            
-            if filter_query:
-                # Case-insensitive search - RESTRICTED TO IDENTIFYING COLUMNS
-                # Avoid searching 'Description' which causes too many false positives
-                search_cols = [col for col in df_csv.columns if any(x in col.lower() for x in ['symbol', 'name', 'ticker'])]
-                # If no matches found (unlikely), fallback to all
-                if not search_cols:
-                    search_cols = df_csv.columns
-                
-                mask = df_csv[search_cols].apply(lambda row: row.astype(str).str.contains(filter_query, case=False).any(), axis=1)
-                df_display = df_csv[mask]
-            else:
-                df_display = df_csv
+                    success, msg = mongo_db.save_company({
+                        "Symbol": new_ticker,
+                        "Security": new_name,
+                        "Company Name": new_name,
+                        "Website": new_website
+                    })
+                    if success:
+                        st.success("✅ Added! Refreshing...")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(msg)
 
-            # Sorting
-            if sort_az:
-                # Check for likely column names
-                sort_col = None
-                if 'Company Name' in df_display.columns:
-                    sort_col = 'Company Name'
-                elif 'Name' in df_display.columns:
-                    sort_col = 'Name'
-                
-                if sort_col:
-                    df_display = df_display.sort_values(sort_col)
-
-            # Editor
-            st.caption(f"Editing: `{csv_file}` (Showing {len(df_display)} / {len(df_csv)} rows)")
+    st.divider()
+    
+    # --- DISPLAY TABLE ---
+    if companies_data:
+        df_co = pd.DataFrame(companies_data)
+        
+        # Filter Logic
+        filter_q = st.text_input("🔎 Search Companies", placeholder="Type symbol or name...", key="dm_filter_mongo")
+        if filter_q:
+            mask = df_co.apply(lambda r: filter_q.lower() in str(r).lower(), axis=1)
+            df_display = df_co[mask]
+        else:
+            df_display = df_co
             
-            # Helper to make columns wider
-            edited_df = st.data_editor(
-                df_display, 
-                num_rows="dynamic", 
-                use_container_width=True, 
-                key="data_editor_csv"
-            )
-            
-            col_save, col_cancel = st.columns([0.3, 0.7])
-            
-            with col_save:
-                # Save Button
-                if st.button("💾 Save Changes & Rebuild Map", type="primary", use_container_width=True):
-                    # ROBUST CRUD LOGIC
-                    # 1. Identify indices
-                    original_indices = set(df_display.index)
-                    current_indices = set(edited_df.index)
-                    
-                    # 2. Handle Deletions: Indices in original but not in current
-                    deleted_indices = original_indices - current_indices
-                    if deleted_indices:
-                        st.toast(f"Deleting {len(deleted_indices)} rows...")
-                        df_csv = df_csv.drop(index=list(deleted_indices))
-                    
-                    # 3. Handle Updates: Indices common to both
-                    common_indices = original_indices.intersection(current_indices)
-                    if common_indices:
-                        df_csv.update(edited_df.loc[list(common_indices)])
-                        
-                    # 4. Handle Additions: Indices in current but not in original (New rows)
-                    # Streamlit adds new rows with a new index (usually RangeIndex specific to the view)
-                    # If we are in 'dynamic' mode, new rows might have indices that conflict or are new.
-                    # edited_df will contain the new rows.
-                    added_indices = current_indices - original_indices
-                    if added_indices:
-                        new_rows = edited_df.loc[list(added_indices)]
-                        st.toast(f"Adding {len(new_rows)} new rows...")
-                        # Append new rows to master DF (ignore index to let Pandas handle it)
-                        df_csv = pd.concat([df_csv, new_rows], ignore_index=True)
-                        
-                    # Save to CSV
-                    df_csv.to_csv(csv_file, index=False)
-                    st.toast("✅ CSV Saved!")
-                    
-                    # Auto-Rebuild Map
-                    with st.spinner("Rebuilding map..."):
-                        import subprocess
-                        import sys
-                        # Run the build script
-                        res = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
-                        if res.returncode == 0:
-                            st.success("✅ Map Rebuilt and Active!")
-                            # FORCE DROPDOWN RELOAD
-                            st.cache_data.clear()
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(f"Map Rebuild Failed: {res.stderr}")
-                            
-        except Exception as e:
-            st.error(f"Error loading CSV: {e}")
+        st.dataframe(
+            df_display, 
+            use_container_width=True,
+            hide_index=True 
+        )
+        st.caption(f"Showing {len(df_display)} companies.")
     else:
-        st.error(f"File not found: {csv_file}")
-
+        st.warning("⚠️ No companies found in MongoDB.")
+        if st.button("🚀 Run Initial Migration (CSV -> Mongo)"):
+             with st.spinner("Migrating data... this may take 30s..."):
+                 try:
+                     import sys
+                     import subprocess
+                     # We reuse the script we made
+                     res = subprocess.run([sys.executable, "scripts/migrate_csv_to_mongo.py"], capture_output=True, text=True)
+                     if "Migration Complete" in res.stdout or "Migration Complete" in res.stderr:
+                         st.success("✅ Migration Done! Reloading...")
+                         time.sleep(2)
+                         st.rerun()
+                     else:
+                         st.error(f"Migration output: {res.stdout} / {res.stderr}")
+                 except Exception as e:
+                     st.error(f"Migration failed: {e}")
+```

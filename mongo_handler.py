@@ -151,3 +151,58 @@ class MongoHandler:
             return True, "Hub updated in Cloud DB."
         except Exception as e:
             return False, f"Error: {e}"
+
+    # -------------------------------------------------------------------------
+    # COMPANY MANAGEMENT (S&P 500)
+    # -------------------------------------------------------------------------
+    def get_all_companies(self) -> list:
+        """Retrieve all companies for the dropdown."""
+        col = self._get_collection("companies")
+        if col is None: return []
+        
+        try:
+            # Sort by Security name
+            cursor = col.find({}, {'_id': 0}).sort("Security", 1)
+            return list(cursor)
+        except Exception:
+            return []
+
+    def save_company(self, company_data: dict) -> tuple[bool, str]:
+        """Upsert a company record."""
+        col = self._get_collection("companies")
+        if col is None: return False, "No DB Connection"
+        
+        try:
+            # Use Symbol as unique key
+            symbol = company_data.get('Symbol')
+            if not symbol: return False, "Symbol is required"
+            
+            col.update_one(
+                {'Symbol': symbol},
+                {'$set': company_data},
+                upsert=True
+            )
+            # Clear cache
+            st.cache_data.clear()
+            return True, "Company saved to Cloud DB."
+        except Exception as e:
+            return False, f"Save Error: {e}"
+
+    def bulk_write_companies(self, companies_list: list) -> tuple[bool, str]:
+        """Bulk write for migration."""
+        col = self._get_collection("companies")
+        if col is None: return False, "No DB Connection"
+        
+        try:
+            # Clear existing? Maybe safer to just upsert.
+            # For migration, let's replace all to be clean if it's a "reset"
+            # But normally we'd upsert. Let's do delete_many({}) first for a clean migration?
+            # User might want to keep existing, but this is a migration task.
+            # Let's assume clean slate for migration script usage.
+            col.delete_many({})
+            
+            if companies_list:
+                col.insert_many(companies_list)
+            return True, f"Successfully imported {len(companies_list)} companies."
+        except Exception as e:
+            return False, f"Bulk Error: {e}"
