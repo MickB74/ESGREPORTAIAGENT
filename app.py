@@ -316,7 +316,7 @@ def save_links_to_disk():
         print(f"Error saving links: {e}")
         return False
 
-def save_link_to_file(title, url, description=None):
+def save_link_to_file(title, url, description=None, symbol=None):
     # Use Session State as Source of Truth
     links = st.session_state['saved_links']
     
@@ -326,12 +326,16 @@ def save_link_to_file(title, url, description=None):
             link['title'] = title
             if description:
                 link['description'] = description
+            if symbol:
+                link['symbol'] = symbol
             save_links_to_disk() # Sync
             return True # Updated existing
     
     new_link = {"title": title, "href": url}
     if description:
         new_link["description"] = description
+    if symbol:
+        new_link["symbol"] = symbol
         
     links.append(new_link)
     save_links_to_disk() # Sync
@@ -1520,7 +1524,7 @@ with tab_search:
                         final_desc = user_note if user_note else report.get('body', '')
 
                         # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(final_label, report['href'], description=final_desc)
+                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=data.get('symbol', ''))
                         
                         # 2. Save to CSV/DB
                         # Use search term as company name for better grouping
@@ -1566,31 +1570,37 @@ with tab_saved:
         # Display as cards for better visual presentation
         for i, link in enumerate(saved_links):
             with st.container():
-                col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
+                st.markdown(f"🔗 **[{link['href']}]({link['href']})**")
                 
-                with col1:
-                    st.markdown(f"### [{link['title']}]({link['href']})")
-                    if link.get('description'):
-                        st.caption(link['description'])
+                c_edit_1, c_edit_2 = st.columns([0.25, 0.75])
+                with c_edit_1:
+                    e_symbol = st.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}", placeholder="SYM")
+                with c_edit_2:
+                    e_title = st.text_input("Title", value=link.get('title', ''), key=f"bk_title_{i}")
                 
-                with col2:
-                    if st.button("💾 Save to DB", key=f"save_db_{i}", help="Save to permanent database"):
+                e_desc = st.text_area("Note / Description", value=link.get('description', ''), key=f"bk_desc_{i}", height=70)
+                
+                col_actions = st.columns([0.3, 0.3, 0.4])
+                with col_actions[0]:
+                    if st.button("💾 Save to DB", key=f"save_db_{i}", type="primary"):
                         success, msg = db_handler.save_link(
-                            company="Bookmarked",
-                            title=link['title'],
+                            company="Bookmarked" if not e_symbol else f"Bookmarked ({e_symbol})",
+                            title=e_title,
                             url=link['href'],
-                            label=link['title'],
-                            description=link.get('description', '')
+                            label=e_title,
+                            description=e_desc,
+                            symbol=e_symbol
                         )
                         if success:
                             st.toast("✅ Saved to database!")
+                            # Optional: Remove after saving? Or keep? User might want to keep reference.
                         else:
                             st.error(msg)
                 
-                with col3:
-                    if st.button("🗑️ Delete", key=f"del_saved_{i}", help="Remove bookmark"):
-                        delete_link(i)
-                        st.rerun()
+                with col_actions[1]:
+                     if st.button("🗑️ Un-Bookmark", key=f"del_saved_{i}"):
+                         delete_link(i)
+                         st.rerun()
                 
                 st.divider()
         
