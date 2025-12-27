@@ -1329,7 +1329,8 @@ def get_symbol_from_map(company_name):
 # --- SIDEBAR STATUS ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/leaf.png", width=60)
-    st.title("ESG Agent v2.2 🌿")
+    st.title("ESG Agent v2.3 🌿")
+    st.caption(f"Last Update: {datetime.datetime.now().strftime('%H:%M:%S')}")
     st.markdown("---")
     
     # DB Status
