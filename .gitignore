@@ -1,3 +1,7 @@
 __pycache__/
 rag_docs/
 .streamlit/secrets.toml
+
+# SQLite database and backups
+*.db
+verified_links_backup_*.csv

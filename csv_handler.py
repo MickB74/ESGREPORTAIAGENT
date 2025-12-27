@@ -13,6 +13,7 @@ def init_csv():
 def save_link(company, title, url, label, description=""):
     """Appends a link to the CSV file."""
     try:
+        print(f"[CSV DEBUG] Saving to {CSV_FILE}")
         init_csv()
         
         # Check for duplicates?
@@ -32,14 +33,17 @@ def save_link(company, title, url, label, description=""):
             # Update label?
             df.loc[df['URL'] == url, 'Label'] = label
             df.to_csv(CSV_FILE, index=False)
+            print(f"[CSV DEBUG] Updated existing link")
             return True, "Updated existing link label."
         else:
             # Append
             row_df = pd.DataFrame([new_row])
             row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+            print(f"[CSV DEBUG] Appended new link")
             return True, "Saved to CSV."
             
     except Exception as e:
+        print(f"[CSV DEBUG] Error: {e}")
         return False, f"CSV Error: {e}"
 
 def get_links(company_name):

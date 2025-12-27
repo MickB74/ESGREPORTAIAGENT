@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import difflib
-import csv_handler
+import db_handler
 
 # --- App Configuration (Must be first!) ---
 st.set_page_config(page_title="ESG Report Finder", page_icon="🌿")
@@ -353,7 +353,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     def log(msg):
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    import csv_handler # Import handler
+    import db_handler # Import handler
 
 
     
@@ -443,7 +443,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             # Load from CSV
             try:
                 # Use resolved_name which is now defined
-                saved_csv_links, csv_error = csv_handler.get_links(resolved_name)
+                saved_csv_links, csv_error = db_handler.get_links_by_company(resolved_name)
                 
                 if csv_error: 
                     st.warning(f"CSV Error: {csv_error}")
@@ -1273,11 +1273,13 @@ def update_input_from_select():
             st.session_state.company_symbol = sym
 
 # --- TABS LAYOUT ---
-tab1, tab2 = st.tabs(["🔎 Search Reports", "🚀 Verified Site Data"])
+# --- TABS LAYOUT ---
+tab_search, tab_saved, tab_db = st.tabs(["🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database"])
 
-# ... (Tab 1 and Tab 2 content remains, omitted here for brevity, I will match start of Tab 1) ...
-
-with tab1:
+# ====================
+# TAB 1: SEARCH
+# ====================
+with tab_search:
     st.subheader("Find ESG Reports")
     
     # 1. Main Text Input (Free Text)
@@ -1297,6 +1299,134 @@ with tab1:
         key="sp500_selector",
         on_change=update_input_from_select
     )
+
+    # 3. Search Button
+    if st.button("Search 🔎", type="primary", use_container_width=True):
+        if not company_name:
+            st.warning("Please enter a company name.")
+        else:
+            # Clear previous results if new search
+            if 'current_company' in st.session_state and st.session_state.current_company != company_name:
+                st.session_state.esg_data = None
+            
+            st.session_state.current_company = company_name
+            with st.spinner(f"Searching for '{company_name}'..."):
+                # Pass explicit None if no symbol to avoid confusion
+                sym = st.session_state.company_symbol if st.session_state.company_symbol else None
+                data = search_esg_info(company_name, fetch_reports=True, symbol=sym)
+                st.session_state.esg_data = data
+                st.rerun()
+
+    # Display Logic (Check Session State)
+    if 'esg_data' in st.session_state and st.session_state.esg_data:
+        data = st.session_state.esg_data
+        
+        # Export Button
+        json_str = json.dumps(data, indent=4)
+        st.download_button(
+            label="Download Analysis (JSON)",
+            data=json_str,
+            file_name=f"{st.session_state.current_company}_esg_data.json",
+            mime="application/json"
+        )
+
+        # Display Auto-Resolve Notice
+        if data.get('resolved_from'):
+            st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
+
+        # --- DEBUG LOGS ---
+        if data.get("search_log"):
+            with st.expander("🔍 Search Debug Logs (Terms Used)"):
+                for log_item in data["search_log"]:
+                    st.code(log_item, language="text")
+
+        st.divider()
+        
+        if data.get('description'):
+            st.caption("COMPANY PROFILE")
+            st.info(data['description'])
+        
+        # Display Website
+        st.subheader("🌐 ESG / Sustainability Website")
+        if data["website"]:
+            col_web, col_save_web = st.columns([0.8, 0.2])
+            with col_web:
+                st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
+                st.caption(data['website']['body'])
+            with col_save_web:
+                if st.button("Save", key="save_web"):
+                    if save_link_to_file(data['website']['title'], data['website']['href'], description=data['website']['body']):
+                        st.success("Saved!")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.warning("Exists")
+
+
+            # --- STEP 2 TRIGGER (Deep Scan) ---
+            # Offer deep scan if we have a verified site (Always visible now)
+            st.divider()
+            
+            # Dynamic Label: "Fetch" if empty, "Deep Scan" if we have some but want more
+            btn_label = "📄 Fetch Reports & Data" if not data["reports"] else "🕵️ Deep Scan Verified Site"
+            
+            st.info(f"ℹ️ Verified Hub Found. click '{btn_label}' to crawl {data['website']['title']} for all PDF links.")
+            
+            if st.button(btn_label, type="primary", use_container_width=True):
+                 with st.spinner(f"Deep scanning {data['website']['title']}..."):
+                     try:
+                         # ENABLE STRICT MODE: User wants ONLY internal links from this page
+                         # SCREENSHOT CAPTURE
+                         screenshot_path = None
+                         try:
+                             import os, uuid
+                             from playwright.sync_api import sync_playwright
+                             
+                             screenshot_dir = "/tmp/esg_screenshots"
+                             os.makedirs(screenshot_dir, exist_ok=True)
+                             
+                             safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')[:30]
+                             screenshot_filename = f"{safe_name}_{uuid.uuid4().hex[:6]}.png"
+                             screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
+                             
+                             with sync_playwright() as p:
+                                 browser = p.chromium.launch(headless=True)
+                                 page = browser.new_page()
+                                 page.goto(data['website']['href'], timeout=30000, wait_until="domcontentloaded")
+                                 page.wait_for_timeout(2000)
+                                 page.screenshot(path=screenshot_path, full_page=False)
+                                 browser.close()
+                             print(f"✅ Screenshot: {screenshot_path}")
+                         except Exception as e:
+                             print(f"⚠️ Screenshot failed: {e}")
+                             screenshot_path = None
+
+                         
+                         # FIX: Pass the URL string, not the dict object
+                         url_to_scan = data['website']['href'] if isinstance(data.get('website'), dict) else data.get('website')
+                         if not url_to_scan: url_to_scan = data.get('href') # Fallback
+                         
+                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
+                         
+                         # Defensive: Ensure new_data is a dict
+                         if not isinstance(new_data, dict):
+                             st.error(f"Internal error: Unexpected data type returned: {type(new_data)}")
+                             st.error(f"Data content: {str(new_data)[:200]}")
+                             st.stop()
+                         
+                         new_data['description'] = data.get('description') # Preserve description
+                         new_data['screenshot'] = screenshot_path  # Add screenshot path (always None for now)
+
+                          
+                         # Merge with existing reports if we had some? 
+                         # Actually search_esg_info returns a fresh list. 
+                         # If we want to KEEP existing reports that were NOT found in deep scan (e.g. from Google),
+                         # we might need merge logic. But usually Deep Scan is authoritative.
+                         # Let's just trust the fresh scan for now, or maybe append?
+                         # For now, replacing is cleaner to avoid duplicates, as deep scan *should* find everything on the site.
+                         
+                         st.session_state.esg_data = new_data
+                         st.rerun()
 
 
 
@@ -1489,7 +1619,7 @@ with tab1:
                         save_link_to_file(final_label, report['href'], description=report.get('body', ''))
                         
                         # 2. Save to CSV
-                        success, msg = csv_handler.save_link(
+                        success, msg = db_handler.save_link(
                             company=data['website']['title'] if data.get('website') else "Unknown",
                             title=report['title'],
                             url=report['href'],
@@ -1512,132 +1642,142 @@ with tab1:
     st.markdown("---")
     st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
 
-
-# --- TAB 2: Verified Site Data ---
-with tab2:
-    st.header("🚀 Verified Site Data (Known Hubs)")
-    st.markdown("This database is sourced from the official S&P 500 ESG Websites list.")
+# ==========================================
+# TAB 2: MY SAVED LINKS (Sidebar Bookmarks)
+# ==========================================
+with tab_saved:
+    st.header("🔖 My Saved Links")
+    st.markdown("Quick bookmarks from your current session (stored in `saved_links.json`).")
     
-    csv_path = "SP500ESGWebsites.csv"
-    if os.path.exists(csv_path):
-        try:
-            # File is likely iso-8859-1 (Excel standard CSV)
-            df = pd.read_csv(csv_path, encoding='iso-8859-1')
-            
-            # Select relevant columns if they exist
-            # CSV Header: Symbol,Symbol,Name,Company Description,Company Name,Website
-            # We want: Symbol (Short), Company Name, Website
-            # Note: Pandas handles duplicate col names by appending .1, .2
-            
-            # Let's clean up columns
-            # The CSV has 'Symbol' twice. The second one (index 1) is usually the ticker.
-            
-            # We will try to pick by index or name
-            display_cols = []
-            if "Company Name" in df.columns: display_cols.append("Company Name")
-            if "Symbol" in df.columns: display_cols.append("Symbol") # might get both or first
-            if "Sym" in df.columns: display_cols.append("Sym")      # user might rename
-            if "Website" in df.columns: display_cols.append("Website")
-            
-            # Simple display
-            # If columns are duplicated, pandas names them Symbol, Symbol.1
-            # Let's just display the whole Clean DF
-            
-            # Filter to just Name, Ticker, URL
-            final_df = df.copy()
-            if "Company Name" in final_df.columns and "Website" in final_df.columns:
-                 # Clean blank rows
-                 final_df = final_df.dropna(subset=["Company Name", "Website"], how='any')
-
-                 # Try to find ticker
-                 ticker_col = "Symbol.1" if "Symbol.1" in final_df.columns else "Symbol"
-                 cols_to_show = [ticker_col, "Company Name", "Website"]
-                 # Filter only existing
-                 cols_to_show = [c for c in cols_to_show if c in final_df.columns]
-                 final_df = final_df[cols_to_show]
-                 
-                 # Rename for display
-                 rename_map = {ticker_col: "Ticker"}
-                 final_df = final_df.rename(columns=rename_map)
-            
-            # Multi-select search filter
-            all_companies = final_df["Company Name"].unique().tolist()
-            selected_companies = st.multiselect(
-                "Filter by Company:",
-                options=all_companies,
-                placeholder="Select companies to view..."
-            )
-            
-            if selected_companies:
-                final_df = final_df[final_df["Company Name"].isin(selected_companies)]
-
-            st.dataframe(
-                final_df, 
-                use_container_width=True,
-                column_config={
-                    "Website": st.column_config.LinkColumn("Sustainability Hub Link")
-                },
-                hide_index=True
-            )
-            
-            st.caption(f"Total entries: {len(df)}")
-            
-        except Exception as e:
-            st.error(f"Error loading CSV: {e}")
-    else:
-        st.warning(f"⚠️ {csv_path} not found.")
-
-
-
-# --- Sidebar: Saved Links --- (Existing code continues)
-
-with st.sidebar:
-    st.header("🔖 Saved Links")
+    saved_links = st.session_state.get('saved_links', [])
     
-    # Manual Add
-    with st.expander("Add Link Manually"):
-        manual_title = st.text_input("Title", key="manual_title")
-        manual_url = st.text_input("URL", key="manual_url")
-        if st.button("Add", key="manual_add"):
-            if manual_title and manual_url:
-                if save_link_to_file(manual_title, manual_url):
-                    st.success("Added!")
-                    time.sleep(0.5)
-                    st.rerun()
-                else:
-                    st.warning("Link already exists.")
-            else:
-                st.warning("Title and URL required.")
-
-    st.divider()
-    
-
-
-    # Display Saved Links from Session State
-    saved_links = st.session_state['saved_links']
-    if saved_links:
+    if len(saved_links) > 0:
+        st.metric("Total Bookmarks", len(saved_links))
+        st.divider()
+        
+        # Display as cards for better visual presentation
         for i, link in enumerate(saved_links):
-            col_link, col_csv, col_del = st.columns([0.6, 0.2, 0.2])
-            with col_link:
-                st.markdown(f"[{link['title']}]({link['href']})")
-            
-            with col_csv:
-                if st.button("💾", key=f"csv_{i}", help="Push to CSV"):
-                    success, msg = csv_handler.save_link(
-                        company="Sidebar/Manual",
+            with st.container():
+                col1, col2, col3 = st.columns([0.7, 0.15, 0.15])
+                
+                with col1:
+                    st.markdown(f"### [{link['title']}]({link['href']})")
+                    if link.get('description'):
+                        st.caption(link['description'])
+                
+                with col2:
+                    if st.button("💾 Save to DB", key=f"save_db_{i}", help="Save to permanent database"):
+                        success, msg = db_handler.save_link(
+                            company="Bookmarked",
+                            title=link['title'],
+                            url=link['href'],
+                            label=link['title'],
+                            description=link.get('description', '')
+                        )
+                        if success:
+                            st.toast("✅ Saved to database!")
+                        else:
+                            st.error(msg)
+                
+                with col3:
+                    if st.button("🗑️ Delete", key=f"del_saved_{i}", help="Remove bookmark"):
+                        delete_link(i)
+                        st.rerun()
+                
+                st.divider()
+        
+        # Bulk actions
+        st.subheader("Bulk Actions")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("💾 Save All to Database", use_container_width=True):
+                success_count = 0
+                for link in saved_links:
+                    success, _ = db_handler.save_link(
+                        company="Bookmarked",
                         title=link['title'],
                         url=link['href'],
                         label=link['title'],
                         description=link.get('description', '')
                     )
                     if success:
-                        st.toast(f"✅ Saved to CSV!")
-                    else:
-                        st.error(f"Error: {msg}")
-
-            with col_del:
-                if st.button("🗑️", key=f"del_{i}", help="Delete link"):
-                    delete_link(i)
-                    st.rerun()
+                        success_count += 1
+                st.success(f"✅ Saved {success_count}/{len(saved_links)} links to database!")
+        
+        with col_b:
+            if st.button("🗑️ Clear All Bookmarks", use_container_width=True):
+                st.session_state['saved_links'] = []
+                save_links_to_disk()
+                st.rerun()
     else:
-        st.info("No saved links yet.")
+        st.info("ℹ️ No bookmarks yet. Use the sidebar 'Add Link Manually' or save links from search results!")
+
+# ==========================================
+# TAB 3: VERIFIED DATABASE
+# ==========================================
+with tab_db:
+    st.header("📂 Verified Link Database")
+    st.markdown("All links saved to your permanent SQLite database.")
+    
+    # Get database stats
+    stats = db_handler.get_stats()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Total Links", stats.get('total_links', 0))
+    with col2:
+        st.metric("Unique Companies", stats.get('unique_companies', 0))
+    
+    st.divider()
+    
+    # Load all links
+    links, error = db_handler.get_all_links()
+    
+    if error:
+        st.error(f"Error loading database: {error}")
+    elif len(links) > 0:
+        # Convert to DataFrame for display
+        import pandas as pd
+        df = pd.DataFrame(links)
+        
+        # Reorder columns for better display
+        column_order = ['id', 'timestamp', 'company', 'label', 'title', 'url', 'description']
+        df = df[column_order]
+        
+        # Download button
+        csv_export = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="⬇️ Export to CSV",
+            data=csv_export,
+            file_name=f"verified_links_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+        )
+        
+        # Interactive table
+        st.data_editor(
+            df,
+            disabled=['id', 'timestamp'],  # Make ID and timestamp read-only
+            use_container_width=True,
+            num_rows="fixed",
+            column_config={
+                "id": "ID",
+                "timestamp": st.column_config.DatetimeColumn(
+                    "Saved At",
+                    format="D MMM YYYY, h:mm a"
+                ),
+                "company": "Company",
+                "label": "Label",
+                "title": "Title",
+                "url": st.column_config.LinkColumn("URL"),
+                "description": st.column_config.TextColumn(
+                    "Description",
+                    width="large"
+                )
+            },
+            hide_index=True,
+        )
+        
+        st.caption(f"Showing {len(links)} records from {db_handler.DB_FILE}")
+    else:
+        st.info("ℹ️ Database is empty. Save links from search results to populate it!")
+
