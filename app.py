@@ -345,11 +345,26 @@ def save_link_to_file(title, url, description=None, symbol=None, company=None):
     save_links_to_disk() # Sync
     return True
 
-def delete_link(index):
-    if 0 <= index < len(st.session_state['saved_links']):
-        st.session_state['saved_links'].pop(index)
-        save_links_to_disk() # Sync
+def delete_link_by_url(target_url):
+    print(f"[DEBUG] Attempting to delete: '{target_url}'")
+    target_clean = target_url.strip()
+    
+    initial_count = len(st.session_state['saved_links'])
+    
+    # Filter out the matching URL (creating a new list)
+    st.session_state['saved_links'] = [
+        link for link in st.session_state['saved_links'] 
+        if link.get('href', '').strip() != target_clean
+    ]
+    
+    new_count = len(st.session_state['saved_links'])
+    
+    if new_count < initial_count:
+        print(f"[DEBUG] Deleted {initial_count - new_count} link(s). New count: {new_count}")
+        save_links_to_disk()
         return True
+        
+    print(f"[DEBUG] NO MATCH FOUND for '{target_clean}'. Count remains {initial_count}.")
     return False
 
 # Function to perform searches
@@ -1279,6 +1294,26 @@ def update_input_from_select():
             st.session_state.company_input = name
             st.session_state.company_symbol = sym
 
+# --- Shared Helpers & Data ---
+# Prepare Symbol Map for Auto-fill (Global Scope for both tabs)
+sym_map = {}
+if companies_data:
+    for c in companies_data:
+        sym_map[c['Security'].lower()] = c['Symbol']
+
+def get_symbol_from_map(company_name):
+    if not company_name: return None
+    clean_name = company_name.strip().lower()
+    # 1. Exact Match
+    if clean_name in sym_map:
+        return sym_map[clean_name]
+    # 2. Fuzzy Match
+    import difflib
+    matches = difflib.get_close_matches(clean_name, sym_map.keys(), n=1, cutoff=0.7)
+    if matches:
+        return sym_map[matches[0]]
+    return None
+
 # --- TABS LAYOUT ---
 # --- TABS LAYOUT ---
 tab_search, tab_saved, tab_db = st.tabs(["🔍 Search & Analyze", "🔖 My Saved Links", "📂 Verified Database"])
@@ -1287,6 +1322,28 @@ tab_search, tab_saved, tab_db = st.tabs(["🔍 Search & Analyze", "🔖 My Saved
 # TAB 1: SEARCH
 # ====================
 with tab_search:
+    st.subheader("Find ESG Reports")
+    
+    # ... (Search UI kept as is) ...
+
+    # Display Logic (Check Session State)
+    if 'esg_data' in st.session_state and st.session_state.esg_data:
+        data = st.session_state.esg_data
+        
+        # ... (Export and Header UI kept as is) ...
+        
+        # Display Website
+        # ... (Website UI kept as is) ...
+
+        # ... (Reports Loop) ...
+        # (We need to jump to the loop to inject the auto-fill logic)
+        pass # Placeholder for diff context matching
+
+# We need to target the TAB 2 block to remove the local sym_map and use the global one
+
+# ... Using multi_replace might be cleaner but let's try to target specific blocks. 
+# Actually, I will insert the sym_map definition BEFORE the tabs first.
+
     st.subheader("Find ESG Reports")
     
     # 1. Main Text Input (Free Text)
@@ -1512,11 +1569,22 @@ with tab_search:
                         st.caption(report['body'])
                 
                 with r_save:
-                    # Label Input
-                    user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="Label (e.g. 2024 Report)", label_visibility="collapsed")
+                    # Label Input (Auto-fill with Title)
+                    # Use a unique key based on index
+                    # Default value is the report title
+                    user_label = st.text_input("Label", value=report['title'], key=f"lbl_{idx}", placeholder="Label (e.g. 2024 Report)", label_visibility="collapsed")
                     
                     # Symbol Input
+                    # 1. Try data source
                     def_sym = data.get('symbol', '')
+                    # 2. Try global map if missing
+                    if not def_sym:
+                        # Try to resolve from company name
+                        c_current = st.session_state.get('current_company', '')
+                        resolved = get_symbol_from_map(c_current)
+                        if resolved:
+                            def_sym = resolved
+                            
                     user_symbol = st.text_input("Symbol", value=def_sym if def_sym else "", key=f"sym_{idx}", placeholder="Stock Symbol (Optional)", label_visibility="collapsed")
                     
                     # Note Input
@@ -1573,6 +1641,18 @@ with tab_saved:
         st.metric("Total Bookmarks", len(saved_links))
         st.divider()
         
+        
+        def auto_fill_symbol(idx):
+            """Callback to auto-fill symbol based on company name input"""
+            c_key = f"bk_comp_{idx}"
+            s_key = f"bk_sym_{idx}"
+            
+            if c_key in st.session_state:
+                input_name = st.session_state[c_key]
+                found_sym = get_symbol_from_map(input_name)
+                if found_sym:
+                    st.session_state[s_key] = found_sym
+
         # Display as cards for better visual presentation
         for i, link in enumerate(saved_links):
             with st.container():
@@ -1580,7 +1660,7 @@ with tab_saved:
                 
                 c_edit_1, c_edit_2, c_edit_3 = st.columns([0.4, 0.2, 0.4])
                 with c_edit_1:
-                    e_company = st.text_input("Company", value=link.get('company', 'Bookmarked'), key=f"bk_comp_{i}")
+                    e_company = st.text_input("Company", value=link.get('company', 'Bookmarked'), key=f"bk_comp_{i}", on_change=auto_fill_symbol, args=(i,))
                 with c_edit_2:
                     e_symbol = st.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}", placeholder="SYM")
                 with c_edit_3:
@@ -1601,13 +1681,16 @@ with tab_saved:
                         )
                         if success:
                             st.toast("✅ Saved to database!")
-                            # Optional: Remove after saving? Or keep? User might want to keep reference.
+                            # Use URL-based deletion for safety
+                            delete_link_by_url(link['href'])
+                            time.sleep(0.5)
+                            st.rerun()
                         else:
                             st.error(msg)
                 
                 with col_actions[1]:
                      if st.button("🗑️ Un-Bookmark", key=f"del_saved_{i}"):
-                         delete_link(i)
+                         delete_link_by_url(link['href'])
                          st.rerun()
                 
                 st.divider()
@@ -1645,6 +1728,33 @@ with tab_db:
     st.header("📂 Verified Link Database")
     st.markdown("All links saved to your permanent SQLite database.")
     
+    
+    # --- MAINTENANCE / ADMIN ---
+    with st.expander("🛠️ Admin & Maintenance"):
+        st.caption("Manage internal data files and maps.")
+        c_m1, c_m2 = st.columns([0.7, 0.3])
+        with c_m1:
+            st.info("ℹ️ **Company Map**: Based on `SP500ESGWebsites.csv`. If you edit the CSV file, rebuild the map here.")
+        with c_m2:
+            if st.button("🔄 Rebuild Company Map", help="Runs scripts/build_company_map.py"):
+                with st.spinner("Rebuilding map from CSV..."):
+                    try:
+                        import subprocess
+                        import sys
+                        # Run the script
+                        result = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            st.success("✅ Map Rebuilt Successfully!")
+                            st.toast("Map updated! Reloading...")
+                            time.sleep(1.5)
+                            st.rerun()
+                        else:
+                            st.error(f"Failed: {result.stderr}")
+                    except Exception as e:
+                        st.error(f"Error running script: {e}")
+
+    st.divider()
+
     # Get database stats
     stats = db_handler.get_stats()
     
