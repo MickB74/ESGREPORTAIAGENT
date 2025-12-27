@@ -1864,30 +1864,87 @@ with tab_data:
             key="company_editor"
         )
         
+        # Confirmation Dialog (appears when user tries to delete)
+        if st.session_state.get('confirm_deletion', False):
+            deleted_symbols = st.session_state.get('deleted_symbols', set())
+            st.warning(f"⚠️ **Are you sure you want to delete {len(deleted_symbols)} companies?**")
+            st.caption(f"Companies to be deleted: {', '.join(sorted(deleted_symbols))}")
+            
+            conf_col1, conf_col2 = st.columns(2)
+            with conf_col1:
+                if st.button("✅ Yes, Delete", type="primary", use_container_width=True):
+                    # User confirmed - proceed with save using stored edited_df
+                    with st.spinner("Saving..."):
+                        stored_edited_df = st.session_state.get('edited_df')
+                        if stored_edited_df is not None:
+                            # Update each modified/new row
+                            for _, row in stored_edited_df.iterrows():
+                                company_dict = row.to_dict()
+                                success, msg = mongo_db.save_company(company_dict)
+                                if not success:
+                                    st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
+                            
+                            # Delete removed rows
+                            for symbol in deleted_symbols:
+                                # Note: Need to add delete_company method to mongo_handler
+                                st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
+                        
+                        # Clear confirmation state
+                        st.session_state.confirm_deletion = False
+                        st.session_state.deleted_symbols = None
+                        st.session_state.edited_df = None
+                        
+                        st.success(f"✅ Saved changes!")
+                        time.sleep(0.5)
+                        st.rerun()
+            
+            with conf_col2:
+                if st.button("❌ Cancel", use_container_width=True):
+                    # User cancelled - clear confirmation state
+                    st.session_state.confirm_deletion = False
+                    st.session_state.deleted_symbols = None
+                    st.session_state.edited_df = None
+                    st.rerun()
+            
+            st.divider()
+        
         # Save changes button
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.button("💾 Save Changes", type="primary"):
-                with st.spinner("Saving..."):
-                    # Check for deleted rows
-                    deleted_symbols = set(df_display['Symbol']) - set(edited_df['Symbol'])
-                    
-                    # Update each modified/new row
-                    for _, row in edited_df.iterrows():
-                        company_dict = row.to_dict()
-                        success, msg = mongo_db.save_company(company_dict)
-                        if not success:
-                            st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
-                    
-                    # Delete removed rows
-                    if deleted_symbols:
-                        for symbol in deleted_symbols:
-                            # Note: Need to add delete_company method to mongo_handler
-                            st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
-                    
-                    st.success(f"✅ Saved changes!")
-                    time.sleep(0.5)
+                # Check for deleted rows first
+                deleted_symbols = set(df_display['Symbol']) - set(edited_df['Symbol'])
+                
+                # If there are deletions, ask for confirmation
+                if deleted_symbols and not st.session_state.get('confirm_deletion', False):
+                    st.session_state.confirm_deletion = True
+                    st.session_state.deleted_symbols = deleted_symbols
+                    st.session_state.edited_df = edited_df
                     st.rerun()
+                else:
+                    # No deletions or already confirmed
+                    with st.spinner("Saving..."):
+                        # Update each modified/new row
+                        for _, row in edited_df.iterrows():
+                            company_dict = row.to_dict()
+                            success, msg = mongo_db.save_company(company_dict)
+                            if not success:
+                                st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
+                        
+                        # Delete removed rows
+                        if deleted_symbols:
+                            for symbol in deleted_symbols:
+                                # Note: Need to add delete_company method to mongo_handler
+                                st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
+                        
+                        # Clear confirmation state
+                        st.session_state.confirm_deletion = False
+                        st.session_state.deleted_symbols = None
+                        st.session_state.edited_df = None
+                        
+                        st.success(f"✅ Saved changes!")
+                        time.sleep(0.5)
+                        st.rerun()
         
         with col2:
             if st.button("🔄 Refresh"):
