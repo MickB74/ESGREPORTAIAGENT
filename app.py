@@ -1904,8 +1904,14 @@ with tab_data:
             except UnicodeDecodeError:
                 df_csv = pd.read_csv(csv_file, encoding='latin1')
             
-            # Filter Logic
-            filter_query = st.text_input("🔎 Filter by Company or Symbol", placeholder="Type to search...", key="dm_filter")
+            # Filter & Sort Logic
+            c_filter, c_sort = st.columns([0.7, 0.3])
+            with c_filter:
+                filter_query = st.text_input("🔎 Filter by Company or Symbol", placeholder="Type to search...", key="dm_filter")
+            with c_sort:
+                st.write("") # Spacer
+                st.write("") 
+                sort_az = st.checkbox("Sort A-Z (Company Name)", key="dm_sort")
             
             if filter_query:
                 # Case-insensitive search
@@ -1913,6 +1919,18 @@ with tab_data:
                 df_display = df_csv[mask]
             else:
                 df_display = df_csv
+
+            # Sorting
+            if sort_az:
+                # Check for likely column names
+                sort_col = None
+                if 'Company Name' in df_display.columns:
+                    sort_col = 'Company Name'
+                elif 'Name' in df_display.columns:
+                    sort_col = 'Name'
+                
+                if sort_col:
+                    df_display = df_display.sort_values(sort_col)
 
             # Editor
             st.caption(f"Editing: `{csv_file}` (Showing {len(df_display)} / {len(df_csv)} rows)")
