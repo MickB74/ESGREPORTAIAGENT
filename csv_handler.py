@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-CSV_FILE = "verified_links.csv"
+CSV_FILE = os.path.join(os.path.dirname(__file__), "verified_links.csv")
 
 def init_csv():
     """Initialize the CSV file with headers if it doesn't exist."""
