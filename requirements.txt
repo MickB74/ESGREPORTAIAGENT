@@ -4,6 +4,8 @@ beautifulsoup4
 requests
 pypdf
 playwright
+playwright
 selectolax
+pymongo
 
 

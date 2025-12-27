@@ -9,7 +9,13 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import difflib
-import db_handler
+# import db_handler # Deprecated
+from mongo_handler import MongoHandler
+
+# Initialize MongoDB Handler
+if "mongo" not in st.session_state:
+    st.session_state.mongo = MongoHandler()
+mongo_db = st.session_state.mongo
 
 # --- App Configuration (Must be first!)# Main App
 st.set_page_config(page_title="ESG Report AI Agent", layout="wide")
@@ -1675,105 +1681,56 @@ with tab_search:
     st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
 
 # ==========================================
-# TAB 2: MY SAVED LINKS (Sidebar Bookmarks)
+# TAB 2: MY SAVED LINKS (MongoDB)
 # ==========================================
 with tab_saved:
     st.header("🔖 My Saved Links")
-    st.markdown("Quick bookmarks from your current session (stored in `saved_links.json`).")
+    st.caption("Your personal bookmarks, synced to the cloud (MongoDB).")
     
-    saved_links = st.session_state.get('saved_links', [])
+    # Load from MongoDB
+    saved_links = mongo_db.get_all_links("saved_links")
     
     if len(saved_links) > 0:
         st.metric("Total Bookmarks", len(saved_links))
         st.divider()
-        
-        
-        def auto_fill_symbol(idx):
-            """Callback to auto-fill symbol based on company name input"""
-            c_key = f"bk_comp_{idx}"
-            s_key = f"bk_sym_{idx}"
-            
-            if c_key in st.session_state:
-                input_name = st.session_state[c_key]
-                found_sym = get_symbol_from_map(input_name)
-                if found_sym:
-                    st.session_state[s_key] = found_sym
 
-        # Display as cards for better visual presentation
         for i, link in enumerate(saved_links):
-            with st.container():
-                st.markdown(f"🔗 **[{link['href']}]({link['href']})**")
-                
-                c_edit_1, c_edit_2, c_edit_3 = st.columns([0.4, 0.2, 0.4])
-                with c_edit_1:
-                    e_company = st.text_input("Company", value=link.get('company', 'Bookmarked'), key=f"bk_comp_{i}", on_change=auto_fill_symbol, args=(i,))
-                with c_edit_2:
-                    e_symbol = st.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}", placeholder="SYM")
-                with c_edit_3:
-                    e_title = st.text_input("Title", value=link.get('title', ''), key=f"bk_title_{i}")
-                
-                e_desc = st.text_area("Note / Description", value=link.get('description', ''), key=f"bk_desc_{i}", height=70)
-                
-                col_actions = st.columns([0.3, 0.3, 0.4])
-                with col_actions[0]:
-                    if st.button("💾 Save to DB", key=f"save_db_{i}", type="primary"):
-                        success, msg = db_handler.save_link(
-                            company=e_company,
-                            title=e_title,
-                            url=link['href'],
-                            label=e_title,
-                            description=e_desc,
-                            symbol=e_symbol
-                        )
+            with st.expander(f"{link.get('company', 'Unknown')} - {link.get('title', 'Untitled')}", expanded=False):
+                with st.form(key=f"edit_bookmark_{i}"):
+                    c1, c2 = st.columns([0.3, 0.7])
+                    new_symbol = c1.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}")
+                    new_title = c2.text_input("Title", value=link.get('title', ''), key=f"bk_title_{i}")
+                    new_notes = st.text_area("Notes", value=link.get('description', ''), key=f"bk_note_{i}")
+                    
+                    c_save, c_del = st.columns([0.2, 0.2])
+                    if c_save.form_submit_button("💾 Save Changes"):
+                        link['symbol'] = new_symbol
+                        link['title'] = new_title
+                        link['description'] = new_notes
+                        success, msg = mongo_db.save_link("saved_links", link)
                         if success:
-                            st.toast("✅ Saved to database!")
-                            # Use URL-based deletion for safety
-                            delete_link_by_url(link['href'])
-                            time.sleep(0.5)
+                            st.success(msg)
+                            time.sleep(1)
                             st.rerun()
                         else:
                             st.error(msg)
-                
-                with col_actions[1]:
-                     if st.button("🗑️ Un-Bookmark", key=f"del_saved_{i}"):
-                         delete_link_by_url(link['href'])
-                         st.rerun()
-                
-                st.divider()
-        
-        # Bulk actions
-        st.subheader("Bulk Actions")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("💾 Save All to Database", use_container_width=True, key="save_all_to_db"):
-                success_count = 0
-                for link in saved_links:
-                    success, _ = db_handler.save_link(
-                        company="Bookmarked",
-                        title=link['title'],
-                        url=link['href'],
-                        label=link['title'],
-                        description=link.get('description', '')
-                    )
-                    if success:
-                        success_count += 1
-                st.success(f"✅ Saved {success_count}/{len(saved_links)} links to database!")
-        
-        with col_b:
-            if st.button("🗑️ Clear All Bookmarks", use_container_width=True, key="clear_all_bookmarks"):
-                st.session_state['saved_links'] = []
-                save_links_to_disk()
-                st.rerun()
+                            
+                    if c_del.form_submit_button("🗑️ Delete"):
+                        if mongo_db.delete_link("saved_links", link.get('url', '')):
+                            st.success("Deleted!")
+                            time.sleep(0.5)
+                            st.rerun()
+                            
+                st.markdown(f"**URL:** [{link.get('url')}]({link.get('url')})")
     else:
-        st.info("ℹ️ No bookmarks yet. Use the sidebar 'Add Link Manually' or save links from search results!")
+        st.info("ℹ️ No bookmarks in MongoDB yet.")
 
 # ==========================================
-# TAB 3: VERIFIED DATABASE
+# TAB 3: VERIFIED DATABASE (MongoDB)
 # ==========================================
 with tab_db:
     st.header("📂 Verified Link Database")
-    st.markdown("All links saved to your permanent SQLite database.")
-    
+    st.markdown("All links saved to your permanent **MongoDB Atlas** database.")
     
     # --- MAINTENANCE / ADMIN ---
     with st.expander("🛠️ Admin & Maintenance"):
@@ -1801,19 +1758,20 @@ with tab_db:
 
     st.divider()
 
-    # Get database stats
-    stats = db_handler.get_stats()
+    # Get MongoDB stats
+    v_links = mongo_db.get_all_links("verified_links")
     
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Total Links", stats.get('total_links', 0))
+        st.metric("Total Verified Links", len(v_links))
     with col2:
-        st.metric("Unique Companies", stats.get('unique_companies', 0))
+        unique_companies = len(set(l.get('company', '').lower() for l in v_links if l.get('company')))
+        st.metric("Unique Companies", unique_companies)
     
     # --- Manual Entry Form ---
     with st.expander("➕ Add New Link Manually"):
-        with st.form("manual_add_db_form"):
-            st.caption("Add a link directly to your permanent confirmed database.")
+        with st.form("manual_add_mongo_form"):
+            st.caption("Add a link directly to MongoDB.")
             c_url = st.text_input("URL (Required)", placeholder="https://example.com/report.pdf")
             
             c1, c2, c3 = st.columns([0.4, 0.2, 0.4])
@@ -1827,20 +1785,21 @@ with tab_db:
             c_label = st.text_input("Label (Short)", placeholder="e.g. 2024 Report")
             c_desc = st.text_area("Description / Notes", height=60, placeholder="Optional details...")
             
-            if st.form_submit_button("Save to Database", use_container_width=True):
+            if st.form_submit_button("Save to MongoDB", use_container_width=True):
                 if not c_url:
                     st.warning("⚠️ URL is required")
                 else:
-                    success, msg = db_handler.save_link(
-                        company=c_company if c_company else "Manual Entry",
-                        title=c_title if c_title else "Saved Link",
-                        url=c_url,
-                        label=c_label if c_label else "Link",
-                        description=c_desc,
-                        symbol=c_symbol
-                    )
+                    success, msg = mongo_db.save_link("verified_links", {
+                        "company": c_company if c_company else "Manual Entry",
+                        "title": c_title if c_title else "Saved Link",
+                        "url": c_url,
+                        "label": c_label if c_label else "Link",
+                        "description": c_desc,
+                        "symbol": c_symbol,
+                        "source": "Manual"
+                    })
                     if success:
-                        st.success("✅ Saved to database!")
+                        st.success("✅ Saved to MongoDB!")
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -1848,20 +1807,13 @@ with tab_db:
     
     st.divider()
     
-    # Load all links
-    links, error = db_handler.get_all_links()
-    
-    if error:
-        st.error(f"Error loading database: {error}")
-    elif len(links) > 0:
+    if len(v_links) > 0:
         # Convert to DataFrame for display
-        import pandas as pd
-        df = pd.DataFrame(links)
+        df = pd.DataFrame(v_links)
         
-        # Reorder columns for better display
-        column_order = ['id', 'timestamp', 'company', 'symbol', 'label', 'title', 'url', 'description']
-        # Filter available columns only (in case DB schema mismatch on some rows)
-        available_cols = [c for c in column_order if c in df.columns]
+        # Reorder columns
+        desired_cols = ['timestamp', 'company', 'symbol', 'title', 'label', 'url', 'description', 'source']
+        available_cols = [c for c in desired_cols if c in df.columns]
         df = df[available_cols]
         
         # Download button
@@ -1874,62 +1826,15 @@ with tab_db:
         )
         
         # Interactive table
-        st.data_editor(
+        st.dataframe(
             df,
-            disabled=['id', 'timestamp'],  # Make ID and timestamp read-only
             use_container_width=True,
-            num_rows="fixed",
             column_config={
-                "id": "ID",
-                "timestamp": st.column_config.DatetimeColumn(
-                    "Saved At",
-                    format="D MMM YYYY, h:mm a"
-                ),
-                "company": "Company",
-                "label": "Label",
-                "title": "Title",
                 "url": st.column_config.LinkColumn("URL"),
-                "description": st.column_config.TextColumn(
-                    "Description",
-                    width="large"
-                )
             },
-            hide_index=True,
+            hide_index=True
         )
-        
-        st.caption(f"Showing {len(links)} records from {db_handler.DB_FILE}")
-
-    # --- Danger Zone ---
-    st.divider()
-    with st.expander("⚠️ Danger Zone", expanded=False):
-        st.warning("This will delete ALL data from the Verified Link Database. This action cannot be undone.")
-        
-        # Confirmation Logic
-        if "confirm_clear" not in st.session_state:
-            st.session_state.confirm_clear = False
-            
-        if st.button("🗑️ Clear Entire Database", type="primary", key="btn_clear_db"):
-            st.session_state.confirm_clear = True
-            
-        if st.session_state.confirm_clear:
-            st.error("🚨 Are you ABSOLUTELY sure? This deletes everything!")
-            col_y, col_n = st.columns(2)
-            with col_y:
-                if st.button("Yes, Delete Everything", type="primary", key="btn_confirm_delete"):
-                    success, msg = db_handler.clear_database()
-                    if success:
-                        st.success(msg)
-                        st.session_state.confirm_clear = False
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error(msg)
-            with col_n:
-                if st.button("Cancel", key="btn_cancel_delete"):
-                    st.session_state.confirm_clear = False
-                    st.rerun()
-
-    if not links:
+    else:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
 
 
