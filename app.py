@@ -1961,14 +1961,15 @@ with tab_data:
         try:
             # Load CSV with robust error handling
             try:
-                # Use python engine for better error tolerance
-                df_csv = pd.read_csv(csv_file, encoding='utf-8', engine='python', on_bad_lines='warn')
+                # Primary: UTF-8, Python Engine, Skip Bad Lines
+                df_csv = pd.read_csv(csv_file, encoding='utf-8', engine='python', on_bad_lines='skip')
             except UnicodeDecodeError:
-                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='warn')
+                # Secondary: Latin1, Python Engine, Skip Bad Lines
+                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='skip')
             except Exception as e:
-                # Fallback
-                st.warning(f"Standard load failed ({e}), trying strict mode...")
-                df_csv = pd.read_csv(csv_file, encoding='latin1')
+                # Fallback: Retry with Latin1 and skipping bad lines explicitly
+                st.warning(f"Standard load failed ({e}), trying strict mode with skipping...")
+                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='skip')
             
             # Filter & Sort Logic
             c_filter, c_sort = st.columns([0.7, 0.3])
