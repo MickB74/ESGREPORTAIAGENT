@@ -1895,6 +1895,60 @@ with tab_data:
     st.info("Directly edit the source `SP500ESGWebsites.csv` file here. Changes require a map rebuild.")
 
     csv_file = "SP500ESGWebsites.csv"
+    
+    # --- ADD NEW COMPANY FORM ---
+    with st.expander("➕ Add New Company", expanded=False):
+        st.caption("Quickly add a new company. Derived fields (e.g. ALL CAPS NAME) will be generated automatically.")
+        with st.form("add_company_form"):
+            c1, c2 = st.columns(2)
+            new_ticker = c1.text_input("Ticker Symbol", placeholder="e.g. TSLA", max_chars=10).strip().upper()
+            new_name = c2.text_input("Company Name", placeholder="e.g. Tesla Inc.").strip()
+            new_website = st.text_input("Website URL", placeholder="e.g. https://www.tesla.com/impact")
+            new_desc = st.text_area("Description (Optional)", placeholder="Company description...")
+            
+            submitted = st.form_submit_button("Add Company & Rebuild")
+            
+            if submitted:
+                if not new_ticker or not new_name or not new_website:
+                    st.error("❌ Ticker, Name, and Website are required.")
+                else:
+                    # Append to CSV
+                    try:
+                        # Construct fields
+                        # CSV Headers: Symbol,Symbol,Name,Company Description,Company Name,Website
+                        # We must approximate the first 'Symbol' col (Long Symbol)
+                        long_symbol = f"{new_name} ({new_ticker})"
+                        caps_name = new_name.upper()
+                        
+                        # Use csv module to append safely
+                        import csv
+                        with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+                            writer = csv.writer(f)
+                            writer.writerow([
+                                long_symbol,
+                                new_ticker,
+                                caps_name,
+                                new_desc,
+                                new_name,
+                                new_website
+                            ])
+                        
+                        st.success(f"✅ Added {new_name} to database!")
+                        
+                        # Trigger Rebuild
+                        with st.spinner("Rebuilding map..."):
+                            import subprocess
+                            import sys
+                            res = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
+                            if res.returncode == 0:
+                                st.cache_data.clear()
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Rebuild Failed: {res.stderr}")
+                                
+                    except Exception as e:
+                        st.error(f"Error adding company: {e}")
     if os.path.exists(csv_file):
         try:
             # Load CSV
