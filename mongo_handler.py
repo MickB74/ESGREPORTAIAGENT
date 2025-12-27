@@ -204,5 +204,49 @@ class MongoHandler:
             if companies_list:
                 col.insert_many(companies_list)
             return True, f"Successfully imported {len(companies_list)} companies."
+            return True, f"Successfully imported {len(companies_list)} companies."
         except Exception as e:
             return False, f"Bulk Error: {e}"
+    
+    def migrate_companies_from_csv(self, csv_path="SP500ESGWebsites.csv") -> tuple[bool, str]:
+        """
+        One-time migration helper: Read CSV and populate companies collection.
+        """
+        import os
+        if not os.path.exists(csv_path):
+            return False, f"CSV file not found: {csv_path}"
+        
+        try:
+            # Read CSV
+            df = pd.read_csv(csv_path, encoding='utf-8', on_bad_lines='skip')
+        except:
+            try:
+                df = pd.read_csv(csv_path, encoding='latin1', on_bad_lines='skip')
+            except Exception as e:
+                return False, f"CSV Read Error: {e}"
+        
+        # Transform rows
+        records = []
+        for _, row in df.iterrows():
+            symbol = row.get('Symbol.1') if 'Symbol.1' in row else row.get('Symbol')
+            if not symbol or pd.isna(symbol):
+                continue
+            
+            name = row.get('Company Name') if 'Company Name' in row else row.get('Name')
+            security = row.get('Security') if 'Security' in row else name
+            
+            rec = {
+                "Symbol": str(symbol).strip().upper(),
+                "Security": str(security).strip() if security else "",
+                "Company Name": str(name).strip() if name else "",
+                "Company Description": str(row.get('Company Description', '')),
+                "Website": str(row.get('Website', ''))
+            }
+            records.append(rec)
+        
+        if not records:
+            return False, "No valid records found in CSV"
+        
+        # Use existing bulk write
+        return self.bulk_write_companies(records)
+

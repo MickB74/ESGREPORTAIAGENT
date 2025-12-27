@@ -1856,18 +1856,12 @@ with tab_data:
     else:
         st.warning("⚠️ No companies found in MongoDB.")
         if st.button("🚀 Run Initial Migration (CSV -> Mongo)"):
-             with st.spinner("Migrating data... this may take 30s..."):
-                 try:
-                     import sys
-                     import subprocess
-                     # We reuse the script we made
-                     res = subprocess.run([sys.executable, "scripts/migrate_csv_to_mongo.py"], capture_output=True, text=True)
-                     if "Migration Complete" in res.stdout or "Migration Complete" in res.stderr:
-                         st.success("✅ Migration Done! Reloading...")
-                         time.sleep(2)
-                         st.rerun()
-                     else:
-                         st.error(f"Migration output: {res.stdout} / {res.stderr}")
-                 except Exception as e:
-                     st.error(f"Migration failed: {e}")
+             with st.spinner("Migrating data from CSV..."):
+                 success, msg = mongo_db.migrate_companies_from_csv()
+                 if success:
+                     st.success(f"✅ {msg}")
+                     time.sleep(1)
+                     st.rerun()
+                 else:
+                     st.error(f"❌ Migration failed: {msg}")
 
