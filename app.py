@@ -1603,6 +1603,39 @@ with tab_db:
     with col2:
         st.metric("Unique Companies", stats.get('unique_companies', 0))
     
+    # --- Manual Entry Form ---
+    with st.expander("➕ Add New Link Manually"):
+        with st.form("manual_add_db_form"):
+            st.caption("Add a link directly to your permanent confirmed database.")
+            c_url = st.text_input("URL (Required)", placeholder="https://example.com/report.pdf")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                c_company = st.text_input("Company Name", placeholder="e.g. Acme Corp")
+            with c2:
+                c_title = st.text_input("Title", placeholder="e.g. 2024 Sustainability Report")
+                
+            c_label = st.text_input("Label (Short)", placeholder="e.g. 2024 Report")
+            c_desc = st.text_area("Description / Notes", height=60, placeholder="Optional details...")
+            
+            if st.form_submit_button("Save to Database", use_container_width=True):
+                if not c_url:
+                    st.warning("⚠️ URL is required")
+                else:
+                    success, msg = db_handler.save_link(
+                        company=c_company if c_company else "Manual Entry",
+                        title=c_title if c_title else c_url,
+                        url=c_url,
+                        label=c_label if c_label else "Link",
+                        description=c_desc
+                    )
+                    if success:
+                        st.success("✅ Saved to database!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error(f"Error: {msg}")
+    
     st.divider()
     
     # Load all links
