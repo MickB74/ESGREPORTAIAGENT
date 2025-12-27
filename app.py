@@ -1460,7 +1460,7 @@ with tab1:
             import os
             if data.get('screenshot') and os.path.exists(data['screenshot']):
                 st.markdown("**📸 Page Preview:**")
-                st.image(data['screenshot'], use_container_width=True)
+                st.image(data['screenshot'], use_column_width=True)
 
         
         if data["reports"]:
