@@ -11,9 +11,11 @@ import pandas as pd
 import difflib
 import db_handler
 
-# --- App Configuration (Must be first!) ---
-st.set_page_config(page_title="ESG Report Finder", page_icon="🌿")
+# --- App Configuration (Must be first!)# Main App
+st.set_page_config(page_title="ESG Report AI Agent", layout="wide")
 
+st.title("ESG Report AI Agent 🤖 (v2.0)")
+st.markdown("---")
 # --- Auto-Install Playwright Browsers (for Cloud Env) ---
 @st.cache_resource
 def install_playwright():
@@ -1495,7 +1497,7 @@ with tab_search:
         if data["reports"]:
             for idx, report in enumerate(data["reports"]):
                 # 2 Columns: Info, Save
-                r_col, r_save = st.columns([0.85, 0.15])
+                r_col, r_save = st.columns([0.75, 0.25])
                 
                 with r_col:
                     st.markdown(f"**{idx+1}. [{report['title']}]({report['href']})**")
@@ -1507,24 +1509,30 @@ with tab_search:
                 
                 with r_save:
                     # Label Input
-                    # Use unique key using idx
-                    user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="e.g. 2024 Report", label_visibility="collapsed")
+                    user_label = st.text_input("Label", value="", key=f"lbl_{idx}", placeholder="Label (e.g. 2024 Report)", label_visibility="collapsed")
+                    # Note Input
+                    user_note = st.text_input("Note", value="", key=f"note_{idx}", placeholder="Note (Optional)", label_visibility="collapsed")
                     
                     # Save Button
                     if st.button("Save 💾", key=f"save_rep_{idx}", use_container_width=True):
                         # Determine Label
                         final_label = user_label if user_label else report['title']
+                        final_desc = user_note if user_note else report.get('body', '')
 
                         # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(final_label, report['href'], description=report.get('body', ''))
+                        save_link_to_file(final_label, report['href'], description=final_desc)
                         
                         # 2. Save to CSV/DB
+                        # Use search term as company name for better grouping
+                        c_name = st.session_state.get('current_company', "Unknown")
+                        
                         success, msg = db_handler.save_link(
-                            company=data['website']['title'] if data.get('website') else "Unknown",
+                            company=c_name,
                             title=report['title'],
                             url=report['href'],
                             label=final_label,
-                            description=report.get('body', '')
+                            description=final_desc,
+                            symbol=data.get('symbol', '')
                         )
                         
                         
