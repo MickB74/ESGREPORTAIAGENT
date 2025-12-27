@@ -316,7 +316,7 @@ def save_links_to_disk():
         print(f"Error saving links: {e}")
         return False
 
-def save_link_to_file(title, url, description=None, symbol=None):
+def save_link_to_file(title, url, description=None, symbol=None, company=None):
     # Use Session State as Source of Truth
     links = st.session_state['saved_links']
     
@@ -328,6 +328,8 @@ def save_link_to_file(title, url, description=None, symbol=None):
                 link['description'] = description
             if symbol:
                 link['symbol'] = symbol
+            if company:
+                link['company'] = company
             save_links_to_disk() # Sync
             return True # Updated existing
     
@@ -336,6 +338,8 @@ def save_link_to_file(title, url, description=None, symbol=None):
         new_link["description"] = description
     if symbol:
         new_link["symbol"] = symbol
+    if company:
+        new_link["company"] = company
         
     links.append(new_link)
     save_links_to_disk() # Sync
@@ -1525,13 +1529,13 @@ with tab_search:
                         final_desc = user_note if user_note else report.get('body', '')
                         final_sym = user_symbol
 
-                        # 1. Save to Local (Sidebar) - Legacy
-                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=final_sym)
-                        
-                        # 2. Save to CSV/DB
                         # Use search term as company name for better grouping
                         c_name = st.session_state.get('current_company', "Unknown")
+
+                        # 1. Save to Local (Sidebar) - Legacy
+                        save_link_to_file(final_label, report['href'], description=final_desc, symbol=final_sym, company=c_name)
                         
+                        # 2. Save to CSV/DB
                         success, msg = db_handler.save_link(
                             company=c_name,
                             title=report['title'],
@@ -1574,10 +1578,12 @@ with tab_saved:
             with st.container():
                 st.markdown(f"🔗 **[{link['href']}]({link['href']})**")
                 
-                c_edit_1, c_edit_2 = st.columns([0.25, 0.75])
+                c_edit_1, c_edit_2, c_edit_3 = st.columns([0.4, 0.2, 0.4])
                 with c_edit_1:
-                    e_symbol = st.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}", placeholder="SYM")
+                    e_company = st.text_input("Company", value=link.get('company', 'Bookmarked'), key=f"bk_comp_{i}")
                 with c_edit_2:
+                    e_symbol = st.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}", placeholder="SYM")
+                with c_edit_3:
                     e_title = st.text_input("Title", value=link.get('title', ''), key=f"bk_title_{i}")
                 
                 e_desc = st.text_area("Note / Description", value=link.get('description', ''), key=f"bk_desc_{i}", height=70)
@@ -1586,7 +1592,7 @@ with tab_saved:
                 with col_actions[0]:
                     if st.button("💾 Save to DB", key=f"save_db_{i}", type="primary"):
                         success, msg = db_handler.save_link(
-                            company="Bookmarked" if not e_symbol else f"Bookmarked ({e_symbol})",
+                            company=e_company,
                             title=e_title,
                             url=link['href'],
                             label=e_title,
