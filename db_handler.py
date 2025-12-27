@@ -33,8 +33,55 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_company ON links(company)
     """)
     
+    # --- NEW: Company Hubs Table (Overrides) ---
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS company_hubs (
+            company TEXT PRIMARY KEY,
+            url TEXT NOT NULL,
+            timestamp TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
+
+# ... (rest of file) ...
+
+def save_company_hub(company: str, url: str) -> Tuple[bool, str]:
+    """Save a verified hub URL for a company (overrides defaults)."""
+    try:
+        init_db()
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Upsert
+        cursor.execute("""
+            INSERT INTO company_hubs (company, url, timestamp)
+            VALUES (?, ?, ?)
+            ON CONFLICT(company) DO UPDATE SET
+            url=excluded.url,
+            timestamp=excluded.timestamp
+        """, (company.lower(), url, timestamp))
+        
+        conn.commit()
+        conn.close()
+        return True, "Hub updated."
+    except Exception as e:
+        return False, f"Error: {e}"
+
+def get_company_hub(company: str) -> Optional[str]:
+    """Get the verified hub URL for a company if exists."""
+    try:
+        if not os.path.exists(DB_FILE): return None
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT url FROM company_hubs WHERE company = ?", (company.lower(),))
+        row = cursor.fetchone()
+        conn.close()
+        return row[0] if row else None
+    except:
+        return None
 
 def save_link(company: str, title: str, url: str, label: str, description: str = "") -> Tuple[bool, str]:
     """

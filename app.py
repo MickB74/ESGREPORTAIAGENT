@@ -413,8 +413,15 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             resolved_name = company_name
             log(f"Using known website: {known_url}")
         else:
-            try:
-                with open("company_map.json", "r") as f:
+            # --- OVERRIDE: Check Custom SQLite Hubs FIRST ---
+            custom_hub = db_handler.get_company_hub(company_name)
+            if custom_hub:
+                known_url = custom_hub
+                resolved_name = company_name
+                log(f"Found CUSTOM verified hub (Database Override): {known_url}")
+            else:
+                try:
+                    with open("company_map.json", "r") as f:
                     cmap = json.load(f)
                 
                 # 1. Exact Match
@@ -1458,8 +1465,45 @@ with tab_search:
         st.subheader("📄 Recent ESG Reports")
         web = data.get("website")
         if web:
-            st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
-            st.caption(web.get('body', ''))
+            # Hub Display & Edit Logic
+            col_web, col_edit = st.columns([0.85, 0.15])
+            with col_web:
+                 st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
+                 st.caption(web.get('body', ''))
+            with col_edit:
+                 if st.button("✏️ Edit", key="edit_verified_hub", help="Correct this link if it's wrong"):
+                     st.session_state.show_hub_editor = True
+            
+            # Editor
+            if st.session_state.get("show_hub_editor"):
+                with st.expander("Correct Verified Site URL", expanded=True):
+                    new_hub_url = st.text_input("Correct URL:", value=web['href'])
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("💾 Save Correction", type="primary"):
+                            if new_hub_url:
+                                success, msg = db_handler.save_company_hub(st.session_state.current_company, new_hub_url)
+                                if success:
+                                    st.success("✅ Hub Updated! Re-running search...")
+                                    st.session_state.show_hub_editor = False
+                                    time.sleep(1)
+                                    # Trigger re-search? actually st.rerun() will re-render, but data is already loaded.
+                                    # We need to FORCE a reload of data?
+                                    # search_esg_info is called in the main loop if company selected.
+                                    # We should probably clear local generic data?
+                                    # st.rerun() is simple enough, user might need to click search again?
+                                    # Let's simple st.rerun() and let the info box say "Updated". 
+                                    # Actually better to clear esg_data so it fetches fresh?
+                                    # st.session_state.pop('esg_data', None)
+                                    # st.rerun()
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                    with c2:
+                         if st.button("Cancel", key="cancel_hub_edit"):
+                             st.session_state.show_hub_editor = False
+                             st.rerun()
             
             # Display screenshot if available
             import os
