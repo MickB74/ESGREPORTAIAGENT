@@ -1101,19 +1101,18 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                     
                     if scrape_results and company_name in scrape_results:
                          # It found something!
-                         best_link = scrape_results[company_name]
-                         # Convert to our format
-                         pw_report = {
-                             "title": best_link['text'],
-                             "href": best_link['url'],
-                             "body": "Detected via Deep Browser Scan",
-                             "source": "Deep Browser Scan"
-                         }
-                         # Verify it? esg_scraper already checks keywords/PDF extension
-                         # Let's optionally verify if we want to be safe, but 403 might block verification too!
-                         # If the browser saw it, the link is likely valid.
-                         results["reports"].append(pw_report)
-                         log(f"Playwright found report: {pw_report['title']}")
+                         found_links = scrape_results[company_name]
+                         
+                         # Iterate through all found links
+                         for link in found_links:
+                             pw_report = {
+                                 "title": link['text'],
+                                 "href": link['url'],
+                                 "body": "Detected via Deep Browser Scan",
+                                 "source": "Deep Browser Scan"
+                             }
+                             results["reports"].append(pw_report)
+                             log(f"Playwright found report: {pw_report['title']}")
                          
                 except Exception as e:
                     log(f"Playwright Scan Error: {e}")
