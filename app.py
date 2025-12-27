@@ -1668,8 +1668,8 @@ with tab_search:
                         # Use search term as company name for better grouping
                         c_name = st.session_state.get('current_company', "Unknown")
 
-                        # 1. Save to MongoDB (Saved Links Collection)
-                        success, msg = mongo_db.save_link("saved_links", {
+                        # 1. Save to MongoDB (Verified Links Collection)
+                        success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
                             "title": report['title'],
                             "url": report['href'],
@@ -1681,7 +1681,7 @@ with tab_search:
                         
                         
                         if success:
-                            st.success(f"Saved to DB as '{final_label}'")
+                            st.success(f"Saved to User Database as '{final_label}'")
                             # Force rerun to update sidebar immediately
                             time.sleep(0.5) # Slight delay to let user see success message
                             st.rerun()
@@ -1695,55 +1695,13 @@ with tab_search:
     st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
 
 # ==========================================
-# TAB 2: MY SAVED LINKS (MongoDB)
-# ==========================================
-with tab_saved:
-    st.header("🔖 My Saved Links")
-    st.caption("Your personal bookmarks, synced to the cloud (MongoDB).")
-    
-    # Load from MongoDB
-    saved_links = mongo_db.get_all_links("saved_links")
-    
-    if len(saved_links) > 0:
-        st.metric("Total Bookmarks", len(saved_links))
-        st.divider()
 
-        for i, link in enumerate(saved_links):
-            with st.expander(f"{link.get('company', 'Unknown')} - {link.get('title', 'Untitled')}", expanded=False):
-                with st.form(key=f"edit_bookmark_{i}"):
-                    c1, c2 = st.columns([0.3, 0.7])
-                    new_symbol = c1.text_input("Symbol", value=link.get('symbol', ''), key=f"bk_sym_{i}")
-                    new_title = c2.text_input("Title", value=link.get('title', ''), key=f"bk_title_{i}")
-                    new_notes = st.text_area("Notes", value=link.get('description', ''), key=f"bk_note_{i}")
-                    
-                    c_save, c_del = st.columns([0.2, 0.2])
-                    if c_save.form_submit_button("💾 Save Changes"):
-                        link['symbol'] = new_symbol
-                        link['title'] = new_title
-                        link['description'] = new_notes
-                        success, msg = mongo_db.save_link("saved_links", link)
-                        if success:
-                            st.success(msg)
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error(msg)
-                            
-                    if c_del.form_submit_button("🗑️ Delete"):
-                        if mongo_db.delete_link("saved_links", link.get('url', '')):
-                            st.success("Deleted!")
-                            time.sleep(0.5)
-                            st.rerun()
-                            
-                st.markdown(f"**URL:** [{link.get('url')}]({link.get('url')})")
-    else:
-        st.info("ℹ️ No bookmarks in MongoDB yet.")
 
 # ==========================================
-# TAB 3: VERIFIED DATABASE (MongoDB)
+# TAB 2: USER SAVED LINKS (MongoDB)
 # ==========================================
 with tab_db:
-    st.header("📂 Verified Link Database")
+    st.header("📂 User Saved Links")
     st.markdown("All links saved to your permanent **MongoDB Atlas** database.")
     
     # --- MAINTENANCE / ADMIN ---
