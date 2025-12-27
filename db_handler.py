@@ -16,6 +16,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
             company TEXT NOT NULL,
+            symbol TEXT,
             title TEXT NOT NULL,
             label TEXT NOT NULL,
             url TEXT NOT NULL UNIQUE,
@@ -83,7 +84,7 @@ def get_company_hub(company: str) -> Optional[str]:
     except:
         return None
 
-def save_link(company: str, title: str, url: str, label: str, description: str = "") -> Tuple[bool, str]:
+def save_link(company: str, title: str, url: str, label: str, description: str = "", symbol: str = "") -> Tuple[bool, str]:
     """
     Save or update a link in the database.
     
@@ -93,6 +94,7 @@ def save_link(company: str, title: str, url: str, label: str, description: str =
         url: Link URL (unique identifier)
         label: Custom label
         description: Optional description
+        symbol: Stock Ticker/Symbol (Optional)
     
     Returns:
         Tuple of (success: bool, message: str)
@@ -113,9 +115,9 @@ def save_link(company: str, title: str, url: str, label: str, description: str =
             # Update existing record
             cursor.execute("""
                 UPDATE links 
-                SET timestamp = ?, company = ?, title = ?, label = ?, description = ?
+                SET timestamp = ?, company = ?, symbol = ?, title = ?, label = ?, description = ?
                 WHERE url = ?
-            """, (timestamp, company, title, label, description, url))
+            """, (timestamp, company, symbol, title, label, description, url))
             
             conn.commit()
             conn.close()
@@ -123,9 +125,9 @@ def save_link(company: str, title: str, url: str, label: str, description: str =
         else:
             # Insert new record
             cursor.execute("""
-                INSERT INTO links (timestamp, company, title, label, url, description)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (timestamp, company, title, label, url, description))
+                INSERT INTO links (timestamp, company, symbol, title, label, url, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (timestamp, company, symbol, title, label, url, description))
             
             conn.commit()
             conn.close()
@@ -150,7 +152,7 @@ def get_all_links() -> Tuple[List[Dict], Optional[str]]:
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, timestamp, company, title, label, url, description
+            SELECT id, timestamp, company, symbol, title, label, url, description
             FROM links
             ORDER BY timestamp DESC
         """)
@@ -183,7 +185,7 @@ def get_links_by_company(company_name: str) -> Tuple[List[Dict], Optional[str]]:
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, timestamp, company, title, label, url, description
+            SELECT id, timestamp, company, symbol, title, label, url, description
             FROM links
             WHERE company LIKE ?
             ORDER BY timestamp DESC

@@ -1403,7 +1403,8 @@ with tab_search:
                 st.caption("🔖 **Your Bookmarked Links:**")
                 for i, row in enumerate(saved_bks):
                     lbl = row.get('Label') or row.get('Title') or "Link"
-                    st.markdown(f"- [{lbl}]({row['URL']})  `{row.get('Timestamp', '')[:10]}`")
+                    sym_badge = f"**[{row['symbol']}]** " if row.get('symbol') else ""
+                    st.markdown(f"- {sym_badge}[{lbl}]({row['URL']})  `{row.get('Timestamp', '')[:10]}`")
         except Exception as e:
             print(f"Bookmark error: {e}")
 
@@ -1633,10 +1634,12 @@ with tab_db:
             st.caption("Add a link directly to your permanent confirmed database.")
             c_url = st.text_input("URL (Required)", placeholder="https://example.com/report.pdf")
             
-            c1, c2 = st.columns(2)
+            c1, c2, c3 = st.columns([0.4, 0.2, 0.4])
             with c1:
                 c_company = st.text_input("Company Name", placeholder="e.g. Acme Corp")
             with c2:
+                c_symbol = st.text_input("Symbol", placeholder="e.g. ACME")
+            with c3:
                 c_title = st.text_input("Title", placeholder="e.g. 2024 Sustainability Report")
                 
             c_label = st.text_input("Label (Short)", placeholder="e.g. 2024 Report")
@@ -1648,10 +1651,11 @@ with tab_db:
                 else:
                     success, msg = db_handler.save_link(
                         company=c_company if c_company else "Manual Entry",
-                        title=c_title if c_title else c_url,
+                        title=c_title if c_title else "Saved Link",
                         url=c_url,
                         label=c_label if c_label else "Link",
-                        description=c_desc
+                        description=c_desc,
+                        symbol=c_symbol
                     )
                     if success:
                         st.success("✅ Saved to database!")
@@ -1673,8 +1677,10 @@ with tab_db:
         df = pd.DataFrame(links)
         
         # Reorder columns for better display
-        column_order = ['id', 'timestamp', 'company', 'label', 'title', 'url', 'description']
-        df = df[column_order]
+        column_order = ['id', 'timestamp', 'company', 'symbol', 'label', 'title', 'url', 'description']
+        # Filter available columns only (in case DB schema mismatch on some rows)
+        available_cols = [c for c in column_order if c in df.columns]
+        df = df[available_cols]
         
         # Download button
         csv_export = df.to_csv(index=False).encode('utf-8')
