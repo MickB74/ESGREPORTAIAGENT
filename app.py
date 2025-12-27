@@ -1367,20 +1367,53 @@ with tab_search:
             st.info(data['description'])
         
         # Display Website
+        # --- Verified Hub Section (New Editable Logic) ---
         st.subheader("🌐 ESG / Sustainability Website")
-        if data["website"]:
-            col_web, col_save_web = st.columns([0.8, 0.2])
-            with col_web:
-                st.markdown(f"**[{data['website']['title']}]({data['website']['href']})**")
-                st.caption(data['website']['body'])
-            with col_save_web:
-                if st.button("Save", key="save_web_1"):
-                    if save_link_to_file(data['website']['title'], data['website']['href'], description=data['website']['body']):
-                        st.success("Saved!")
-                        time.sleep(0.5)
-                        st.rerun()
-                    else:
-                        st.warning("Exists")
+        web = data.get("website")
+        
+        col_web, col_edit = st.columns([0.85, 0.15])
+        with col_web:
+             if web:
+                 # Check if it's a custom override for label
+                 is_custom = db_handler.get_company_hub(data.get('company',""))
+                 prefix = "🛡️ **Custom Hub:**" if is_custom else "**🌐 Verified ESG Hub:**"
+                 st.markdown(f"{prefix} [{web['title']}]({web['href']})")
+                 if web.get('body'): st.caption(web['body'])
+             else:
+                 st.warning("⚠️ No Verified ESG Hub found for this company.")
+                 
+        with col_edit:
+             btn_label = "✏️ Edit" if web else "➕ Add"
+             if st.button(btn_label, key="top_edit_hub", help="Set or Correct the Verified Hub URL"):
+                 st.session_state.show_hub_editor_top = True
+        
+        # Editor (Top)
+        if st.session_state.get("show_hub_editor_top"):
+            with st.expander("Configure Verified Site URL", expanded=True):
+                st.info("Provide the correct direct URL to the company's ESG/Sustainability Hub or Reports page.")
+                current_val = web['href'] if web else ""
+                new_hub_url = st.text_input("Correct URL:", value=current_val, placeholder="https://www.company.com/sustainability", key="input_hub_top")
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    if st.button("💾 Save & Re-Scan", type="primary", key="save_hub_top"):
+                        if new_hub_url:
+                            # Save to Company Hubs DB
+                            c_name = st.session_state.get("current_company", data.get("company", "Unknown"))
+                            success, msg = db_handler.save_company_hub(c_name, new_hub_url)
+                            if success:
+                                st.success("✅ Hub Updated! Refreshing...")
+                                st.session_state.show_hub_editor_top = False
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+                        else:
+                            st.warning("Please enter a URL")
+                with c2:
+                     if st.button("Cancel", key="cancel_hub_top"):
+                         st.session_state.show_hub_editor_top = False
+                         st.rerun()
 
 
             # --- STEP 2 TRIGGER (Deep Scan) ---
@@ -1463,49 +1496,12 @@ with tab_search:
         
         st.subheader("📄 Recent ESG Reports")
         web = data.get("website")
-        web = data.get("website")
         
-        # --- Verified Hub Section (Always Visible) ---
-        col_web, col_edit = st.columns([0.85, 0.15])
-        with col_web:
-             if web:
-                 st.markdown(f"**🌐 Verified ESG Hub:** [{web['title']}]({web['href']})")
-                 if web.get('body'): st.caption(web['body'])
-             else:
-                 st.warning("⚠️ No Verified ESG Hub found for this company.")
-                 
-        with col_edit:
-             btn_label = "✏️ Edit" if web else "➕ Add"
-             if st.button(btn_label, key="edit_verified_hub", help="Set or Correct the Verified Hub URL"):
-                 st.session_state.show_hub_editor = True
-        
-        # Editor (Shared)
-        if st.session_state.get("show_hub_editor"):
-            with st.expander("Configure Verified Site URL", expanded=True):
-                st.info("Provide the correct direct URL to the company's ESG/Sustainability Hub or Reports page. This will be used for all future searches.")
-                current_val = web['href'] if web else ""
-                new_hub_url = st.text_input("Correct URL:", value=current_val, placeholder="https://www.company.com/sustainability")
-                
-                c1, c2 = st.columns(2)
-                with c1:
-                    if st.button("💾 Save & Re-Scan", type="primary"):
-                        if new_hub_url:
-                            # Save to Company Hubs DB
-                            c_name = st.session_state.get("current_company", data.get("company", "Unknown"))
-                            success, msg = db_handler.save_company_hub(c_name, new_hub_url)
-                            if success:
-                                st.success("✅ Hub Updated! Re-running search...")
-                                st.session_state.show_hub_editor = False
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error(msg)
-                        else:
-                            st.warning("Please enter a URL")
-                with c2:
-                     if st.button("Cancel", key="cancel_hub_edit"):
-                         st.session_state.show_hub_editor = False
-                         st.rerun()
+        # Screenshot logic
+        import os
+        if web and data.get('screenshot') and os.path.exists(data['screenshot']):
+            st.markdown("**📸 Page Preview:**")
+            st.image(data['screenshot'], use_column_width=True)
         
         # Screenshot
         import os
