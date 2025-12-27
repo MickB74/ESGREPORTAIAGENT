@@ -1951,11 +1951,15 @@ with tab_data:
                         st.error(f"Error adding company: {e}")
     if os.path.exists(csv_file):
         try:
-            # Load CSV
-            # Handle potential encoding issues if created by Excel
+            # Load CSV with robust error handling
             try:
-                df_csv = pd.read_csv(csv_file, encoding='utf-8')
+                # Use python engine for better error tolerance
+                df_csv = pd.read_csv(csv_file, encoding='utf-8', engine='python', on_bad_lines='warn')
             except UnicodeDecodeError:
+                df_csv = pd.read_csv(csv_file, encoding='latin1', engine='python', on_bad_lines='warn')
+            except Exception as e:
+                # Fallback
+                st.warning(f"Standard load failed ({e}), trying strict mode...")
                 df_csv = pd.read_csv(csv_file, encoding='latin1')
             
             # Filter & Sort Logic
@@ -1968,8 +1972,14 @@ with tab_data:
                 sort_az = st.checkbox("Sort A-Z (Company Name)", key="dm_sort")
             
             if filter_query:
-                # Case-insensitive search
-                mask = df_csv.apply(lambda row: row.astype(str).str.contains(filter_query, case=False).any(), axis=1)
+                # Case-insensitive search - RESTRICTED TO IDENTIFYING COLUMNS
+                # Avoid searching 'Description' which causes too many false positives
+                search_cols = [col for col in df_csv.columns if any(x in col.lower() for x in ['symbol', 'name', 'ticker'])]
+                # If no matches found (unlikely), fallback to all
+                if not search_cols:
+                    search_cols = df_csv.columns
+                
+                mask = df_csv[search_cols].apply(lambda row: row.astype(str).str.contains(filter_query, case=False).any(), axis=1)
                 df_display = df_csv[mask]
             else:
                 df_display = df_csv
