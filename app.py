@@ -1400,23 +1400,30 @@ with tab_search:
 
     st.subheader("Find ESG Reports")
     
-    # 1. Main Text Input (Free Text)
-    company_name = st.text_input(
-        "Enter Company Name (Type anything):", 
-        key="company_input"
-    )
+    # Company input fields in columns to make them smaller
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # 1. Main Text Input (Free Text)
+        company_name = st.text_input(
+            "Enter Company Name:", 
+            key="company_input",
+            placeholder="Type company name..."
+        )
+    
+    with col2:
+        # 2. Helper Selectbox (Pre-loaded companies)
+        companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+        companies_options_clean.sort()
+        companies_options_clean.insert(0, "Choose pre-loaded companies")
 
-    # 2. Helper Selectbox (S&P 500)
-    companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
-    companies_options_clean.sort()
-    companies_options_clean.insert(0, "Select from S&P 500 (Optional)...")
-
-    st.selectbox(
-        "Or pick from S&P 500 list to auto-fill:", 
-        options=companies_options_clean, 
-        key="sp500_selector",
-        on_change=update_input_from_select
-    )
+        st.selectbox(
+            "Or select from list:", 
+            options=companies_options_clean, 
+            key="sp500_selector",
+            on_change=update_input_from_select,
+            label_visibility="collapsed"
+        )
 
     # 3. Search Button
     if st.button("Search 🔎", type="primary", use_container_width=True):
