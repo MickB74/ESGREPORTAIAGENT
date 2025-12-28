@@ -1560,12 +1560,14 @@ with tab_search:
                             success = mongo_db.delete_link('verified_links', saved_link.get('_id'))
                             if success:
                                 st.success("Deleted!")
-                                time.sleep(0.5)
-                                st.rerun()
-        else:
-            st.info("ℹ️ No saved links yet for this company. Use the Save button in the reports below to add them.")
-        
-        st.divider()        
+                    save_website = data.get('website', {}).get('href') if data.get('website') else known_website
+                    if not save_website:
+                        save_website = st.text_input(
+                            "Company Website (Optional)",
+                            value="",
+                            placeholder="e.g. https://www.apple.com"
+                        )
+                    
                     save_description = st.text_area(
                         "Company Description", 
                         value=data.get('description', ''),
