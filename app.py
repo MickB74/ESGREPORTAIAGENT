@@ -1378,28 +1378,6 @@ with tab_intro:
 with tab_search:
     st.subheader("Find ESG Reports")
     
-    # ... (Search UI kept as is) ...
-
-    # Display Logic (Check Session State)
-    if 'esg_data' in st.session_state and st.session_state.esg_data:
-        data = st.session_state.esg_data
-        
-        # ... (Export and Header UI kept as is) ...
-        
-        # Display Website
-        # ... (Website UI kept as is) ...
-
-        # ... (Reports Loop) ...
-        # (We need to jump to the loop to inject the auto-fill logic)
-        pass # Placeholder for diff context matching
-
-# We need to target the TAB 2 block to remove the local sym_map and use the global one
-
-# ... Using multi_replace might be cleaner but let's try to target specific blocks. 
-# Actually, I will insert the sym_map definition BEFORE the tabs first.
-
-    st.subheader("Find ESG Reports")
-    
     # Single combined company selector
     companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
     companies_options_clean.sort()
@@ -1484,6 +1462,9 @@ with tab_search:
     # Display Logic (Check Session State)
     if 'esg_data' in st.session_state and st.session_state.esg_data:
         data = st.session_state.esg_data
+        
+        # Defensive init
+        company_exists = False
         
         # Or check if company is not in MongoDB
         all_companies = mongo_db.get_all_companies()
