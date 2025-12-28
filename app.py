@@ -1463,6 +1463,75 @@ with tab_search:
             key="download_json_1"
         )
 
+        # --- Save Custom Company to Database ---
+        # Check if this was a custom company (not in pre-loaded list)
+        is_custom_company = company_selection == "--- Type custom company name ---" if 'company_selection' in locals() else False
+        
+        # Or check if company is not in MongoDB
+        all_companies = mongo_db.get_all_companies()
+        company_exists = any(
+            c.get('Security', '').lower() == data.get('company', '').lower() or 
+            c.get('Symbol', '').lower() == data.get('symbol', '').lower()
+            for c in all_companies if data.get('company')
+        )
+        
+        if not company_exists:
+            with st.expander("💾 Save this company to your database", expanded=False):
+                st.caption("Save this company so it appears in your dropdown next time.")
+                with st.form(f"save_custom_company_{data.get('company', 'unknown').replace(' ', '_')}"):
+                    col_sym, col_name = st.columns([1, 2])
+                    with col_sym:
+                        save_symbol = st.text_input(
+                            "Ticker Symbol*", 
+                            value=data.get('symbol', '').upper() if data.get('symbol') else '',
+                            placeholder="e.g. AAPL"
+                        )
+                    with col_name:
+                        save_name = st.text_input(
+                            "Company Name*", 
+                            value=data.get('company', ''),
+                            placeholder="e.g. Apple Inc."
+                        )
+                    
+                    # Get website from search results if available
+                    default_website = ""
+                    if data.get('website'):
+                        if isinstance(data['website'], dict):
+                            default_website = data['website'].get('href', '')
+                        elif isinstance(data['website'], str):
+                            default_website = data['website']
+                    
+                    save_website = st.text_input(
+                        "ESG/Sustainability Website URL", 
+                        value=default_website,
+                        placeholder="e.g. https://www.company.com/sustainability"
+                    )
+                    
+                    save_description = st.text_area(
+                        "Company Description", 
+                        value=data.get('description', ''),
+                        placeholder="Brief description of the company...",
+                        height=100
+                    )
+                    
+                    if st.form_submit_button("💾 Save to Database", use_container_width=True):
+                        if not save_symbol or not save_name:
+                            st.error("❌ Symbol and Company Name are required.")
+                        else:
+                            success, msg = mongo_db.save_company({
+                                "Symbol": save_symbol.upper(),
+                                "Security": save_name,
+                                "Company Name": save_name,
+                                "Website": save_website,
+                                "Company Description": save_description
+                            })
+                            if success:
+                                st.success(f"✅ {save_name} saved! It will appear in your dropdown on next refresh.")
+                                time.sleep(1.5)
+                                st.rerun()
+                            else:
+                                st.error(f"❌ Error: {msg}")
+
         # Display Auto-Resolve Notice
         if data.get('resolved_from'):
             st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
