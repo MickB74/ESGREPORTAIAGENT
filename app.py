@@ -1400,31 +1400,37 @@ with tab_search:
 
     st.subheader("Find ESG Reports")
     
-    # Company input fields in columns to make them smaller
-    col1, col2 = st.columns(2)
+    # Single combined company selector
+    companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+    companies_options_clean.sort()
+    companies_options_clean.insert(0, "--- Type custom company name ---")
     
-    with col1:
-        # 1. Main Text Input (Free Text)
+    company_selection = st.selectbox(
+        "Select or type company name:",
+        options=companies_options_clean,
+        key="company_selector",
+        label_visibility="collapsed"
+    )
+    
+    # Determine company name based on selection
+    if company_selection == "--- Type custom company name ---":
+        # Show text input for custom entry
         company_name = st.text_input(
-            "Enter Company Name:", 
-            key="company_input",
-            placeholder="Type company name...",
-            label_visibility="collapsed"
+            "Enter custom company name:",
+            key="company_input_custom",
+            placeholder="Type company name..."
         )
-    
-    with col2:
-        # 2. Helper Selectbox (Pre-loaded companies)
-        companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
-        companies_options_clean.sort()
-        companies_options_clean.insert(0, "Choose pre-loaded companies")
-
-        st.selectbox(
-            "Or select from list:", 
-            options=companies_options_clean, 
-            key="sp500_selector",
-            on_change=update_input_from_select,
-            label_visibility="collapsed"
-        )
+        company_symbol = None
+    else:
+        # Extract name and symbol from selection
+        parts = company_selection.rsplit('(', 1)
+        if len(parts) == 2:
+            company_name = parts[0].strip()
+            company_symbol = parts[1].replace(')', '').strip()
+            st.session_state.company_symbol = company_symbol
+        else:
+            company_name = company_selection
+            company_symbol = None
 
     # 3. Search Button
     if st.button("Search 🔎", type="primary", use_container_width=True):
@@ -1438,7 +1444,7 @@ with tab_search:
             st.session_state.current_company = company_name
             with st.spinner(f"Searching for '{company_name}'..."):
                 # Pass explicit None if no symbol to avoid confusion
-                sym = st.session_state.company_symbol if st.session_state.company_symbol else None
+                sym = company_symbol if company_symbol else None
                 data = search_esg_info(company_name, fetch_reports=True, symbol=sym)
                 st.session_state.esg_data = data
                 st.rerun()
