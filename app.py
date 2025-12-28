@@ -1600,11 +1600,16 @@ with tab_search:
             bk_company = data.get("company", st.session_state.current_company)
             # Filter from all saved links (in memory for now)
             all_bks = mongo_db.get_all_links("saved_links")
-            saved_bks = [l for l in all_bks if l.get('company', '').lower() == bk_company.lower()]
+            # Flexible matching: Check if search query is in saved name OR saved name is in search query
+            saved_bks = [
+                l for l in all_bks 
+                if bk_company.lower() in l.get('company', '').lower() 
+                or l.get('company', '').lower() in bk_company.lower()
+            ]
             
             if saved_bks:
                 st.markdown("---")
-                st.caption("🔖 **Your Bookmarked Links:**")
+                st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
                 for i, row in enumerate(saved_bks):
                     lbl = row.get('Label') or row.get('Title') or "Link"
                     sym_badge = f"**[{row['symbol']}]** " if row.get('symbol') else ""
