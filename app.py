@@ -1861,29 +1861,7 @@ with tab_db:
     st.header("📂 User Saved Links")
     st.markdown("All links saved to your permanent **MongoDB Atlas** database.")
     
-    # --- MAINTENANCE / ADMIN ---
-    with st.expander("🛠️ Admin & Maintenance"):
-        st.caption("Manage internal data files and maps.")
-        c_m1, c_m2 = st.columns([0.7, 0.3])
-        with c_m1:
-            st.info("ℹ️ **Company Map**: Based on `SP500ESGWebsites.csv`. If you edit the CSV file, rebuild the map here.")
-        with c_m2:
-            if st.button("🔄 Rebuild Company Map", help="Runs scripts/build_company_map.py"):
-                with st.spinner("Rebuilding map from CSV..."):
-                    try:
-                        import subprocess
-                        import sys
-                        # Run the script
-                        result = subprocess.run([sys.executable, "scripts/build_company_map.py"], capture_output=True, text=True)
-                        if result.returncode == 0:
-                            st.success("✅ Map Rebuilt Successfully!")
-                            st.toast("Map updated! Reloading...")
-                            time.sleep(1.5)
-                            st.rerun()
-                        else:
-                            st.error(f"Failed: {result.stderr}")
-                    except Exception as e:
-                        st.error(f"Error running script: {e}")
+
 
     st.divider()
 
