@@ -1839,8 +1839,33 @@ with tab_db:
                 
                 with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
                      with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                         # 1. Add JSON Manifest (Metadata + Links)
-                         json_data = df.to_json(orient="records", indent=4)
+                         # 1. Augment data with verified ESG hub URLs
+                         augmented_data = df.to_dict('records')
+                         
+                         # Get unique companies and their ESG hub URLs
+                         unique_companies = df['company'].dropna().unique()
+                         all_companies = mongo_db.get_all_companies()
+                         
+                         for company_name in unique_companies:
+                             # Find the company's ESG website
+                             company_record = next((c for c in all_companies if c.get('Company Name', '').lower() == company_name.lower()), None)
+                             
+                             if company_record and company_record.get('Website'):
+                                 # Add ESG hub as a separate entry
+                                 augmented_data.append({
+                                     'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                     'company': company_name,
+                                     'symbol': company_record.get('Symbol', ''),
+                                     'title': 'ESG / Sustainability Hub',
+                                     'label': 'Verified ESG Site',
+                                     'url': company_record.get('Website'),
+                                     'description': 'Official ESG/Sustainability website',
+                                     'source': 'Verified Hub'
+                                 })
+                         
+                         # 2. Add JSON Manifest (Metadata + Links including ESG hubs)
+                         import json
+                         json_data = json.dumps(augmented_data, indent=4)
                          zip_file.writestr("sources.json", json_data)
                          
                          # 2. Add TXT List (URLs only)
