@@ -1491,68 +1491,6 @@ with tab_search:
         
         # "Add New Company" section removed as per user request
 
-                    
-                    # Get website from search results if available
-          # Display Website
-        st.markdown("### 🌐 ESG / Sustainability Website")
-        if data.get('website'):
-            website_data = data['website']
-            if isinstance(website_data, dict):
-                website_url = website_data.get('href', '')
-                website_text = website_data.get('text', website_url)
-            else:
-                website_url = website_data
-                website_text = website_url
-            
-            st.markdown(f"🔗 Found saved website: [{website_text}]({website_url})")
-        else:
-            st.info("ℹ️ No specific ESG website found.")
-        
-        st.divider()
-        
-        # --- Show Previously Saved Links for This Company ---
-        st.markdown("### 💾 Your Saved Links for This Company")
-        
-        # Query MongoDB for saved links matching current company
-        all_saved = mongo_db.get_all_links('verified_links')
-        company_saved_links = [
-            link for link in all_saved 
-            if link.get('company', '').lower() == data.get('company', '').lower()
-        ]
-        
-        if company_saved_links:
-            st.caption(f"📚 You have {len(company_saved_links)} saved report(s) for **{data.get('company')}**")
-            
-            for idx, saved_link in enumerate(company_saved_links):
-                with st.expander(f"📄 {saved_link.get('report_name', 'Saved Report')} ({saved_link.get('year', 'N/A')})", expanded=False):
-                    col1, col2 = st.columns([3, 1])
-                    
-                    with col1:
-                        st.markdown(f"**URL:** [{saved_link.get('url', 'N/A')}]({saved_link.get('url', '#')})")
-                        st.caption(f"Saved on: {saved_link.get('timestamp', 'Unknown')}")
-                        if saved_link.get('notes'):
-                            st.caption(f"📝 Notes: {saved_link['notes']}")
-                    
-                    with col2:
-                        if st.button("🗑️ Delete", key=f"delete_saved_{idx}"):
-                            success = mongo_db.delete_link('verified_links', saved_link.get('_id'))
-                            if success:
-                                st.success("Deleted!")
-
-
-        # Display Auto-Resolve Notice
-        if data.get('resolved_from'):
-            st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
-
-
-
-        st.divider()
-        
-        if data.get('description'):
-            st.caption("COMPANY PROFILE")
-            st.info(data['description'])
-        
-        # Display Website
         # --- Verified Hub Section (New Editable Logic) ---
         st.subheader("🌐 ESG / Sustainability Website")
         web = data.get("website")
@@ -1603,6 +1541,59 @@ with tab_search:
                          st.session_state.show_hub_editor_top = False
                          st.rerun()
 
+                    
+                    # Get website from search results if available
+          # Display Website
+
+        
+        st.divider()
+        
+        # --- Show Previously Saved Links for This Company ---
+        st.markdown("### 💾 Your Saved Links for This Company")
+        
+        # Query MongoDB for saved links matching current company
+        all_saved = mongo_db.get_all_links('verified_links')
+        company_saved_links = [
+            link for link in all_saved 
+            if link.get('company', '').lower() == data.get('company', '').lower()
+        ]
+        
+        if company_saved_links:
+            st.caption(f"📚 You have {len(company_saved_links)} saved report(s) for **{data.get('company')}**")
+            
+            for idx, saved_link in enumerate(company_saved_links):
+                with st.expander(f"📄 {saved_link.get('report_name', 'Saved Report')} ({saved_link.get('year', 'N/A')})", expanded=False):
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown(f"**URL:** [{saved_link.get('url', 'N/A')}]({saved_link.get('url', '#')})")
+                        st.caption(f"Saved on: {saved_link.get('timestamp', 'Unknown')}")
+                        if saved_link.get('notes'):
+                            st.caption(f"📝 Notes: {saved_link['notes']}")
+                    
+                    with col2:
+                        if st.button("🗑️ Delete", key=f"delete_saved_{idx}"):
+                            success = mongo_db.delete_link('verified_links', saved_link.get('_id'))
+                            if success:
+                                st.success("Deleted!")
+
+
+        # Display Auto-Resolve Notice
+        if data.get('resolved_from'):
+            st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
+
+
+
+        st.divider()
+        
+        if data.get('description'):
+            st.caption("COMPANY PROFILE")
+            st.info(data['description'])
+        
+        # Display Website
+        # --- Verified Hub Section (New Editable Logic) ---
+
+
         # --- Saved Bookmarks (Manual) ---
         # Display these BELOW the verified hub as requested
         try:
@@ -1624,67 +1615,9 @@ with tab_search:
 
 
         
-        # --- STEP 2 TRIGGER (Deep Scan) ---
-        # Offer deep scan if we have a verified site (Always visible now)
-        if web:
-            st.divider()
-            
-            # Dynamic Label
-            btn_label = "📄 Fetch Reports & Data" if not data["reports"] else "🕵️ Deep Scan Verified Site"
-            
-            st.info(f"ℹ️ Verified Hub Found. click '{btn_label}' to crawl {web['title']} for all PDF links.")
-            
-            if st.button(btn_label, type="primary", use_container_width=True):
-                 with st.spinner(f"Deep scanning {web['title']}..."):
-                     try:
-                         # ENABLE STRICT MODE: User wants ONLY internal links from this page
-                         # SCREENSHOT CAPTURE
-                         screenshot_path = None
-                         try:
-                             import os, uuid
-                             from playwright.sync_api import sync_playwright
-                             
-                             screenshot_dir = "/tmp/esg_screenshots"
-                             os.makedirs(screenshot_dir, exist_ok=True)
-                             
-                             safe_name = "".join(c for c in st.session_state.current_company if c.isalnum() or c in (' ', '-', '_')).strip().replace(' ', '_')[:30]
-                             screenshot_filename = f"{safe_name}_{uuid.uuid4().hex[:6]}.png"
-                             screenshot_path = os.path.join(screenshot_dir, screenshot_filename)
-                             
-                             with sync_playwright() as p:
-                                 browser = p.chromium.launch(headless=True)
-                                 page = browser.new_page()
-                                 page.goto(web['href'], timeout=30000, wait_until="domcontentloaded")
-                                 page.wait_for_timeout(2000)
-                                 page.screenshot(path=screenshot_path, full_page=False)
-                                 browser.close()
-                             # print(f"✅ Screenshot: {screenshot_path}")
-                         except Exception as e:
-                             print(f"⚠️ Screenshot failed: {e}")
-                             screenshot_path = None
-
-                         
-                         # FIX: Pass the URL string
-                         url_to_scan = web['href']
-                         
-                         new_data = search_esg_info(st.session_state.current_company, fetch_reports=True, known_website=url_to_scan, symbol=data.get('symbol'), strict_mode=True)
-                         
-                         # Defensive: Ensure new_data is a dict
-                         if not isinstance(new_data, dict):
-                             st.error(f"Internal error: Unexpected data type returned: {type(new_data)}")
-                             st.stop()
-                         
-                         new_data['description'] = data.get('description') # Preserve description
-                         new_data['screenshot'] = screenshot_path  # Add screenshot path
-                         
-                         st.session_state.esg_data = new_data
-                         st.rerun()
-                     
-                     except Exception as e:
-                         st.error(f"Deep scan failed: {e}")
-                         import traceback
-                         st.code(traceback.format_exc())
-        else:
+        # Deep Scan (Playwright) logic hidden as "redundant" per user request.
+        # Can be re-enabled here if strict-mode crawling is needed later.
+        pass
              st.info("No specific ESG website found.")
         
         st.divider()
