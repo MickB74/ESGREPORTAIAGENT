@@ -161,8 +161,8 @@ class MongoHandler:
         if col is None: return []
         
         try:
-            # Sort by Security name
-            cursor = col.find({}, {'_id': 0}).sort("Security", 1)
+            # Sort by Company Name
+            cursor = col.find({}, {'_id': 0}).sort("Company Name", 1)
             return list(cursor)
         except Exception:
             return []
@@ -247,11 +247,9 @@ class MongoHandler:
                 continue
             
             name = row.get('Company Name') if 'Company Name' in row else row.get('Name')
-            security = row.get('Security') if 'Security' in row else name
             
             rec = {
                 "Symbol": str(symbol).strip().upper(),
-                "Security": str(security).strip() if security else "",
                 "Company Name": str(name).strip() if name else "",
                 "Company Description": str(row.get('Company Description', '')),
                 "Website": str(row.get('Website', ''))

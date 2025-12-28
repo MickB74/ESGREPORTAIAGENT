@@ -1280,7 +1280,7 @@ def load_sp500_companies():
 companies_data = load_sp500_companies()
 companies_options = []
 if companies_data:
-    companies_options = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
+    companies_options = [f"{c.get('Company Name', 'Unknown')} ({c.get('Symbol', 'N/A')})" for c in companies_data]
 
 
 # --- Company Selection UI ---
@@ -1307,7 +1307,7 @@ def update_input_from_select():
 sym_map = {}
 if companies_data:
     for c in companies_data:
-        sym_map[c.get('Security', c.get('Company Name', '')).strip().lower()] = c['Symbol']
+        sym_map[c.get('Company Name', '').strip().lower()] = c['Symbol']
 
 def get_symbol_from_map(company_name):
     if not company_name: return None
@@ -1383,7 +1383,7 @@ with tab_search:
     st.subheader("Find ESG Reports")
     
     # Single combined company selector
-    companies_options_clean = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
+    companies_options_clean = [f"{c.get('Company Name', 'Unknown')} ({c.get('Symbol', 'N/A')})" for c in companies_data]
     companies_options_clean.sort()
     companies_options_clean.insert(0, "Select Company")
     
@@ -1484,7 +1484,7 @@ with tab_search:
         # Or check if company is not in MongoDB
         all_companies = mongo_db.get_all_companies()
         company_exists = any(
-            c.get('Security', '').lower() == (data.get('company') or '').lower() or 
+            c.get('Company Name', '').lower() == (data.get('company') or '').lower() or  
             c.get('Symbol', '').lower() == (data.get('symbol') or '').lower()
             for c in all_companies if data.get('company')
         )
@@ -2090,7 +2090,7 @@ with tab_data:
                 else:
                     success, msg = mongo_db.save_company({
                         "Symbol": new_ticker,
-                        "Security": new_ticker, # User requested Security to match Symbol
+
                         "Company Name": new_name,
                         "Website": new_website,
                         "Company Description": new_description
@@ -2120,8 +2120,7 @@ with tab_data:
         else:
             df_display = df_co
         
-        if 'Security' in df_display.columns:
-            df_display = df_display.drop(columns=['Security'])
+
             
         st.caption(f"Showing {len(df_display)} of {len(df_co)} companies. **Click cells to edit.**")
         
@@ -2133,7 +2132,7 @@ with tab_data:
             num_rows="dynamic",  # Allow adding/deleting rows
             key="company_editor",
             column_config={
-                "Security": None,  # Hide redundant column
+
                 "created_at": st.column_config.DatetimeColumn(
                     "Added On",
                     help="Time when this company was added to the database",
@@ -2164,8 +2163,7 @@ with tab_data:
                             # Update each modified/new row
                             for _, row in stored_edited_df.iterrows():
                                 company_dict = row.to_dict()
-                                # User requested Security to match Symbol (and ensure it exists)
-                                company_dict['Security'] = row.get('Symbol')
+
                                 success, msg = mongo_db.save_company(company_dict)
                                 if not success:
                                     st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
