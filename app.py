@@ -1778,8 +1778,7 @@ with tab_search:
         else:
             st.info("No PDF reports loaded yet.")
 
-    st.markdown("---")
-    st.markdown("Build with ❤️ using Streamlit and DuckDuckGo Search")
+
 
 # ==========================================
 
