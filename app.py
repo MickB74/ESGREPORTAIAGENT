@@ -1755,6 +1755,40 @@ with tab_search:
 
         
         if data["reports"]:
+            # --- TOP SAVE ALL BUTTON ---
+            if st.button("💾 Save All Reports", key="save_all_top", type="primary"):
+                saved_count = 0
+                c_name = st.session_state.get('current_company', "Unknown")
+                
+                # Resolve symbol once
+                def_sym = data.get('symbol', '')
+                if not def_sym:
+                    resolved = get_symbol_from_map(c_name)
+                    if resolved:
+                        def_sym = resolved
+                
+                with st.spinner(f"Saving {len(data['reports'])} reports..."):
+                    for r_item in data["reports"]:
+                        success, _ = mongo_db.save_link("verified_links", {
+                            "company": c_name,
+                            "title": r_item['title'],
+                            "url": r_item['href'],
+                            "label": r_item['title'],
+                            "description": r_item.get('body', ''),
+                            "symbol": def_sym,
+                            "source": "Bulk Save"
+                        })
+                        if success:
+                            saved_count += 1
+                
+                if saved_count > 0:
+                    st.success(f"✅ Successfully saved {saved_count} reports!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No new reports saved (they might already exist).")
+            
+            st.divider()
             for idx, report in enumerate(data["reports"]):
                 # 2 Columns: Info, Save
                 r_col, r_save = st.columns([0.7, 0.3])
@@ -1818,6 +1852,41 @@ with tab_search:
                             st.rerun()
                         else:
                             st.error(f"DB Error: {msg}")
+            
+            st.divider()
+            
+            # --- BOTTOM SAVE ALL BUTTON ---
+            if st.button("💾 Save All Reports", key="save_all_bottom", type="primary"):
+                saved_count = 0
+                c_name = st.session_state.get('current_company', "Unknown")
+                
+                # Resolve symbol once
+                def_sym = data.get('symbol', '')
+                if not def_sym:
+                    resolved = get_symbol_from_map(c_name)
+                    if resolved:
+                        def_sym = resolved
+                
+                with st.spinner(f"Saving {len(data['reports'])} reports..."):
+                    for r_item in data["reports"]:
+                        success, _ = mongo_db.save_link("verified_links", {
+                            "company": c_name,
+                            "title": r_item['title'],
+                            "url": r_item['href'],
+                            "label": r_item['title'],
+                            "description": r_item.get('body', ''),
+                            "symbol": def_sym,
+                            "source": "Bulk Save"
+                        })
+                        if success:
+                            saved_count += 1
+                
+                if saved_count > 0:
+                    st.success(f"✅ Successfully saved {saved_count} reports!")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No new reports saved (they might already exist).")
                         
         else:
             st.info("No PDF reports loaded yet.")
