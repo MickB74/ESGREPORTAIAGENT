@@ -1994,43 +1994,63 @@ with tab_db:
             )
         
         with col_zip:
-            if st.button("📦 Download All Reports (ZIP)", help="Bundle all PDFs for easy NotebookLM import"):
+            if st.button("📦 Download All Content (ZIP)", help="Bundle all reports/pages for easy NotebookLM import"):
                 zip_buffer = io.BytesIO()
                 success_count = 0
                 fail_count = 0
+                import mimetypes # Import locally to avoid global scope changes if preferred, or rely on top level if added.
+                # Actually, better to just use simple logic if possible, but mimetypes is standard.
                 
-                with st.spinner(f"Downloading {len(df)} reports... (This may take a moment)"):
+                with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
                      with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                          for index, row in df.iterrows():
-                             pdf_url = row.get('url')
-                             if pdf_url and pdf_url.lower().endswith('.pdf'):
-                                 try:
-                                     # Fetch content
-                                     response = requests.get(pdf_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                                     if response.status_code == 200:
-                                         # Create safe filename
-                                         safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
-                                         safe_title = "".join(c for c in str(row.get('title', 'Report')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
-                                         year_hint = str(row.get('label', ''))
+                             item_url = row.get('url')
+                             if not item_url: continue
+                             
+                             try:
+                                 # Fetch content
+                                 response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                 
+                                 if response.status_code == 200:
+                                     # Determine Extension
+                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
+                                     ext = mimetypes.guess_extension(content_type)
+                                     
+                                     # Fallbacks/Overwrites
+                                     if not ext:
+                                         if 'pdf' in content_type: ext = '.pdf'
+                                         elif 'html' in content_type: ext = '.html'
+                                         else: ext = '.html' # Default to html for web pages
+                                     
+                                     # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
+                                     if item_url.lower().endswith('.pdf') and ext != '.pdf':
+                                         ext = '.pdf'
                                          
-                                         filename = f"{safe_company}_{year_hint}_{safe_title}.pdf"
-                                         
-                                         # Write to zip
-                                         zip_file.writestr(filename, response.content)
-                                         success_count += 1
-                                     else:
-                                         fail_count += 1
-                                 except Exception as e:
-                                     print(f"Zip download error: {e}")
+                                     # Create safe filename
+                                     safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
+                                     safe_title = "".join(c for c in str(row.get('title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
+                                     year_hint = str(row.get('label', ''))
+                                     
+                                     # Deduplicate filenames in zip? ZipFile handles duplicate paths by adding them, but extracting might warn.
+                                     # We'll rely on the uniqueness of the combination or sequence.
+                                     filename = f"{safe_company}_{year_hint}_{safe_title}{ext}"
+                                     
+                                     # Write to zip
+                                     zip_file.writestr(filename, response.content)
+                                     success_count += 1
+                                 else:
                                      fail_count += 1
+                             except Exception as e:
+                                 # print(f"Zip download error: {e}")
+                                 fail_count += 1
                      
-                st.success(f"Bundled {success_count} PDFs! ({fail_count} failed/skipped)")
+                st.success(f"Bundled {success_count} items! ({fail_count} failed)")
                 
                 # Show Download Button for the Zip
                 st.download_button(
                     label="⬇️ Click to Save ZIP",
                     data=zip_buffer.getvalue(),
-                    file_name=f"esg_reports_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
+                    file_name=f"esg_content_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
                     mime="application/zip",
                     key="zip_download_final"
                 )
