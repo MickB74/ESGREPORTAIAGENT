@@ -1485,30 +1485,8 @@ with tab_search:
     if 'esg_data' in st.session_state and st.session_state.esg_data:
         data = st.session_state.esg_data
         
-        # Export Button
-        json_str = json.dumps(data, indent=4)
-        st.download_button(
-            label="Download Analysis (JSON)",
-            data=json_str,
-            file_name=f"{st.session_state.current_company}_esg_data.json",
-            mime="application/json",
-            key="download_json_1"
-        )
-
-        # --- Save Custom Company to Database ---
-        # Check if this was a custom company (not in pre-loaded list)
-        is_custom_company = company_selection == "--- Type custom company name ---" if 'company_selection' in locals() else False
-        
-        # Or check if company is not in MongoDB
-        all_companies = mongo_db.get_all_companies()
-        company_exists = any(
-            c.get('Security', '').lower() == (data.get('company') or '').lower() or 
-            c.get('Symbol', '').lower() == (data.get('symbol') or '').lower()
-            for c in all_companies if data.get('company')
-        )
-        
         if not company_exists:
-            with st.expander("💾 Save this company to your database", expanded=False):
+            with st.expander("➕ Add New Company to Database", expanded=False):
                 st.caption("Save this company so it appears in your dropdown next time.")
                 with st.form(f"save_custom_company_{data.get('company', 'unknown').replace(' ', '_')}"):
                     col_sym, col_name = st.columns([1, 2])
