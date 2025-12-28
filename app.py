@@ -1622,8 +1622,6 @@ with tab_search:
         
         # Deep Scan (Playwright) logic hidden as "redundant" per user request.
         # Can be re-enabled here if strict-mode crawling is needed later.
-        pass
-             st.info("No specific ESG website found.")
         
         st.divider()
         
