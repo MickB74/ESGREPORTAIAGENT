@@ -262,3 +262,21 @@ class MongoHandler:
         # Use existing bulk write
         return self.bulk_write_companies(records)
 
+    def delete_company(self, symbol):
+        """
+        Delete a company by Symbol.
+        """
+        col = self.get_collection("companies")
+        if col is None: 
+            return False, "DB Connection Failed"
+            
+        try:
+            result = col.delete_one({"Symbol": symbol})
+            if result.deleted_count > 0:
+                return True, "Deleted successfully"
+            else:
+                return False, "Company not found"
+        except Exception as e:
+            print(f"Delete Error: {e}")
+            return False, str(e)
+

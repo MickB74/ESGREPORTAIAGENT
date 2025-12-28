@@ -1599,7 +1599,7 @@ with tab_search:
         try:
             bk_company = data.get("company", st.session_state.current_company)
             # Filter from all saved links (in memory for now)
-            all_bks = mongo_db.get_all_links("saved_links")
+            all_bks = mongo_db.get_all_links("verified_links")
             # Flexible matching: Check if search query is in saved name OR saved name is in search query
             saved_bks = [
                 l for l in all_bks 
@@ -2163,8 +2163,11 @@ with tab_data:
                         # Delete removed rows
                         if deleted_symbols:
                             for symbol in deleted_symbols:
-                                # Note: Need to add delete_company method to mongo_handler
-                                st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
+                                success, msg = mongo_db.delete_company(symbol)
+                                if success:
+                                    st.success(f"Deleted {symbol}")
+                                else:
+                                    st.error(f"Failed to delete {symbol}: {msg}")
                         
                         # Clear confirmation state
                         st.session_state.confirm_deletion = False
