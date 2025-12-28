@@ -1385,7 +1385,7 @@ with tab_search:
     # Single combined company selector
     companies_options_clean = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
     companies_options_clean.sort()
-    companies_options_clean.insert(0, "--- Type custom company name ---")
+    companies_options_clean.insert(0, "--- Other / Custom ---")
     
     company_selection = st.selectbox(
         "Select or type company name:",
@@ -1395,12 +1395,13 @@ with tab_search:
     )
     
     # Determine company name based on selection
-    if company_selection == "--- Type custom company name ---":
+    if company_selection == "--- Other / Custom ---":
         # Show text input for custom entry
         company_name = st.text_input(
-            "Enter custom company name:",
+            "Company Name",
             key="company_input_custom",
-            placeholder="Type company name..."
+            placeholder="Type company name...",
+            label_visibility="collapsed"
         )
         company_symbol = None
         known_website = None
