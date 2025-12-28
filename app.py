@@ -613,6 +613,45 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             unique_domains.append(d)
             seen.add(d)
 
+    # --- SCREENSHOT CAPTURE (Always attempt for first URL) ---
+    if unique_domains:
+        target_url = unique_domains[0]
+        try:
+            from playwright.sync_api import sync_playwright
+            import tempfile
+            import uuid
+            
+            screenshot_path = None
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                
+                # Set reasonable timeout and viewport
+                page.set_viewport_size({"width": 1280, "height": 1024})
+                
+                try:
+                    # Load page with timeout
+                    page.goto(target_url, wait_until='networkidle', timeout=10000)
+                    
+                    # Generate unique filename
+                    temp_dir = tempfile.gettempdir()
+                    screenshot_filename = f"esg_screenshot_{uuid.uuid4().hex[:8]}.png"
+                    screenshot_path = f"{temp_dir}/{screenshot_filename}"
+                    
+                    # Capture screenshot
+                    page.screenshot(path=screenshot_path, full_page=False)
+                    results['screenshot'] = screenshot_path
+                    log(f"Screenshot captured: {screenshot_path}")
+                    
+                except Exception as page_error:
+                    log(f"Screenshot page load failed: {page_error}")
+                finally:
+                    browser.close()
+                    
+        except Exception as screenshot_error:
+            log(f"Screenshot capture failed: {screenshot_error}")
+            # Continue without screenshot
+
     # 3. Deep Scan (Requests-based)
     all_reports = []
     max_scan = 1 if strict_mode else 3
