@@ -1791,8 +1791,6 @@ with tab_search:
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
-                    time.sleep(1)
-                    st.rerun()
                 else:
                     if error_msgs:
                         st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
@@ -1858,9 +1856,6 @@ with tab_search:
                         
                         if success:
                             st.success(f"Saved to User Database as '{final_label}'")
-                            # Force rerun to update sidebar immediately
-                            time.sleep(0.5) # Slight delay to let user see success message
-                            st.rerun()
                         else:
                             st.error(f"DB Error: {msg}")
             
@@ -1897,8 +1892,6 @@ with tab_search:
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
-                    time.sleep(1)
-                    st.rerun()
                 else:
                     if error_msgs:
                         st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
@@ -1967,8 +1960,6 @@ with tab_db:
                     })
                     if success:
                         st.success("✅ Saved to MongoDB!")
-                        time.sleep(1)
-                        st.rerun()
                     else:
                         st.error(f"Error: {msg}")
     
@@ -2130,8 +2121,6 @@ with tab_db:
                      mongo_db.save_link("verified_links", link_data)
                      
                  st.success("✅ Database updated successfully!")
-                 time.sleep(1)
-                 st.rerun()
     else:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
 
@@ -2167,9 +2156,7 @@ with tab_data:
                         "Company Description": new_description
                     })
                     if success:
-                        st.success("✅ Added! Refreshing...")
-                        time.sleep(1)
-                        st.rerun()
+                        st.success("✅ Added!")
                     else:
                         st.error(msg)
 
