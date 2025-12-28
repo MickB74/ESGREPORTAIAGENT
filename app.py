@@ -1472,7 +1472,7 @@ with tab_search:
                     known_website=final_target_website
                 )
                 st.session_state.esg_data = data
-                st.rerun()
+                # Rerun removed for stability
 
     # Display Logic (Check Session State)
     if 'esg_data' in st.session_state and st.session_state.esg_data:
@@ -1589,9 +1589,11 @@ with tab_search:
                             success, msg = mongo_db.save_company_hub(c_name, new_hub_url)
                             if success:
                                 st.success("✅ Hub Updated! Refreshing...")
+                                # Manually update session state to reflect change immediately
+                                if 'esg_data' in st.session_state and st.session_state.esg_data:
+                                    st.session_state.esg_data['website'] = {'title': 'Official ESG Hub', 'href': new_hub_url}
                                 st.session_state.show_hub_editor_top = False
-                                time.sleep(1)
-                                st.rerun()
+                                time.sleep(0.5)
                             else:
                                 st.error(msg)
                         else:
