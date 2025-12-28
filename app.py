@@ -1437,6 +1437,12 @@ with tab_search:
                 None
             )
             known_website = company_data_match.get('Website') if company_data_match else None
+            
+            # Debug: Show retrieved website
+            if known_website:
+                st.caption(f"🔗 Found saved website: {known_website}")
+            else:
+                st.caption(f"⚠️ No saved website found for {company_symbol}")
         else:
             company_name = company_selection
             company_symbol = None
