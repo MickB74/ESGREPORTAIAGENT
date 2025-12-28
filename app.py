@@ -1514,7 +1514,7 @@ with tab_search:
                         height=100
                     )
                     
-                    if st.form_submit_button("💾 Save to Database", use_container_width=True):
+                    if st.form_submit_button("💾 Save & Scan", use_container_width=True, type="primary"):
                         if not save_symbol or not save_name:
                             st.error("❌ Symbol and Company Name are required.")
                         else:
@@ -1526,8 +1526,30 @@ with tab_search:
                                 "Company Description": save_description
                             })
                             if success:
-                                st.success(f"✅ {save_name} saved! It will appear in your dropdown on next refresh.")
-                                time.sleep(1.5)
+                                st.success(f"✅ {save_name} saved to Data Manager!")
+                                
+                                # If website was provided, also save to company hubs for faster lookups
+                                if save_website:
+                                    mongo_db.save_company_hub(save_name, save_website)
+                                
+                                st.info("🔄 Running scan on saved company...")
+                                time.sleep(1)
+                                
+                                # Trigger automatic search with saved data
+                                st.session_state.current_company = save_name
+                                st.session_state.company_symbol = save_symbol.upper()
+                                
+                                # Clear old data and run new search
+                                st.session_state.esg_data = None
+                                with st.spinner(f"Scanning '{save_name}'..."):
+                                    new_data = search_esg_info(
+                                        save_name, 
+                                        fetch_reports=True, 
+                                        symbol=save_symbol.upper(),
+                                        known_website=save_website if save_website else None
+                                    )
+                                    st.session_state.esg_data = new_data
+                                
                                 st.rerun()
                             else:
                                 st.error(f"❌ Error: {msg}")
