@@ -2192,6 +2192,9 @@ with tab_data:
         else:
             df_display = df_co
         
+        if 'Security' in df_display.columns:
+            df_display = df_display.drop(columns=['Security'])
+            
         st.caption(f"Showing {len(df_display)} of {len(df_co)} companies. **Click cells to edit.**")
         
         # Editable table with column config
