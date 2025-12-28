@@ -1671,8 +1671,18 @@ with tab_search:
                     if resolved:
                         def_sym = resolved
                 
+                # Get existing URLs to check for duplicates
+                all_existing = mongo_db.get_all_links("verified_links")
+                existing_urls = {link.get('url') for link in all_existing}
+                
+                skipped_count = 0
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
+                        # Skip if already exists
+                        if r_item['href'] in existing_urls:
+                            skipped_count += 1
+                            continue
+                            
                         success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
                             "title": r_item['title'],
@@ -1689,11 +1699,13 @@ with tab_search:
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
-                else:
+                if skipped_count > 0:
+                    st.info(f"🔄 Skipped {skipped_count} duplicate(s) (already saved)")
+                if saved_count == 0 and skipped_count == 0:
                     if error_msgs:
                         st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
                     else:
-                        st.warning("⚠️ No new reports saved (they might already exist).")
+                        st.warning("⚠️ No new reports to save.")
             
             st.divider()
             for idx, report in enumerate(data["reports"]):
@@ -1740,22 +1752,29 @@ with tab_search:
                         # Use search term as company name for better grouping
                         c_name = st.session_state.get('current_company', "Unknown")
 
-                        # 1. Save to MongoDB (Verified Links Collection)
-                        success, msg = mongo_db.save_link("verified_links", {
-                            "company": c_name,
-                            "title": report['title'],
-                            "url": report['href'],
-                            "label": final_label,
-                            "description": final_desc,
-                            "symbol": final_sym,
-                            "source": "Search Result"
-                        })
+                        # Check if URL already exists
+                        all_existing = mongo_db.get_all_links("verified_links")
+                        url_exists = any(link.get('url') == report['href'] for link in all_existing)
                         
-                        
-                        if success:
-                            st.success(f"Saved to User Database as '{final_label}'")
+                        if url_exists:
+                            st.warning(f"⚠️ This link is already saved!")
                         else:
-                            st.error(f"DB Error: {msg}")
+                            # 1. Save to MongoDB (Verified Links Collection)
+                            success, msg = mongo_db.save_link("verified_links", {
+                                "company": c_name,
+                                "title": report['title'],
+                                "url": report['href'],
+                                "label": final_label,
+                                "description": final_desc,
+                                "symbol": final_sym,
+                                "source": "Search Result"
+                            })
+                            
+                            
+                            if success:
+                                st.success(f"Saved to User Database as '{final_label}'")
+                            else:
+                                st.error(f"DB Error: {msg}")
             
             st.divider()
             
