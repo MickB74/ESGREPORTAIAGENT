@@ -1565,10 +1565,7 @@ with tab_search:
         else:
             st.info("ℹ️ No saved links yet for this company. Use the Save button in the reports below to add them.")
         
-        st.divider()        value=default_website,
-                        placeholder="e.g. https://www.company.com/sustainability"
-                    )
-                    
+        st.divider()        
                     save_description = st.text_area(
                         "Company Description", 
                         value=data.get('description', ''),
