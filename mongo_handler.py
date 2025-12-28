@@ -266,7 +266,7 @@ class MongoHandler:
         """
         Delete a company by Symbol.
         """
-        col = self.get_collection("companies")
+        col = self._get_collection("companies")
         if col is None: 
             return False, "DB Connection Failed"
             
