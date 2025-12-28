@@ -1622,16 +1622,16 @@ with tab_search:
                     if bk_company.lower() in l.get('company', '').lower() 
                     or l.get('company', '').lower() in bk_company.lower()
                 ]
-            
-            if saved_bks:
-                st.markdown("---")
-                st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
-                for i, row in enumerate(saved_bks):
-                    lbl = row.get('label') or row.get('title') or "Link"
-                    sym_badge = f"**[{row.get('symbol', '')}]** " if row.get('symbol') else ""
-                    url = row.get('url', '#')
-                    timestamp = row.get('timestamp', '')
-                    st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
+                
+                if saved_bks:
+                    st.markdown("---")
+                    st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
+                    for i, row in enumerate(saved_bks):
+                        lbl = row.get('label') or row.get('title') or "Link"
+                        sym_badge = f"**[{row.get('symbol', '')}]** " if row.get('symbol') else ""
+                        url = row.get('url', '#')
+                        timestamp = row.get('timestamp', '')
+                        st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
             except Exception as e:
                 print(f"Bookmark error: {e}")
 
