@@ -1991,6 +1991,9 @@ with tab_data:
     if current_companies:
         df_co = pd.DataFrame(current_companies)
         
+        if 'created_at' not in df_co.columns:
+            df_co['created_at'] = None
+
         # Filter Logic
         filter_q = st.text_input("🔎 Search Companies", placeholder="Type symbol or name...", key="dm_filter_mongo")
         if filter_q:
@@ -2001,13 +2004,26 @@ with tab_data:
         
         st.caption(f"Showing {len(df_display)} of {len(df_co)} companies. **Click cells to edit.**")
         
-        # Editable table
+        # Editable table with column config
         edited_df = st.data_editor(
             df_display,
             use_container_width=True,
             hide_index=True,
             num_rows="dynamic",  # Allow adding/deleting rows
-            key="company_editor"
+            key="company_editor",
+            column_config={
+                "created_at": st.column_config.DatetimeColumn(
+                    "Added On",
+                    help="Time when this company was added to the database",
+                    format="D MMM YYYY, h:mm a",
+                    disabled=True,
+                ),
+                 "updated_at": st.column_config.DatetimeColumn(
+                    "Last Updated",
+                    format="D MMM YYYY, h:mm a",
+                    disabled=True,
+                )
+            }
         )
         
         # Confirmation Dialog (appears when user tries to delete)

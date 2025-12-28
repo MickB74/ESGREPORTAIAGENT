@@ -177,9 +177,20 @@ class MongoHandler:
             symbol = company_data.get('Symbol')
             if not symbol: return False, "Symbol is required"
             
+            # Prepare update data
+            update_data = {
+                '$set': {
+                    **company_data,
+                    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                },
+                '$setOnInsert': {
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            }
+            
             col.update_one(
                 {'Symbol': symbol},
-                {'$set': company_data},
+                update_data,
                 upsert=True
             )
             # Clear cache
