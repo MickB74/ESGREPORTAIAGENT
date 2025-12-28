@@ -1433,14 +1433,16 @@ with tab_search:
         help="Manually enter a specific URL to analyze, overriding auto-search and database links."
     )
 
-    # 3. Search / Scan Button
-    btn_label = "Search 🔎"
-    if manual_url or known_website:
-        btn_label = "Scan Website 🚀"
+    # 3. Always Scan Button
+    if st.button("Scan Website 🚀", type="primary", use_container_width=True):
+        # Determine Target URL
+        final_target_website = manual_url if manual_url else known_website
         
-    if st.button(btn_label, type="primary", use_container_width=True):
-        if not company_name and not manual_url:
-            st.warning("Please enter a company name or a direct URL.")
+        if not final_target_website:
+             if company_name:
+                 st.error(f"❌ No verified website found for {company_name}. Please enter a Direct URL below.")
+             else:
+                 st.warning("Please select a company or enter a Direct URL.")
         else:
             # Fallback name if only URL provided
             if not company_name and manual_url:
@@ -1457,10 +1459,10 @@ with tab_search:
             
             st.session_state.current_company = company_name
             
-            # Prioritize manual URL if provided
-            final_target_website = manual_url if manual_url else known_website
             
-            with st.spinner(f"Searching for '{company_name}'..."):
+            st.session_state.current_company = company_name
+            
+            with st.spinner(f"Scanning {final_target_website}..."):
                 # Pass known website if available
                 sym = company_symbol if company_symbol else None
                 data = search_esg_info(
