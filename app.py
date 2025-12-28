@@ -1438,46 +1438,89 @@ with tab_search:
         help="Manually enter a specific URL to analyze, overriding auto-search and database links."
     )
 
-    # 3. Always Scan Button
-    if st.button("Scan Website 🚀", type="primary", use_container_width=True):
-        # Determine Target URL
-        final_target_website = manual_url if manual_url else known_website
-        
-        if not final_target_website:
-             if company_name:
-                 st.error(f"❌ No verified website found for {company_name}. Please enter a Direct URL below.")
-             else:
-                 st.warning("Please select a company or enter a Direct URL.")
-        else:
-            # Fallback name if only URL provided
-            if not company_name and manual_url:
-                 # Try to extract domain or default
-                 from urllib.parse import urlparse
-                 try:
-                     domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
-                     company_name = f"{domain} (Direct Link)"
-                 except:
-                     company_name = "Direct Link Analysis"
-            # Clear previous results if new search
-            if 'current_company' in st.session_state and st.session_state.current_company != company_name:
-                st.session_state.esg_data = None
+
+    # 3. Three Action Buttons
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔍 Scan Website", type="primary", use_container_width=True, help="Find new ESG reports on the website"):
+            # Determine Target URL
+            final_target_website = manual_url if manual_url else known_website
             
-            st.session_state.current_company = company_name
+            if not final_target_website:
+                 if company_name:
+                     st.error(f"❌ No verified website found for {company_name}. Please enter a Direct URL below.")
+                 else:
+                     st.warning("Please select a company or enter a Direct URL.")
+            else:
+                # Fallback name if only URL provided
+                if not company_name and manual_url:
+                     from urllib.parse import urlparse
+                     try:
+                         domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
+                         company_name = f"{domain} (Direct Link)"
+                     except:
+                         company_name = "Direct Link Analysis"
+                
+                st.session_state.current_company = company_name
+                st.session_state.show_scan_results = True
+                st.session_state.show_saved_links = False
+                
+                with st.spinner(f"Scanning {final_target_website}..."):
+                    sym = company_symbol if company_symbol else None
+                    data = search_esg_info(
+                        company_name, 
+                        fetch_reports=True, 
+                        symbol=sym,
+                        known_website=final_target_website
+                    )
+                    st.session_state.esg_data = data
+    
+    with col2:
+        if st.button("📂 Show Saved Links", use_container_width=True, help="Display your saved links for this company"):
+            if company_name:
+                st.session_state.current_company = company_name
+                st.session_state.show_scan_results = False
+                st.session_state.show_saved_links = True
+                # Create minimal data structure for saved links display
+                st.session_state.esg_data = {
+                    "company": company_name,
+                    "website": {"title": "Verified ESG Hub", "href": known_website} if known_website else None
+                }
+            else:
+                st.warning("Please select a company first.")
+    
+    with col3:
+        if st.button("🚀 Scan & Show Both", type="secondary", use_container_width=True, help="Scan for new reports AND show saved links"):
+            final_target_website = manual_url if manual_url else known_website
             
-            
-            st.session_state.current_company = company_name
-            
-            with st.spinner(f"Scanning {final_target_website}..."):
-                # Pass known website if available
-                sym = company_symbol if company_symbol else None
-                data = search_esg_info(
-                    company_name, 
-                    fetch_reports=True, 
-                    symbol=sym,
-                    known_website=final_target_website
-                )
-                st.session_state.esg_data = data
-                # Rerun removed for stability
+            if not final_target_website:
+                 if company_name:
+                     st.error(f"❌ No verified website found for {company_name}. Please enter a Direct URL below.")
+                 else:
+                     st.warning("Please select a company or enter a Direct URL.")
+            else:
+                if not company_name and manual_url:
+                     from urllib.parse import urlparse
+                     try:
+                         domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
+                         company_name = f"{domain} (Direct Link)"
+                     except:
+                         company_name = "Direct Link Analysis"
+                
+                st.session_state.current_company = company_name
+                st.session_state.show_scan_results = True
+                st.session_state.show_saved_links = True
+                
+                with st.spinner(f"Scanning {final_target_website}..."):
+                    sym = company_symbol if company_symbol else None
+                    data = search_esg_info(
+                        company_name, 
+                        fetch_reports=True, 
+                        symbol=sym,
+                        known_website=final_target_website
+                    )
+                    st.session_state.esg_data = data
 
     # Display Logic (Check Session State)
     if 'esg_data' in st.session_state and st.session_state.esg_data:
@@ -1567,17 +1610,18 @@ with tab_search:
 
 
         # --- Saved Bookmarks (Manual) ---
-        # Display these BELOW the verified hub as requested
-        try:
-            bk_company = data.get("company", st.session_state.current_company)
-            # Filter from all saved links (in memory for now)
-            all_bks = mongo_db.get_all_links("verified_links")
-            # Flexible matching: Check if search query is in saved name OR saved name is in search query
-            saved_bks = [
-                l for l in all_bks 
-                if bk_company.lower() in l.get('company', '').lower() 
-                or l.get('company', '').lower() in bk_company.lower()
-            ]
+        # Only show if flag is set
+        if st.session_state.get('show_saved_links', True):  # Default True for backward compatibility
+            try:
+                bk_company = data.get("company", st.session_state.current_company)
+                # Filter from all saved links (in memory for now)
+                all_bks = mongo_db.get_all_links("verified_links")
+                # Flexible matching: Check if search query is in saved name OR saved name is in search query
+                saved_bks = [
+                    l for l in all_bks 
+                    if bk_company.lower() in l.get('company', '').lower() 
+                    or l.get('company', '').lower() in bk_company.lower()
+                ]
             
             if saved_bks:
                 st.markdown("---")
@@ -1588,8 +1632,8 @@ with tab_search:
                     url = row.get('url', '#')
                     timestamp = row.get('timestamp', '')
                     st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
-        except Exception as e:
-            print(f"Bookmark error: {e}")
+            except Exception as e:
+                print(f"Bookmark error: {e}")
 
 
 
@@ -1597,9 +1641,11 @@ with tab_search:
         # Deep Scan (Playwright) logic hidden as "redundant" per user request.
         # Can be re-enabled here if strict-mode crawling is needed later.
         
-        st.divider()
-        
-        st.subheader("📄 Recent ESG Reports")
+        # Only show scan results if flag is set
+        if st.session_state.get('show_scan_results', True):  # Default True for backward compatibility
+            st.divider()
+            
+            st.subheader("📄 Recent ESG Reports")
         web = data.get("website")
         
         # Screenshot logic
