@@ -1433,8 +1433,12 @@ with tab_search:
         help="Manually enter a specific URL to analyze, overriding auto-search and database links."
     )
 
-    # 3. Search Button
-    if st.button("Search 🔎", type="primary", use_container_width=True):
+    # 3. Search / Scan Button
+    btn_label = "Search 🔎"
+    if manual_url or known_website:
+        btn_label = "Scan Website 🚀"
+        
+    if st.button(btn_label, type="primary", use_container_width=True):
         if not company_name and not manual_url:
             st.warning("Please enter a company name or a direct URL.")
         else:
