@@ -1447,6 +1447,13 @@ with tab_search:
             company_name = company_selection
             company_symbol = None
             known_website = None
+    # Manual URL Entry
+    manual_url = st.text_input(
+        "Direct Link / URL (Optional)",
+        placeholder="https://example.com/report.pdf",
+        key="manual_search_url",
+        help="Manually enter a specific URL to analyze, overriding auto-search and database links."
+    )
 
     # 3. Search Button
     if st.button("Search 🔎", type="primary", use_container_width=True):
@@ -1458,6 +1465,10 @@ with tab_search:
                 st.session_state.esg_data = None
             
             st.session_state.current_company = company_name
+            
+            # Prioritize manual URL if provided
+            final_target_website = manual_url if manual_url else known_website
+            
             with st.spinner(f"Searching for '{company_name}'..."):
                 # Pass known website if available
                 sym = company_symbol if company_symbol else None
@@ -1465,7 +1476,7 @@ with tab_search:
                     company_name, 
                     fetch_reports=True, 
                     symbol=sym,
-                    known_website=known_website
+                    known_website=final_target_website
                 )
                 st.session_state.esg_data = data
                 st.rerun()
