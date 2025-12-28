@@ -1385,7 +1385,7 @@ with tab_search:
     # Single combined company selector
     companies_options_clean = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
     companies_options_clean.sort()
-    companies_options_clean.insert(0, "--- Other / Custom ---")
+    companies_options_clean.insert(0, "Select Company")
     
     company_selection = st.selectbox(
         "Select or type company name:",
@@ -1395,12 +1395,12 @@ with tab_search:
     )
     
     # Determine company name based on selection
-    if company_selection == "--- Other / Custom ---":
+    if company_selection == "Select Company":
         # Show text input for custom entry
         company_name = st.text_input(
             "Company Name",
             key="company_input_custom",
-            placeholder="Type company name...",
+            placeholder="", # Clean placeholder as requested
             label_visibility="collapsed"
         )
         company_symbol = None
@@ -1433,16 +1433,25 @@ with tab_search:
     # Manual URL Entry
     manual_url = st.text_input(
         "Direct Link / URL (Optional)",
-        placeholder="https://example.com/report.pdf",
+        placeholder="https://example.com/report", # Removed .pdf
         key="manual_search_url",
         help="Manually enter a specific URL to analyze, overriding auto-search and database links."
     )
 
     # 3. Search Button
     if st.button("Search 🔎", type="primary", use_container_width=True):
-        if not company_name:
-            st.warning("Please enter a company name.")
+        if not company_name and not manual_url:
+            st.warning("Please enter a company name or a direct URL.")
         else:
+            # Fallback name if only URL provided
+            if not company_name and manual_url:
+                 # Try to extract domain or default
+                 from urllib.parse import urlparse
+                 try:
+                     domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
+                     company_name = f"{domain} (Direct Link)"
+                 except:
+                     company_name = "Direct Link Analysis"
             # Clear previous results if new search
             if 'current_company' in st.session_state and st.session_state.current_company != company_name:
                 st.session_state.esg_data = None
