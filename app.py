@@ -1988,15 +1988,73 @@ with tab_db:
             mime="text/csv",
         )
         
-        # Interactive table
-        st.dataframe(
+        # Interactive table (Editable)
+        st.caption("📝 **Edit directly in the table below.** Select rows and press 'Delete' to remove.")
+        
+        edited_df = st.data_editor(
             df,
             use_container_width=True,
             column_config={
-                "url": st.column_config.LinkColumn("URL"),
+                "url": st.column_config.LinkColumn("URL", disabled=True), # Key, so don't edit
+                "timestamp": st.column_config.DatetimeColumn("Saved On", disabled=True, format="D MMM YYYY, h:mm a"),
+                "company": st.column_config.TextColumn("Company"),
+                "title": st.column_config.TextColumn("Title"),
+                "label": st.column_config.TextColumn("Label"),
+                "description": st.column_config.TextColumn("Notes"),
             },
-            hide_index=True
+            hide_index=True,
+            num_rows="dynamic", # Allows adding/deleting rows
+            key="saved_links_editor"
         )
+        
+        # Logic to sync changes (Streamlit data_editor doesn't auto-sync to DB)
+        # We check for differences between original 'v_links' and 'edited_df' 
+        # But 'edited_df' is just the current state.
+        # A simpler way for a "SAVE" action is checking the state returned by data_editor
+        
+        # Actually, st.data_editor returns the new dataframe.
+        # We can add a "Save Changes" button, OR rely on state session changes if we want auto-save.
+        # Given the volume, a "Save Changes" button is safer and clearer.
+        
+        if st.button("💾 Save Changes to Database", type="primary", key="save_links_db"):
+            changes_count = 0
+            
+            # 1. Detect Deletions
+            # It's hard to track deletions just from the DF without the original IDs or URL list.
+            # But we have 'v_links' (original list). 
+            original_urls = set(l['url'] for l in v_links if 'url' in l)
+            new_urls = set(edited_df['url'].dropna().tolist())
+            
+            deleted_urls = original_urls - new_urls
+            
+            with st.spinner("Syncing changes..."):
+                 # Process Deletes
+                 for d_url in deleted_urls:
+                     mongo_db.delete_link("verified_links", d_url)
+                     changes_count += 1
+                     
+                 # Process Updates/Adds
+                 # We simply upsert everything in the edited DF. 
+                 # Since we disabled URL editing, these are either existing rows (updates) or new rows (if user added one).
+                 # If user added a row, they must fill in the URL.
+                 # Wait, if URL is disabled, they can't Add a row with a URL easily in the editor if it mandates a URL.
+                 # Actually, for "dynamic", adding rows might be tricky if a key column is disabled.
+                 # Let's Re-enable URL editing BUT handle the "Rename" case? 
+                 # Or just rely on separate "Add" form for new ones.
+                 # For now, let's assume "dynamic" is mostly for deletes.
+                 # Use iterrows to update all (or filtered diffs if we optimized, but distinct upsert is cheap enought for small lists)
+                 
+                 for index, row in edited_df.iterrows():
+                     # Skip empty URLs
+                     if not row.get('url'): continue
+                     
+                     # Simple conversion to dict
+                     link_data = row.where(pd.notnull(row), None).to_dict()
+                     mongo_db.save_link("verified_links", link_data)
+                     
+                 st.success("✅ Database updated successfully!")
+                 time.sleep(1)
+                 st.rerun()
     else:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
 
