@@ -1,24 +1,28 @@
 # ESG Report Finder Agent 🌿
 
-A powerful, agentic AI tool designed to streamline the discovery, management, and analysis of corporate ESG (Environmental, Social, and Governance) resources.
+A powerful AI tool designed to streamline the discovery, management, and analysis of corporate ESG (Environmental, Social, and Governance) resources.
 
 ## 🌟 Features
 
 ### 1. 🔍 Search & Analyze
-- **Intelligent Discovery**: Uses a multi-stage search strategy (Direct Map -> Google/DDG Search -> Official Site Crawl) to find the most accurate resources.
-- **Deep Scan**: Uses advanced browser automation (Playwright) to find hidden PDFs on verified sites.
-- **Save All**: Batch save all discovered reports to your database in one click.
-- **Smart Auto-fill**: Automatically detects stock symbols and matches "Disney" to "The Walt Disney Company".
+- **Intelligent Discovery**: Automatically finds official ESG/Sustainability websites for S&P 500 companies
+- **Direct URL Scanning**: Scan any ESG website URL directly to find PDF reports
+- **Batch Save**: Save all discovered reports to your database in one click
+- **Smart Matching**: Fuzzy search matches variations like "Citi" to "Citigroup Inc."
+- **Editable Hub URLs**: Correct or update verified ESG website URLs directly in the app
 
 ### 2. 📂 User Saved Links
-- **Cloud Database**: All links are saved to a secure MongoDB Atlas cloud database.
-- **Edit & Delete**: Directly edit link labels, notes, or delete obsolete entries from the table.
-- **Export**: Download your curated list as a CSV file.
+- **Cloud Database**: All links are saved to a secure MongoDB Atlas cloud database
+- **Smart Filtering**: Automatically shows saved links for the company you're viewing
+- **Edit & Delete**: Directly edit link labels, notes, or delete obsolete entries from the table
+- **Export Options**: 
+  - Download as CSV for spreadsheet analysis
+  - **Download as ZIP** with all PDF content + verified ESG hub URLs for NotebookLM import
 
-### 3. ⚙️ Verified Data Manager
-- **S&P 500 Index**: Access a verified database of ~500 customized ESG website links.
-- **Editable Database**: Add new companies or update existing ones directly in the app.
-- **Cloud Synced**: Changes to the company list are instantly available to all users (powered by MongoDB).
+### 3. ✅ Verified ESG Sites
+- **S&P 500 Database**: Access a verified database of ~500 company ESG website links
+- **Full CRUD**: Add, edit, or delete companies directly in the app
+- **Cloud Synced**: Changes are instantly saved to MongoDB Atlas
 
 ## 🛠️ Installation
 
@@ -35,7 +39,6 @@ A powerful, agentic AI tool designed to streamline the discovery, management, an
 3.  **Configure Secrets**:
     Create a `.streamlit/secrets.toml` file with your MongoDB connection string:
     ```toml
-    [general]
     MONGO_URI = "mongodb+srv://<user>:<password>@cluster0.mongodb.net/..."
     ```
 
@@ -47,24 +50,25 @@ A powerful, agentic AI tool designed to streamline the discovery, management, an
     ```
 
 2.  **Workflow**:
-    - **Search**: Enter a company name in Tab 1.
-    - **Verify**: Check individual reports or "Save All".
-    - **Manage**: Go to "User Saved Links" to curate your collection or "Data Manager" to add new companies.
+    - **Search**: Select a company or enter a direct URL to scan for ESG reports
+    - **Save**: Click "Save All Reports" or save individual reports with custom labels
+    - **Manage**: View and edit your saved links in the "User Saved Links" tab
+    - **Export**: Download all content as a ZIP bundle for NotebookLM or other analysis tools
 
 ## 📁 Project Structure
 
-- `app.py`: The main Streamlit application.
-- `mongo_handler.py`: Handles all MongoDB Atlas interactions (CRUD for links and companies).
-- `SP500ESGWebsites.csv`: Backup/Migration source for company data.
-- `requirements.txt`: Python dependencies.
+- `app.py`: Main Streamlit application with 4 tabs (Introduction, Search, Saved Links, Data Manager)
+- `mongo_handler.py`: MongoDB Atlas integration for links and companies
+- `scripts/search_handler.py`: ESG website discovery and PDF extraction logic
+- `SP500ESGWebsites.csv`: Backup/migration source for company data
 
+## 📦 Key Dependencies
 
-## 📦 Dependencies
-
-- **Streamlit**: For the interactive web interface.
-- **Pandas**: For robust data manipulation and CSV handling.
-- **DuckDuckGo Search**: For anonymous, real-time web searching.
-- **BeautifulSoup4**: For parsing HTML and extracting context.
+- **Streamlit**: Interactive web interface
+- **MongoDB (pymongo)**: Cloud database for persistent storage
+- **Pandas**: Data manipulation and CSV handling
+- **BeautifulSoup4**: HTML parsing and link extraction
+- **Requests**: HTTP requests for content fetching
 
 ---
-*Built with ❤️ for easier ESG research.*
+*Streamlined ESG research for data-driven insights.*

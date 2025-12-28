@@ -1361,18 +1361,23 @@ with tab_intro:
     #### 🚀 Key Features & How to Use
     
     **1. 🔍 Search & Analyze** (Main Tab)
-    *   **Find Reports**: Enter a company name or select from the S&P 500 list to automatically find their official ESG/Sustainability Hub.
-    *   **Deep Scan**: Use the "Deep Scan" feature to crawl verified hubs to uncover hidden PDF reports.
-    *   **Batch Save**: Save all discovered reports at once or curate them individually.
+    *   **Find Reports**: Select a company from the S&P 500 list to automatically load their verified ESG hub
+    *   **Direct URL Scan**: Enter any ESG website URL to scan for PDF reports
+    *   **Batch Save**: Save all discovered reports at once with one click
+    *   **Edit Hub URLs**: Correct or update the verified ESG website for any company
     
     **2. 📂 User Saved Links**
-    *   **Cloud Database**: All findings are saved to your secure MongoDB database.
-    *   **Full Control**: Edit titles, add notes, or delete old links directly from the table.
-    *   **Export**: Download your data as CSV for external analysis.
+    *   **Cloud Database**: All findings are saved to your secure MongoDB database
+    *   **Smart Filtering**: Automatically shows saved links for the company you're viewing
+    *   **Full Control**: Edit titles, add notes, or delete old links directly from the table
+    *   **Export Options**: 
+        - Download as CSV for spreadsheet analysis
+        - **Download as ZIP** with all PDF content + verified ESG hub URLs (perfect for NotebookLM!)
     
-    **3. ⚙️ Data Manager**
-    *   **Live Database**: View and edit the master company list.
-    *   **Add Companies**: Manually add new companies to the system to improve future searches.
+    **3. ✅ Verified ESG Sites**
+    *   **Live Database**: View and edit the master S&P 500 company list
+    *   **Add Companies**: Manually add new companies to improve future searches
+    *   **Delete Companies**: Remove outdated or duplicate entries
     """)
     st.info("💡 **Tip:** Use the sidebar to verify your Cloud DB status!")
 
