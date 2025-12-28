@@ -1621,11 +1621,7 @@ with tab_search:
         if data.get('resolved_from'):
             st.info(f"ℹ️ **Note**: Search defaulted to **{data['company']}** (S&P 500) based on your input '{data['resolved_from']}'. This ensures we find the official reports for the major public company.")
 
-        # --- DEBUG LOGS ---
-        if data.get("search_log"):
-            with st.expander("🔍 Search Debug Logs (Terms Used)"):
-                for log_item in data["search_log"]:
-                    st.code(log_item, language="text")
+
 
         st.divider()
         
