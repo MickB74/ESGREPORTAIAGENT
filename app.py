@@ -1514,53 +1514,7 @@ with tab_search:
                             placeholder="e.g. Apple Inc."
                         )
                     
-                    # Get website from search results if available
-          # Display Website
-        st.markdown("### 🌐 ESG / Sustainability Website")
-        if data.get('website'):
-            website_data = data['website']
-            if isinstance(website_data, dict):
-                website_url = website_data.get('href', '')
-                website_text = website_data.get('text', website_url)
-            else:
-                website_url = website_data
-                website_text = website_url
-            
-            st.markdown(f"🔗 Found saved website: [{website_text}]({website_url})")
-        else:
-            st.info("ℹ️ No specific ESG website found.")
-        
-        st.divider()
-        
-        # --- Show Previously Saved Links for This Company ---
-        st.markdown("### 💾 Your Saved Links for This Company")
-        
-        # Query MongoDB for saved links matching current company
-        all_saved = mongo_db.get_all_links('verified_links')
-        company_saved_links = [
-            link for link in all_saved 
-            if link.get('company', '').lower() == data.get('company', '').lower()
-        ]
-        
-        if company_saved_links:
-            st.caption(f"📚 You have {len(company_saved_links)} saved report(s) for **{data.get('company')}**")
-            
-            for idx, saved_link in enumerate(company_saved_links):
-                with st.expander(f"📄 {saved_link.get('report_name', 'Saved Report')} ({saved_link.get('year', 'N/A')})", expanded=False):
-                    col1, col2 = st.columns([3, 1])
-                    
-                    with col1:
-                        st.markdown(f"**URL:** [{saved_link.get('url', 'N/A')}]({saved_link.get('url', '#')})")
-                        st.caption(f"Saved on: {saved_link.get('timestamp', 'Unknown')}")
-                        if saved_link.get('notes'):
-                            st.caption(f"📝 Notes: {saved_link['notes']}")
-                    
-                    with col2:
-                        if st.button("🗑️ Delete", key=f"delete_saved_{idx}"):
-                            success = mongo_db.delete_link('verified_links', saved_link.get('_id'))
-                            if success:
-                                st.success("Deleted!")
-                    save_website = data.get('website', {}).get('href') if data.get('website') else known_website
+                    save_website = data.get('website', {}).get('href') if data.get('website') else (known_website if 'known_website' in locals() else None)
                     if not save_website:
                         save_website = st.text_input(
                             "Company Website (Optional)",
@@ -1614,6 +1568,54 @@ with tab_search:
                                 st.rerun()
                             else:
                                 st.error(f"❌ Error: {msg}")
+                    
+                    # Get website from search results if available
+          # Display Website
+        st.markdown("### 🌐 ESG / Sustainability Website")
+        if data.get('website'):
+            website_data = data['website']
+            if isinstance(website_data, dict):
+                website_url = website_data.get('href', '')
+                website_text = website_data.get('text', website_url)
+            else:
+                website_url = website_data
+                website_text = website_url
+            
+            st.markdown(f"🔗 Found saved website: [{website_text}]({website_url})")
+        else:
+            st.info("ℹ️ No specific ESG website found.")
+        
+        st.divider()
+        
+        # --- Show Previously Saved Links for This Company ---
+        st.markdown("### 💾 Your Saved Links for This Company")
+        
+        # Query MongoDB for saved links matching current company
+        all_saved = mongo_db.get_all_links('verified_links')
+        company_saved_links = [
+            link for link in all_saved 
+            if link.get('company', '').lower() == data.get('company', '').lower()
+        ]
+        
+        if company_saved_links:
+            st.caption(f"📚 You have {len(company_saved_links)} saved report(s) for **{data.get('company')}**")
+            
+            for idx, saved_link in enumerate(company_saved_links):
+                with st.expander(f"📄 {saved_link.get('report_name', 'Saved Report')} ({saved_link.get('year', 'N/A')})", expanded=False):
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown(f"**URL:** [{saved_link.get('url', 'N/A')}]({saved_link.get('url', '#')})")
+                        st.caption(f"Saved on: {saved_link.get('timestamp', 'Unknown')}")
+                        if saved_link.get('notes'):
+                            st.caption(f"📝 Notes: {saved_link['notes']}")
+                    
+                    with col2:
+                        if st.button("🗑️ Delete", key=f"delete_saved_{idx}"):
+                            success = mongo_db.delete_link('verified_links', saved_link.get('_id'))
+                            if success:
+                                st.success("Deleted!")
+
 
         # Display Auto-Resolve Notice
         if data.get('resolved_from'):
