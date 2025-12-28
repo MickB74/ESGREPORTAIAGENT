@@ -2131,10 +2131,15 @@ with tab_data:
                     with st.spinner("Saving..."):
                         # Update each modified/new row
                         for _, row in edited_df.iterrows():
-                            company_dict = row.to_dict()
+                            # Convert to dict and handle NaN
+                            company_dict = row.replace({np.nan: None}).to_dict()
+                            
                             success, msg = mongo_db.save_company(company_dict)
                             if not success:
                                 st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
+                            else:
+                                # Optional: minimal feedback for each row if needed, but unnecessary if batch succeeds
+                                pass
                         
                         # Delete removed rows
                         if deleted_symbols:
