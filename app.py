@@ -2160,7 +2160,7 @@ with tab_data:
                 else:
                     success, msg = mongo_db.save_company({
                         "Symbol": new_ticker,
-                        "Security": new_name,
+                        "Security": new_ticker, # User requested Security to match Symbol
                         "Company Name": new_name,
                         "Website": new_website,
                         "Company Description": new_description
@@ -2236,6 +2236,8 @@ with tab_data:
                             # Update each modified/new row
                             for _, row in stored_edited_df.iterrows():
                                 company_dict = row.to_dict()
+                                # User requested Security to match Symbol (and ensure it exists)
+                                company_dict['Security'] = row.get('Symbol')
                                 success, msg = mongo_db.save_company(company_dict)
                                 if not success:
                                     st.error(f"Failed to save {row.get('Symbol', 'unknown')}: {msg}")
