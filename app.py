@@ -1307,7 +1307,7 @@ def update_input_from_select():
 sym_map = {}
 if companies_data:
     for c in companies_data:
-        sym_map[c['Security'].lower()] = c['Symbol']
+        sym_map[c.get('Security', c.get('Company Name', '')).strip().lower()] = c['Symbol']
 
 def get_symbol_from_map(company_name):
     if not company_name: return None
@@ -1383,7 +1383,7 @@ with tab_search:
     st.subheader("Find ESG Reports")
     
     # Single combined company selector
-    companies_options_clean = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+    companies_options_clean = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
     companies_options_clean.sort()
     companies_options_clean.insert(0, "--- Type custom company name ---")
     
