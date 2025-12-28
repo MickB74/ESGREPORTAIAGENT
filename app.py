@@ -2108,8 +2108,11 @@ with tab_data:
                             
                             # Delete removed rows
                             for symbol in deleted_symbols:
-                                # Note: Need to add delete_company method to mongo_handler
-                                st.warning(f"Row deletion for {symbol} - delete method not yet implemented")
+                                success, msg = mongo_db.delete_company(symbol)
+                                if success:
+                                    st.success(f"Deleted {symbol}")
+                                else:
+                                    st.error(f"Failed to delete {symbol}: {msg}")
                         
                         # Clear confirmation state
                         st.session_state.confirm_deletion = False
