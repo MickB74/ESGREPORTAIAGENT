@@ -2003,6 +2003,15 @@ with tab_db:
                 
                 with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
                      with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                         # 1. Add JSON Manifest (Metadata + Links)
+                         json_data = df.to_json(orient="records", indent=4)
+                         zip_file.writestr("sources.json", json_data)
+                         
+                         # 2. Add TXT List (URLs only)
+                         txt_data = "\n".join(df['url'].dropna().tolist())
+                         zip_file.writestr("sources.txt", txt_data)
+                         
+                         # 3. Download Content Files
                          for index, row in df.iterrows():
                              item_url = row.get('url')
                              if not item_url: continue
