@@ -1539,7 +1539,6 @@ with tab_search:
                 with c2:
                      if st.button("Cancel", key="cancel_hub_top"):
                          st.session_state.show_hub_editor_top = False
-                         st.rerun()
 
                     
                     # Get website from search results if available
@@ -2129,7 +2128,6 @@ with tab_data:
                     st.session_state.confirm_deletion = False
                     st.session_state.deleted_symbols = None
                     st.session_state.edited_df = None
-                    st.rerun()
             
             st.divider()
         
