@@ -1470,8 +1470,8 @@ with tab_search:
         # Or check if company is not in MongoDB
         all_companies = mongo_db.get_all_companies()
         company_exists = any(
-            c.get('Security', '').lower() == data.get('company', '').lower() or 
-            c.get('Symbol', '').lower() == data.get('symbol', '').lower()
+            c.get('Security', '').lower() == (data.get('company') or '').lower() or 
+            c.get('Symbol', '').lower() == (data.get('symbol') or '').lower()
             for c in all_companies if data.get('company')
         )
         
