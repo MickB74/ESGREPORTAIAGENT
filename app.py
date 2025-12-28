@@ -1345,7 +1345,7 @@ with st.sidebar:
     st.markdown("---")
 
 # --- TABS LAYOUT ---
-tab_intro, tab_search, tab_db, tab_data = st.tabs(["🏠 Introduction", "🔍 Search & Analyze", "📂 User Saved Links", "⚙️ Data Manager"])
+tab_intro, tab_search, tab_db, tab_data = st.tabs(["🏠 Introduction", "🔍 Search & Analyze", "📂 User Saved Links", "✅ Verified ESG Sites"])
 
 # ====================
 # TAB 0: INTRODUCTION
@@ -2139,7 +2139,7 @@ with tab_db:
 # TAB 4: DATA MANAGER (MongoDB Companies)
 # ==========================================
 with tab_data:
-    st.header("⚙️ Data manager")
+    st.header("✅ Verified ESG Sites")
     st.caption("Manage your verified company database. Add companies to make them searchable and pre-populate their ESG sites.")
 
     # --- ADD NEW COMPANY FORM ---
