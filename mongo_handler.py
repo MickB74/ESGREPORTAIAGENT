@@ -178,9 +178,12 @@ class MongoHandler:
             if not symbol: return False, "Symbol is required"
             
             # Prepare update data
+            # Remove created_at from company_data if present to avoid overwriting with None
+            update_payload = {k: v for k, v in company_data.items() if k != 'created_at'}
+            
             update_data = {
                 '$set': {
-                    **company_data,
+                    **update_payload,
                     "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 },
                 '$setOnInsert': {

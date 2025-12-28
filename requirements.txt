@@ -7,5 +7,7 @@ playwright
 selectolax
 pymongo
 certifi
+pandas
+numpy
 
 

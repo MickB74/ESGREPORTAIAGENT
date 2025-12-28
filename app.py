@@ -1759,6 +1759,7 @@ with tab_search:
             # --- TOP SAVE ALL BUTTON ---
             if st.button("💾 Save All Reports", key="save_all_top", type="primary"):
                 saved_count = 0
+                error_msgs = set()
                 c_name = st.session_state.get('current_company', "Unknown")
                 
                 # Resolve symbol once
@@ -1770,7 +1771,7 @@ with tab_search:
                 
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
-                        success, _ = mongo_db.save_link("verified_links", {
+                        success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
                             "title": r_item['title'],
                             "url": r_item['href'],
@@ -1781,13 +1782,18 @@ with tab_search:
                         })
                         if success:
                             saved_count += 1
+                        else:
+                            error_msgs.add(msg)
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.warning("⚠️ No new reports saved (they might already exist).")
+                    if error_msgs:
+                        st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
+                    else:
+                        st.warning("⚠️ No new reports saved (they might already exist).")
             
             st.divider()
             for idx, report in enumerate(data["reports"]):
@@ -1859,6 +1865,7 @@ with tab_search:
             # --- BOTTOM SAVE ALL BUTTON ---
             if st.button("💾 Save All Reports", key="save_all_bottom", type="primary"):
                 saved_count = 0
+                error_msgs = set()
                 c_name = st.session_state.get('current_company', "Unknown")
                 
                 # Resolve symbol once
@@ -1870,7 +1877,7 @@ with tab_search:
                 
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
-                        success, _ = mongo_db.save_link("verified_links", {
+                        success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
                             "title": r_item['title'],
                             "url": r_item['href'],
@@ -1881,13 +1888,18 @@ with tab_search:
                         })
                         if success:
                             saved_count += 1
+                        else:
+                            error_msgs.add(msg)
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
                     time.sleep(1)
                     st.rerun()
                 else:
-                    st.warning("⚠️ No new reports saved (they might already exist).")
+                    if error_msgs:
+                        st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
+                    else:
+                        st.warning("⚠️ No new reports saved (they might already exist).")
                         
         else:
             st.info("No PDF reports loaded yet.")
