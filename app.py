@@ -1657,7 +1657,7 @@ with tab_search:
 
 
         
-        if data["reports"]:
+        if data.get("reports"):
             # --- TOP SAVE ALL BUTTON ---
             if st.button("💾 Save All Reports", key="save_all_top", type="primary"):
                 saved_count = 0
