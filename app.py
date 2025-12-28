@@ -1408,7 +1408,8 @@ with tab_search:
         company_name = st.text_input(
             "Enter Company Name:", 
             key="company_input",
-            placeholder="Type company name..."
+            placeholder="Type company name...",
+            label_visibility="collapsed"
         )
     
     with col2:
