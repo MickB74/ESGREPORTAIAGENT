@@ -1360,16 +1360,17 @@ with tab_intro:
     
     **1. 🔍 Search & Analyze** (Main Tab)
     *   **Find Reports**: Enter a company name or select from the S&P 500 list to automatically find their official ESG/Sustainability Hub.
-    *   **Deep Scan**: Use the "Deep Scan" feature to crawl verified hubs using advanced browser automation (Playwright) to uncover hidden PDF reports.
-    *   **Direct Save**: Save any report directly to your permanent "User Saved Links" database.
+    *   **Deep Scan**: Use the "Deep Scan" feature to crawl verified hubs to uncover hidden PDF reports.
+    *   **Batch Save**: Save all discovered reports at once or curate them individually.
     
     **2. 📂 User Saved Links**
-    *   View, export, and manage all your saved findings.
-    *   This is your permanent cloud database (synced to MongoDB).
+    *   **Cloud Database**: All findings are saved to your secure MongoDB database.
+    *   **Full Control**: Edit titles, add notes, or delete old links directly from the table.
+    *   **Export**: Download your data as CSV for external analysis.
     
     **3. ⚙️ Data Manager**
-    *   View and edit the underlying S&P 500 dataset (`SP500ESGWebsites.csv`).
-    *   Add new companies manually to the system.
+    *   **Live Database**: View and edit the master company list.
+    *   **Add Companies**: Manually add new companies to the system to improve future searches.
     """)
     st.info("💡 **Tip:** Use the sidebar to verify your Cloud DB status!")
 
