@@ -1396,13 +1396,8 @@ with tab_search:
     
     # Determine company name based on selection
     if company_selection == "Select Company":
-        # Show text input for custom entry
-        company_name = st.text_input(
-            "Company Name",
-            key="company_input_custom",
-            placeholder="", # Clean placeholder as requested
-            label_visibility="collapsed"
-        )
+        # Custom input removed as per user request
+        company_name = None
         company_symbol = None
         known_website = None
     else:
@@ -1488,78 +1483,8 @@ with tab_search:
             for c in all_companies if data.get('company')
         )
         
-        if not company_exists:
-            with st.expander("➕ Add New Company to Database", expanded=False):
-                st.caption("Save this company so it appears in your dropdown next time.")
-                with st.form(f"save_custom_company_{data.get('company', 'unknown').replace(' ', '_')}"):
-                    col_sym, col_name = st.columns([1, 2])
-                    with col_sym:
-                        save_symbol = st.text_input(
-                            "Ticker Symbol*", 
-                            value=data.get('symbol', '').upper() if data.get('symbol') else '',
-                            placeholder="e.g. AAPL"
-                        )
-                    with col_name:
-                        save_name = st.text_input(
-                            "Company Name*", 
-                            value=data.get('company', ''),
-                            placeholder="e.g. Apple Inc."
-                        )
-                    
-                    save_website = data.get('website', {}).get('href') if data.get('website') else (known_website if 'known_website' in locals() else None)
-                    if not save_website:
-                        save_website = st.text_input(
-                            "Company Website (Optional)",
-                            value="",
-                            placeholder="e.g. https://www.apple.com"
-                        )
-                    
-                    save_description = st.text_area(
-                        "Company Description", 
-                        value=data.get('description', ''),
-                        placeholder="Brief description of the company...",
-                        height=100
-                    )
-                    
-                    if st.form_submit_button("💾 Save & Scan", use_container_width=True, type="primary"):
-                        if not save_symbol or not save_name:
-                            st.error("❌ Symbol and Company Name are required.")
-                        else:
-                            success, msg = mongo_db.save_company({
-                                "Symbol": save_symbol.upper(),
-                                "Security": save_name,
-                                "Company Name": save_name,
-                                "Website": save_website,
-                                "Company Description": save_description
-                            })
-                            if success:
-                                st.success(f"✅ {save_name} saved to Data Manager!")
-                                
-                                # If website was provided, also save to company hubs for faster lookups
-                                if save_website:
-                                    mongo_db.save_company_hub(save_name, save_website)
-                                
-                                st.info("🔄 Running scan on saved company...")
-                                time.sleep(1)
-                                
-                                # Trigger automatic search with saved data
-                                st.session_state.current_company = save_name
-                                st.session_state.company_symbol = save_symbol.upper()
-                                
-                                # Clear old data and run new search
-                                st.session_state.esg_data = None
-                                with st.spinner(f"Scanning '{save_name}'..."):
-                                    new_data = search_esg_info(
-                                        save_name, 
-                                        fetch_reports=True, 
-                                        symbol=save_symbol.upper(),
-                                        known_website=save_website if save_website else None
-                                    )
-                                    st.session_state.esg_data = new_data
-                                
-                                st.rerun()
-                            else:
-                                st.error(f"❌ Error: {msg}")
+        # "Add New Company" section removed as per user request
+
                     
                     # Get website from search results if available
           # Display Website
