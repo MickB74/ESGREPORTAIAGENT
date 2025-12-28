@@ -1280,7 +1280,7 @@ def load_sp500_companies():
 companies_data = load_sp500_companies()
 companies_options = []
 if companies_data:
-    companies_options = [f"{c['Security']} ({c['Symbol']})" for c in companies_data]
+    companies_options = [f"{c.get('Security', c.get('Company Name', 'Unknown'))} ({c.get('Symbol', 'N/A')})" for c in companies_data]
 
 
 # --- Company Selection UI ---
