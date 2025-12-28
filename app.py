@@ -1421,6 +1421,7 @@ with tab_search:
             placeholder="Type company name..."
         )
         company_symbol = None
+        known_website = None
     else:
         # Extract name and symbol from selection
         parts = company_selection.rsplit('(', 1)
@@ -1428,9 +1429,18 @@ with tab_search:
             company_name = parts[0].strip()
             company_symbol = parts[1].replace(')', '').strip()
             st.session_state.company_symbol = company_symbol
+            
+            # Look up saved website from MongoDB
+            all_companies = mongo_db.get_all_companies()
+            company_data_match = next(
+                (c for c in all_companies if c.get('Symbol', '').upper() == company_symbol.upper()),
+                None
+            )
+            known_website = company_data_match.get('Website') if company_data_match else None
         else:
             company_name = company_selection
             company_symbol = None
+            known_website = None
 
     # 3. Search Button
     if st.button("Search 🔎", type="primary", use_container_width=True):
@@ -1443,9 +1453,14 @@ with tab_search:
             
             st.session_state.current_company = company_name
             with st.spinner(f"Searching for '{company_name}'..."):
-                # Pass explicit None if no symbol to avoid confusion
+                # Pass known website if available
                 sym = company_symbol if company_symbol else None
-                data = search_esg_info(company_name, fetch_reports=True, symbol=sym)
+                data = search_esg_info(
+                    company_name, 
+                    fetch_reports=True, 
+                    symbol=sym,
+                    known_website=known_website
+                )
                 st.session_state.esg_data = data
                 st.rerun()
 
