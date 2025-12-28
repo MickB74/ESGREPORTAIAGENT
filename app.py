@@ -1583,9 +1583,11 @@ with tab_search:
                 st.markdown("---")
                 st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
                 for i, row in enumerate(saved_bks):
-                    lbl = row.get('Label') or row.get('Title') or "Link"
-                    sym_badge = f"**[{row['symbol']}]** " if row.get('symbol') else ""
-                    st.markdown(f"- {sym_badge}[{lbl}]({row['URL']})  `{row.get('Timestamp', '')[:10]}`")
+                    lbl = row.get('label') or row.get('title') or "Link"
+                    sym_badge = f"**[{row.get('symbol', '')}]** " if row.get('symbol') else ""
+                    url = row.get('url', '#')
+                    timestamp = row.get('timestamp', '')
+                    st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
         except Exception as e:
             print(f"Bookmark error: {e}")
 
