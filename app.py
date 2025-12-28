@@ -2202,6 +2202,7 @@ with tab_data:
             num_rows="dynamic",  # Allow adding/deleting rows
             key="company_editor",
             column_config={
+                "Security": None,  # Hide redundant column
                 "created_at": st.column_config.DatetimeColumn(
                     "Added On",
                     help="Time when this company was added to the database",
