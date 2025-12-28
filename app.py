@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import difflib
 import numpy as np
+import zipfile
+import io
 # MongoDB Handler
 from mongo_handler import MongoHandler
 
@@ -1981,13 +1983,57 @@ with tab_db:
         df = df[available_cols]
         
         # Download button
-        csv_export = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="⬇️ Export to CSV",
-            data=csv_export,
-            file_name=f"verified_links_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv",
-        )
+        col_csv, col_zip = st.columns([1, 1])
+        with col_csv:
+            csv_export = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="⬇️ Export to CSV",
+                data=csv_export,
+                file_name=f"verified_links_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+            )
+        
+        with col_zip:
+            if st.button("📦 Download All Reports (ZIP)", help="Bundle all PDFs for easy NotebookLM import"):
+                zip_buffer = io.BytesIO()
+                success_count = 0
+                fail_count = 0
+                
+                with st.spinner(f"Downloading {len(df)} reports... (This may take a moment)"):
+                     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                         for index, row in df.iterrows():
+                             pdf_url = row.get('url')
+                             if pdf_url and pdf_url.lower().endswith('.pdf'):
+                                 try:
+                                     # Fetch content
+                                     response = requests.get(pdf_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                     if response.status_code == 200:
+                                         # Create safe filename
+                                         safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
+                                         safe_title = "".join(c for c in str(row.get('title', 'Report')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
+                                         year_hint = str(row.get('label', ''))
+                                         
+                                         filename = f"{safe_company}_{year_hint}_{safe_title}.pdf"
+                                         
+                                         # Write to zip
+                                         zip_file.writestr(filename, response.content)
+                                         success_count += 1
+                                     else:
+                                         fail_count += 1
+                                 except Exception as e:
+                                     print(f"Zip download error: {e}")
+                                     fail_count += 1
+                     
+                st.success(f"Bundled {success_count} PDFs! ({fail_count} failed/skipped)")
+                
+                # Show Download Button for the Zip
+                st.download_button(
+                    label="⬇️ Click to Save ZIP",
+                    data=zip_buffer.getvalue(),
+                    file_name=f"esg_reports_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
+                    mime="application/zip",
+                    key="zip_download_final"
+                )
         
         # Interactive table (Editable)
         st.caption("📝 **Edit directly in the table below.** Select rows and press 'Delete' to remove.")
