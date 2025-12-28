@@ -9,6 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import difflib
+import numpy as np
 # MongoDB Handler
 from mongo_handler import MongoHandler
 
