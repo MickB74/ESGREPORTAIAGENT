@@ -1610,12 +1610,17 @@ with tab_search:
                         saved_bks.append(l)
                         continue
                     
-                    # Match by any significant word in company name (3+ chars)
-                    search_words = [w for w in search_company.split() if len(w) >= 3]
-                    link_words = [w for w in link_company.split() if len(w) >= 3]
+                    # Match by any significant word in company name (2+ chars for more matches)
+                    search_words = [w for w in search_company.split() if len(w) >= 2]
+                    link_words = [w for w in link_company.split() if len(w) >= 2]
                     
-                    if any(word in link_company for word in search_words) or \
-                       any(word in search_company for word in link_words):
+                    # More aggressive matching: if ANY word from search is in link company, it matches
+                    if any(word in link_company for word in search_words):
+                        saved_bks.append(l)
+                        continue
+                    
+                    # Reverse: if ANY word from link is in search company
+                    if any(word in search_company for word in link_words):
                         saved_bks.append(l)
                         continue
                 
@@ -1630,9 +1635,18 @@ with tab_search:
                         timestamp = row.get('timestamp', '')
                         st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
                 else:
+                    # Debug: Show what we searched for
+                    with st.expander("🔍 Debug: Search Details"):
+                        st.write(f"**Searched for:** `{clean_company}`")
+                        st.write(f"**Symbol:** `{bk_symbol if bk_symbol else 'None'}`")
+                        st.write(f"**Total saved links in DB:** {len(all_bks)}")
+                        if all_bks:
+                            unique_companies = set(l.get('company', 'Unknown') for l in all_bks)
+                            st.write(f"**Companies with saved links:** {', '.join(sorted(unique_companies))}")
                     st.info(f"No saved links found for {bk_company}. Scan the website and save some reports!")
             except Exception as e:
                 print(f"Bookmark error: {e}")
+                st.error(f"Error loading saved links: {e}")
 
 
 
