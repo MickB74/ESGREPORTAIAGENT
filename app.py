@@ -1390,7 +1390,12 @@ with tab_search:
                 st.session_state.current_company = company_name
                 st.session_state.show_scan_results = True
                 st.session_state.show_saved_links = False
-                st.session_state.esg_data = {} # Clear prior results
+                
+                # Clear old results immediately to prevent showing cached data
+                if 'esg_data' in st.session_state and st.session_state.esg_data:
+                    st.session_state.esg_data['reports'] = []  # Clear reports array
+                else:
+                    st.session_state.esg_data = {'reports': []}
                 
                 with st.spinner(f"Scanning {final_target_website}..."):
                     sym = company_symbol if company_symbol else None
@@ -1449,6 +1454,12 @@ with tab_search:
                         pdfs_only=pdfs_only  # Pass PDFs only flag
                     )
                     st.session_state.esg_data = data
+    
+    # Add Clear Results button below action buttons
+    if st.button("🗑️ Clear Results", use_container_width=True, help="Clear current scan results"):
+        st.session_state.esg_data = {}
+        st.session_state.show_scan_results = False
+        st.rerun()
 
     # Display Logic (Check Session State)
     if 'esg_data' in st.session_state and st.session_state.esg_data:
