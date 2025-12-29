@@ -451,20 +451,91 @@ class ESGScraper:
     
     def run(self, sites_config=SITES):
         with sync_playwright() as p:
-            # Launch browser
-            browser = p.chromium.launch(headless=self.headless)
+            # Launch browser with Stealth Args for robustness
+            args = [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-http2", 
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ]
+            browser = p.chromium.launch(headless=self.headless, args=args)
+            
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                ignore_https_errors=True,
+                java_script_enabled=True,
+                viewport={"width": 1920, "height": 1080}
             )
+            context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
             results = {}
             for site in sites_config:
-                found_links = self.scrape_site(site, context)
-                if found_links:
-                    results[site['name']] = found_links
-            
+                # Returns (links, hubs) tuple
+                found_data = self.scrape_site(site, context) 
+                
+                # Check if we got links (first element of tuple)
+                if found_data and found_data[0]:
+                    results[site['name']] = found_data[0] # Store just links list
+                    
             browser.close()
             return results
+
+    def scan_url(self, url):
+        """
+        Standalone method to scan a single URL using Playwright with robust stealth settings.
+        Useful for dynamic sites where requests fails.
+        """
+        from playwright.sync_api import sync_playwright
+        import time
+        
+        print(f"🕵️‍♀️ Deep Scanning (Playwright Stealth): {url}")
+        links = []
+        
+        try:
+            with sync_playwright() as p:
+                launch_args = [
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-http2", 
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                ]
+                browser = p.chromium.launch(headless=self.headless, args=launch_args)
+                
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                    viewport={"width": 1920, "height": 1080},
+                    ignore_https_errors=True,
+                    java_script_enabled=True
+                )
+                context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                
+                page = context.new_page()
+                try:
+                    # Robust navigation
+                    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                    time.sleep(5) # Allow dynamic content to load
+                    
+                    # Try to expand content interactively
+                    self.expand_page_interaction(page)
+                    
+                    # Extract
+                    link_data, _ = self.scrape_page_content(page, url)
+                    links = link_data
+                    
+                except Exception as e:
+                    print(f"Playwright navigation error ({url}): {e}")
+                    # Try to scrape whatever loaded
+                    try:
+                        link_data, _ = self.scrape_page_content(page, url)
+                        links = link_data
+                    except: pass
+                
+                browser.close()
+                return links
+
+        except Exception as e:
+            print(f"scan_url failed: {e}")
+            return []
 
 def detect_config(url):
     """
