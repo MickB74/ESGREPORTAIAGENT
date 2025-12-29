@@ -1583,10 +1583,9 @@ with tab_search:
         # Display Website
         # --- Verified Hub Section (New Editable Logic) ---
 
-
         # --- Saved Bookmarks (Manual) ---
         # Only show if flag is set
-        if st.session_state.get('show_saved_links', True):  # Default True for backward compatibility
+        if st.session_state.get('show_saved_links', False):  # Only show when explicitly requested
             try:
                 bk_company = data.get("company", st.session_state.current_company)
                 # Filter from all saved links (in memory for now)
@@ -1598,17 +1597,21 @@ with tab_search:
                     or l.get('company', '').lower() in bk_company.lower()
                 ]
                 
+                st.markdown("---")
+                st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
+                
                 if saved_bks:
-                    st.markdown("---")
-                    st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
                     for i, row in enumerate(saved_bks):
                         lbl = row.get('label') or row.get('title') or "Link"
                         sym_badge = f"**[{row.get('symbol', '')}]** " if row.get('symbol') else ""
                         url = row.get('url', '#')
                         timestamp = row.get('timestamp', '')
                         st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
+                else:
+                    st.info(f"No saved links found for {bk_company}. Scan the website and save some reports!")
             except Exception as e:
                 print(f"Bookmark error: {e}")
+
 
 
 
