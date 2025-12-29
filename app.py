@@ -2069,9 +2069,11 @@ with tab_db:
                 "url": st.column_config.LinkColumn("URL", disabled=True), # Key, so don't edit
                 "timestamp": st.column_config.DatetimeColumn("Saved On", disabled=True, format="D MMM YYYY, h:mm a"),
                 "company": st.column_config.TextColumn("Company"),
+                "symbol": st.column_config.TextColumn("Symbol"),
                 "title": st.column_config.TextColumn("Title"),
                 "label": st.column_config.TextColumn("Label"),
                 "description": st.column_config.TextColumn("Notes"),
+                "source": st.column_config.TextColumn("Source", disabled=True),
             },
             hide_index=True,
             num_rows="dynamic", # Allows adding/deleting rows
