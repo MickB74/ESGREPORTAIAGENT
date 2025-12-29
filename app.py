@@ -548,26 +548,19 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             if "homedepot" in known_website: wait_tag = ".views-element-container"
             
             scraper = ESGScraper(headless=True)
-            # Create a site config on the fly
-            site_config = [{
-                "url": known_website, 
-                "name": "Verified_Site_Scan",
-                "wait_for": wait_tag 
-            }]
+            # Use the new robust 'scan_url' method which handles blocking and dynamic content
+            print(f"   🚀 Invoking scraper.scan_url('{known_website}')...")
+            links = scraper.scan_url(known_website)
             
-            # RUN SCRAPER - use different variable name to avoid overwriting results dict
-            scraper_results = scraper.run(site_config)
-            
-            if scraper_results and scraper_results.get("Verified_Site_Scan"):
+            if links:
                 # Playwright found stuff!
-                links = scraper_results.get("Verified_Site_Scan")
-                if isinstance(links, dict): links = [links]
+                # links is already a list of dicts: [{'text':..., 'url':..., 'score':...}]
                 
                 # Convert to our app's format
                 import pandas as pd
                 candidates = []
                 for l in links:
-                    candidates.append({'title': l['text'], 'href': l['url']})
+                    candidates.append({'title': l.get('text', 'Report'), 'href': l['url']})
                 
                 if candidates:
                     print(f"   ✅ Playwright found {len(candidates)} reports.")
