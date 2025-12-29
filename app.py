@@ -1986,14 +1986,11 @@ with tab_db:
                                      'source': 'Verified Hub'
                                  })
                          
-                         # 2. Add JSON Manifest (Metadata + Links including ESG hubs)
-                         import json
-                         json_data = json.dumps(augmented_data, indent=4)
-                         zip_file.writestr("sources.json", json_data)
-                         
-                         # 2. Add TXT List (URLs only)
-                         txt_data = "\n".join(df['url'].dropna().tolist())
-                         zip_file.writestr("sources.txt", txt_data)
+                         # 2. Add CSV Manifest (Metadata + Links including ESG hubs)
+                         import io
+                         csv_buffer = io.StringIO()
+                         pd.DataFrame(augmented_data).to_csv(csv_buffer, index=False)
+                         zip_file.writestr("sources.csv", csv_buffer.getvalue())
                          
                          # 3. Download Content Files
                          for index, row in df.iterrows():
