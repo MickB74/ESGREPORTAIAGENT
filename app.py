@@ -535,45 +535,48 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             else:
                 website_query = f"{company_name} official ESG sustainability website"
                 
-    # If STRICT MODE (Verified Site Scan), try Playwright FIRST for better results (JS, Deep Scan)
-    if strict_mode:
-        print("   🚀 Strict Mode: using Playwright Scraper first...")
+    # If we have a KNOWN WEBSITE, use the hybrid scraper FIRST for best results
+    if known_website:
+        print(f"   🔍 Using Hybrid Scraper for known website: {known_website}")
         try:
-             # Lazy load
             from esg_scraper import ESGScraper
             
-            # Configure flexible waiter
-            wait_tag = "body"
-            # Known configs
-            if "homedepot" in known_website: wait_tag = ".views-element-container"
-            
             scraper = ESGScraper(headless=True)
-            # Use the new robust 'scan_url' method which handles blocking and dynamic content
+            # Use the new hybrid scan_url method (tries requests first, falls back to Playwright)
             print(f"   🚀 Invoking scraper.scan_url('{known_website}')...")
             links = scraper.scan_url(known_website)
             
             if links:
-                # Playwright found stuff!
-                # links is already a list of dicts: [{'text':..., 'url':..., 'score':...}]
+                # Filter to PDFs only (actual reports)
+                pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
                 
-                # Convert to our app's format
-                import pandas as pd
-                candidates = []
-                for l in links:
-                    candidates.append({'title': l.get('text', 'Report'), 'href': l['url']})
-                
-                if candidates:
-                    print(f"   ✅ Playwright found {len(candidates)} reports.")
+                if pdf_links:
+                    print(f"   ✅ Hybrid scraper found {len(pdf_links)} PDF reports.")
+                    
+                    # Convert to app's format
+                    import pandas as pd
+                    candidates = []
+                    for l in pdf_links:
+                        candidates.append({
+                            'title': l.get('text', 'Report'),
+                            'href': l['url'],
+                            'body': 'Found via Hybrid Scraper'
+                        })
+                    
                     df = pd.DataFrame(candidates)
-                    # Must return strict dictionary structure to match rest of app
+                    # Return in app's expected format
                     return {
                         "reports": df.to_dict('records'),
-                        "website": {"title": "Verified Site", "href": known_website, "body": "Verified Playwright Scan"},
-                        "search_log": ["Strict Mode: Playwright Deep Scan"]
+                        "website": {"title": "Verified Site", "href": known_website, "body": "Scanned via Hybrid Scraper"},
+                        "search_log": [f"Hybrid Scraper: Found {len(pdf_links)} PDF reports"]
                     }
+                else:
+                    print(f"   ⚠️ Scraper found {len(links)} links but no PDFs. Trying fallback...")
+            else:
+                print("   ⚠️ Scraper found no links. Trying fallback...")
 
         except Exception as e:
-            print(f"   ⚠️ Playwright Scan failed: {e}. Falling back to standard requests.")
+            print(f"   ⚠️ Hybrid Scraper failed: {e}. Falling back to standard requests.")
             # Fall through to standard requests logic below
 
     # --- Standard Requests Logic (Fallback or Normal Mode) ---
