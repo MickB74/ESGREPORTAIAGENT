@@ -23,7 +23,7 @@ mongo_db = st.session_state.mongo
 # --- App Configuration (Must be first!)# Main App
 st.set_page_config(page_title="ESG Report AI Agent", layout="wide")
 
-st.title("ESG Report AI Agent 🤖 (v2.0)")
+st.title("ESG Report AI Agent 🤖")
 st.markdown("---")
 # --- Auto-Install Playwright Browsers (for Cloud Env) ---
 @st.cache_resource
