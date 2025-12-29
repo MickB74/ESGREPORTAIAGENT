@@ -1964,12 +1964,12 @@ with tab_db:
                     # Filter DataFrame to only selected rows
                     df_selected = df.iloc[selected_rows]
                     zip_buffer = io.BytesIO()
-                success_count = 0
-                fail_count = 0
-                import mimetypes # Import locally to avoid global scope changes if preferred, or rely on top level if added.
-                # Actually, better to just use simple logic if possible, but mimetypes is standard.
-                
-                with st.spinner(f"Downloading {len(df_selected)} selected items... (Web pages & PDFs)"):
+                    success_count = 0
+                    fail_count = 0
+                    import mimetypes # Import locally to avoid global scope changes if preferred, or rely on top level if added.
+                    # Actually, better to just use simple logic if possible, but mimetypes is standard.
+                    
+                    with st.spinner(f"Downloading {len(df_selected)} selected items... (Web pages & PDFs)"):
                      with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                          # 1. Augment data with verified ESG hub URLs
                          augmented_data = df_selected.to_dict('records')
