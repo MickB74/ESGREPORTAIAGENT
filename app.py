@@ -1872,18 +1872,20 @@ with tab_search:
                         st.warning("⚠️ No new reports saved (they might already exist).")
                         
         else:
-            st.warning("⚠️ **No ESG reports found on this website.**")
-            st.info("""
-            **Possible reasons:**
-            - The site may not have downloadable PDF reports
-            - Reports might be behind a login or paywall
-            - The site structure may not be recognized by the scanner
-            
-            **What you can do:**
-            - Check the screenshot above to see what the bot saw
-            - Try the "Show Saved Links" button to see if you've already saved reports for this company
-            - Manually browse the website and save individual report URLs
-            """)
+            # Only show "No reports found" warning if we actually SCANNED.
+            if st.session_state.get('show_scan_results'):
+                st.warning("⚠️ **No ESG reports found on this website.**")
+                st.info("""
+                **Possible reasons:**
+                - The site may not have downloadable PDF reports
+                - Reports might be behind a login or paywall
+                - The site structure may not be recognized by the scanner
+                
+                **What you can do:**
+                - Check the screenshot above to see what the bot saw
+                - Try the "Show Saved Links" button to see if you've already saved reports for this company
+                - Manually browse the website and save individual report URLs
+                """)
 
 
 
