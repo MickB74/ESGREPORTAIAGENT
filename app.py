@@ -378,7 +378,7 @@ def delete_link_by_url(target_url):
 
 # Function to perform searches
 # Function to perform searches
-def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None, strict_mode=False):
+def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None, strict_mode=False, greedy_mode=False):
 
     import concurrent.futures
     import datetime
@@ -551,13 +551,32 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
                 non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
                 
-                # Filter non-PDFs to only relevant ones (exclude navigation/footer links)
-                relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
-                                    'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
-                relevant_non_pdfs = [
-                    l for l in non_pdf_links 
-                    if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
-                ]
+                # Filter non-PDFs based on mode
+                if greedy_mode:
+                    # Greedy mode: Show all except obvious header/footer junk
+                    header_footer_terms = ['home', 'about', 'contact', 'careers', 'privacy', 'terms', 
+                                          'cookie', 'sitemap', 'search', 'logo', 'menu', 'nav']
+                    relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                        'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                    
+                    relevant_non_pdfs = [
+                        l for l in non_pdf_links 
+                        if (
+                            # Show all score >= 2
+                            l.get('score', 0) >= 2 and
+                            # Unless it's header/footer junk without relevant keywords
+                            not (any(term in l.get('text', '').lower() for term in header_footer_terms) and 
+                                 not any(kw in l.get('text', '').lower() for kw in relevant_keywords))
+                        )
+                    ]
+                else:
+                    # Normal mode: Only show highly relevant
+                    relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                        'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                    relevant_non_pdfs = [
+                        l for l in non_pdf_links 
+                        if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
+                    ]
                 
                 # Combine: PDFs first, then relevant webpages
                 all_links = pdf_links + relevant_non_pdfs
@@ -687,13 +706,30 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                     pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
                     non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
                     
-                    # Filter non-PDFs to only relevant ones
-                    relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
-                                        'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
-                    relevant_non_pdfs = [
-                        l for l in non_pdf_links 
-                        if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
-                    ]
+                    # Filter non-PDFs based on mode
+                    if greedy_mode:
+                        # Greedy mode: Show all except obvious header/footer junk
+                        header_footer_terms = ['home', 'about', 'contact', 'careers', 'privacy', 'terms', 
+                                              'cookie', 'sitemap', 'search', 'logo', 'menu', 'nav']
+                        relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                            'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                        
+                        relevant_non_pdfs = [
+                            l for l in non_pdf_links 
+                            if (
+                                l.get('score', 0) >= 2 and
+                                not (any(term in l.get('text', '').lower() for term in header_footer_terms) and 
+                                     not any(kw in l.get('text', '').lower() for kw in relevant_keywords))
+                            )
+                        ]
+                    else:
+                        # Normal mode: Only show highly relevant
+                        relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                            'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                        relevant_non_pdfs = [
+                            l for l in non_pdf_links 
+                            if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
+                        ]
                     
                     if pdf_links or relevant_non_pdfs:
                         print(f"   ✅ Found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} relevant webpages")
@@ -1334,6 +1370,10 @@ with tab_search:
     )
 
 
+    # Greedy mode checkbox
+    greedy_mode = st.checkbox("🔓 Greedy Mode", value=False, 
+                              help="Show ALL links from page (not just highly-relevant ones). Filters out header/footer unless relevant.")
+
     # 3. Three Action Buttons
     col1, col2, col3 = st.columns(3)
     
@@ -1415,7 +1455,8 @@ with tab_search:
                         company_name, 
                         fetch_reports=True, 
                         symbol=sym,
-                        known_website=final_target_website
+                        known_website=final_target_website,
+                        greedy_mode=greedy_mode  # Pass greedy mode flag
                     )
                     st.session_state.esg_data = data
 
