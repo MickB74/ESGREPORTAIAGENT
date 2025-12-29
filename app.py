@@ -1504,6 +1504,7 @@ with tab_search:
                 st.session_state.current_company = company_name
                 st.session_state.show_scan_results = True
                 st.session_state.show_saved_links = False
+                st.session_state.esg_data = {} # Clear prior results
                 
                 with st.spinner(f"Scanning {final_target_website}..."):
                     sym = company_symbol if company_symbol else None
@@ -1550,6 +1551,7 @@ with tab_search:
                 st.session_state.current_company = company_name
                 st.session_state.show_scan_results = True
                 st.session_state.show_saved_links = True
+                st.session_state.esg_data = {} # Clear prior results
                 
                 with st.spinner(f"Scanning {final_target_website}..."):
                     sym = company_symbol if company_symbol else None
