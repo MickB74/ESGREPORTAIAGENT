@@ -2222,19 +2222,37 @@ with tab_all:
         if filter_combined:
             query = filter_combined.lower()
             
+            # Helper to search a row across all searchable fields
+            def row_matches(row, term):
+                # Search in all string columns
+                searchable_values = [
+                    str(row.get('Company', '')),
+                    str(row.get('Symbol', '')),
+                    str(row.get('Title', '')),
+                    str(row.get('Description', '')),
+                    str(row.get('URL', '')),
+                    str(row.get('Type', ''))
+                ]
+                return term in " ".join(searchable_values).lower()
+
+            # Support for comma-separated terms (implicit OR)
+            if "," in query:
+                terms = [t.strip() for t in query.split(",") if t.strip()]
+                mask = df_combined.apply(lambda r: any(row_matches(r, term) for term in terms), axis=1)
+            
             # Support for "term1 OR term2" (any match)
-            if " or " in query:
+            elif " or " in query:
                 terms = [t.strip() for t in query.split(" or ") if t.strip()]
-                mask = df_combined.apply(lambda r: any(term in str(r).lower() for term in terms), axis=1)
+                mask = df_combined.apply(lambda r: any(row_matches(r, term) for term in terms), axis=1)
                 
             # Support for "term1 AND term2" (all match)
             elif " and " in query:
                 terms = [t.strip() for t in query.split(" and ") if t.strip()]
-                mask = df_combined.apply(lambda r: all(term in str(r).lower() for term in terms), axis=1)
+                mask = df_combined.apply(lambda r: all(row_matches(r, term) for term in terms), axis=1)
                 
             # Standard single search
             else:
-                mask = df_combined.apply(lambda r: query in str(r).lower(), axis=1)
+                mask = df_combined.apply(lambda r: row_matches(r, query), axis=1)
                 
             df_display_combined = df_combined[mask]
         else:
