@@ -1384,7 +1384,7 @@ with st.sidebar:
     st.markdown("---")
 
 # --- TABS LAYOUT ---
-tab_intro, tab_search, tab_db, tab_data = st.tabs(["🏠 Introduction", "🔍 Search & Analyze", "📂 User Saved Links", "✅ Verified ESG Sites"])
+tab_search, tab_intro, tab_db, tab_data = st.tabs(["🔍 Search & Analyze", "🏠 Introduction", "📂 User Saved Links", "✅ Verified ESG Sites"])
 
 # ====================
 # TAB 0: INTRODUCTION
