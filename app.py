@@ -1904,6 +1904,20 @@ with tab_db:
         with c_filter:
             filter_query = st.text_input("🔍 Filter by Company or Title", placeholder="Type to search...", help="Case-insensitive search")
 
+        # Show verified ESG hub URL if filtering by a specific company
+        if filter_query:
+            # Try to find matching company and show their verified hub
+            all_companies = mongo_db.get_all_companies()
+            matching_company = next(
+                (c for c in all_companies 
+                 if filter_query.lower() in c.get('Company Name', '').lower() or 
+                    filter_query.lower() in c.get('Symbol', '').lower()),
+                None
+            )
+            
+            if matching_company and matching_company.get('Website'):
+                st.info(f"🌐 **Verified ESG Hub for {matching_company.get('Company Name')}**: [{matching_company.get('Website')}]({matching_company.get('Website')})")
+
         # 2. Buttons
         c_sel_all, c_desel_all, c_fill = st.columns([0.2, 0.2, 0.6])
         with c_sel_all:
