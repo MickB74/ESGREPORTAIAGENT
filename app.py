@@ -1971,7 +1971,12 @@ with tab_db:
         if 'editor_key' not in st.session_state: st.session_state.editor_key = 0
         if 'select_state' not in st.session_state: st.session_state.select_state = None # None means no action
 
-        # Buttons
+        # 1. Filter Input
+        c_filter, c_spacer_f = st.columns([0.4, 0.6])
+        with c_filter:
+            filter_query = st.text_input("🔍 Filter by Company or Title", placeholder="Type to search...", help="Case-insensitive search")
+
+        # 2. Buttons
         c_sel_all, c_desel_all, c_fill = st.columns([0.2, 0.2, 0.6])
         with c_sel_all:
             if st.button("✅ Select All", key="btn_select_all", help="Select all rows for download"):
@@ -1991,13 +1996,20 @@ with tab_db:
         if st.session_state.select_state is not None:
              df['Select'] = st.session_state.select_state
         
+        # Apply Filter
+        if filter_query:
+            mask = df.astype(str).apply(lambda x: x.str.contains(filter_query, case=False)).any(axis=1)
+            df_display = df[mask]
+        else:
+            df_display = df
+
         # Download button (CSV only here, ZIP moved below)
         # We want ZIP button to appear HERE (next to CSV), but it depends on 'edited_df' which is below.
         # Solution: Use st.empty() placeholder here, and populate it later.
         
         col_csv, col_zip_placeholder, col_spacer = st.columns([0.2, 0.25, 0.55])
         with col_csv:
-            csv_export = df.drop(columns=['Select']).to_csv(index=False).encode('utf-8')
+            csv_export = df_display.drop(columns=['Select']).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="⬇️ Export CSV",
                 data=csv_export,
@@ -2012,7 +2024,7 @@ with tab_db:
         editor_key = f"saved_links_editor_{st.session_state.editor_key}"
         
         edited_df = st.data_editor(
-            df,
+            df_display,
             use_container_width=True,
             column_config={
                 "Select": st.column_config.CheckboxColumn("⬇️", help="Select to download", default=False, width="small"),
@@ -2139,10 +2151,14 @@ with tab_db:
             if st.button("💾 Save Changes to Database", type="primary", key="save_links_db"):
                 changes_count = 0
                 
-                # 1. Detect Deletions
-                original_urls = set(l['url'] for l in v_links if 'url' in l)
-                new_urls = set(edited_df['url'].dropna().tolist())
-                deleted_urls = original_urls - new_urls
+                # 1. Detect Deletions (SAFE: Only check against VISIBLE rows)
+                # We assume deletions only happen from the 'edited_df' (which is the filtered view).
+                # So we must compare 'edited_df' against 'df_display' (the source of this view).
+                
+                original_visible_urls = set(df_display['url'].dropna().tolist())
+                new_visible_urls = set(edited_df['url'].dropna().tolist())
+                
+                deleted_urls = original_visible_urls - new_visible_urls
                 
                 with st.spinner("Syncing changes..."):
                      # Process Deletes
