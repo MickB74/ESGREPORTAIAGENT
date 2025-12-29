@@ -1967,32 +1967,69 @@ with tab_db:
         if 'timestamp' in df.columns:
              df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         
-        # Download button
-        col_csv, col_zip = st.columns([1, 1])
+        # Add Select Column for Checkboxes
+        df.insert(0, "Select", False)
+        
+        # Download button (CSV only here, ZIP moved below)
+        col_csv, col_spacer = st.columns([0.3, 0.7])
         with col_csv:
-            csv_export = df.to_csv(index=False).encode('utf-8')
+            csv_export = df.drop(columns=['Select']).to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="⬇️ Export to CSV",
+                label="⬇️ Export CSV",
                 data=csv_export,
                 file_name=f"verified_links_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
             )
         
-        with col_zip:
+        # Interactive table (Editable)
+        st.caption("📝 **Manage Links:** Select items to download, or edit details directly in the table.")
+        
+        edited_df = st.data_editor(
+            df,
+            use_container_width=True,
+            column_config={
+                "Select": st.column_config.CheckboxColumn("⬇️", help="Select to download", default=False, width="small"),
+                "url": st.column_config.LinkColumn("URL", disabled=True), 
+                "timestamp": st.column_config.DatetimeColumn("Saved On", disabled=True, format="D MMM YYYY, h:mm a"),
+                "company": st.column_config.TextColumn("Company"),
+                "symbol": st.column_config.TextColumn("Symbol"),
+                "title": st.column_config.TextColumn("Title"),
+                "label": st.column_config.TextColumn("Label"),
+                "description": st.column_config.TextColumn("Notes"),
+                "source": st.column_config.TextColumn("Source", disabled=True),
+            },
+            hide_index=True,
+            num_rows="dynamic", 
+            key="saved_links_editor",
+            # selection_mode="multi-row" # DISABLED: Using explicit checkbox column instead
+        )
 
-            if st.button("📦 Download All Content (ZIP)", help="Bundle all reports/pages for easy NotebookLM import"):
-                zip_buffer = io.BytesIO()
-                success_count = 0
-                fail_count = 0
-                import mimetypes 
-                
-                with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
+        
+        # --- SELECTIVE DOWNLOAD & ACTIONS ---
+        st.markdown("")
+        # Filter checked items
+        selected_rows = edited_df[edited_df["Select"] == True]
+        count_selected = len(selected_rows)
+        
+        col_actions, col_save = st.columns([1, 1])
+        
+        with col_actions:
+            btn_label = f"📦 Download {count_selected} Selected (ZIP)" if count_selected > 0 else "📦 Download Selected (ZIP)"
+            
+            if st.button(btn_label, type="secondary", disabled=(count_selected == 0), help="Download PDF content for checked items"):
+                 # ZIP GENERATION LOGIC
+                 zip_buffer = io.BytesIO()
+                 success_count = 0
+                 fail_count = 0
+                 import mimetypes 
+                 
+                 with st.spinner(f"Bundling {count_selected} items..."):
                     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                         # 1. Augment data with verified ESG hub URLs
-                        augmented_data = df.to_dict('records')
+                        augmented_data = selected_rows.drop(columns=['Select']).to_dict('records')
                         
                         # Get unique companies and their ESG hub URLs
-                        unique_companies = df['company'].dropna().unique()
+                        unique_companies = selected_rows['company'].dropna().unique()
                         all_companies = mongo_db.get_all_companies()
                         
                         for company_name in unique_companies:
@@ -2012,137 +2049,89 @@ with tab_db:
                                     'source': 'Verified Hub'
                                 })
                         
-                        # 2. Add CSV Manifest (Metadata + Links including ESG hubs)
+                        # 2. Add CSV Manifest
                         import io
                         csv_buffer = io.StringIO()
                         pd.DataFrame(augmented_data).to_csv(csv_buffer, index=False)
                         zip_file.writestr("sources.csv", csv_buffer.getvalue())
                         
                         # 3. Download Content Files
-                        for index, row in df.iterrows():
+                        for index, row in selected_rows.iterrows():
                             item_url = row.get('url')
                             if not item_url: continue
                             
                             try:
                                 # Fetch content
                                 response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                                
                                 if response.status_code == 200:
                                     # Determine Extension
                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
                                     ext = mimetypes.guess_extension(content_type)
-                                    
-                                    # Fallbacks/Overwrites
                                     if not ext:
                                         if 'pdf' in content_type: ext = '.pdf'
                                         elif 'html' in content_type: ext = '.html'
-                                        else: ext = '.html' # Default to html for web pages
-                                    
-                                    # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
-                                    if item_url.lower().endswith('pdf') and ext != '.pdf':
-                                        ext = '.pdf'
-                                    
-                                    # SKIP non-PDF files (user only wants PDFs in ZIP)
+                                        else: ext = '.html' 
+                                    if item_url.lower().endswith('pdf') and ext != '.pdf': ext = '.pdf'
                                     if ext != '.pdf':
                                         fail_count += 1
                                         continue
-                                        
+                                    
                                     # Create safe filename
                                     safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
                                     safe_title = "".join(c for c in str(row.get('title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
                                     year_hint = str(row.get('label', ''))
-                                    
-                                    # Deduplicate filenames in zip? ZipFile handles duplicate paths by adding them, but extracting might warn.
-                                    # We'll rely on the uniqueness of the combination or sequence.
                                     filename = f"{safe_company}_{year_hint}_{safe_title}{ext}"
                                     
-                                    # Write to zip
                                     zip_file.writestr(filename, response.content)
                                     success_count += 1
                                 else:
                                     fail_count += 1
                             except Exception as e:
-                                # print(f"Zip download error: {e}")
                                 fail_count += 1
                     
-                    st.success(f"Bundled {success_count} items! ({fail_count} failed)")
-                    
-                    # Show Download Button for the Zip
-                    st.download_button(
-                        label="⬇️ Click to Save ZIP",
-                        data=zip_buffer.getvalue(),
-                        file_name=f"esg_content_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
-                        mime="application/zip",
-                        key="zip_download_final"
-                    )
-        
-        # Interactive table (Editable)
-        st.caption("📝 **Edit directly in the table below.** Select rows and press 'Delete' to remove.")
-        
-        edited_df = st.data_editor(
-            df,
-            use_container_width=True,
-            column_config={
-                "url": st.column_config.LinkColumn("URL", disabled=True), # Key, so don't edit
-                "timestamp": st.column_config.DatetimeColumn("Saved On", disabled=True, format="D MMM YYYY, h:mm a"),
-                "company": st.column_config.TextColumn("Company"),
-                "symbol": st.column_config.TextColumn("Symbol"),
-                "title": st.column_config.TextColumn("Title"),
-                "label": st.column_config.TextColumn("Label"),
-                "description": st.column_config.TextColumn("Notes"),
-                "source": st.column_config.TextColumn("Source", disabled=True),
-            },
-            hide_index=True,
-            num_rows="dynamic", # Allows adding/deleting rows
-            key="saved_links_editor"
-        )
-        
+                    st.success(f"Ready! {success_count} items bundled.")
+                    st.session_state['zip_ready'] = zip_buffer.getvalue()
+
+            # Show Download Button if ready
+            if 'zip_ready' in st.session_state and count_selected > 0: # Ensure valid state
+                 st.download_button(
+                    label="⬇️ Click to Save ZIP",
+                    data=st.session_state['zip_ready'],
+                    file_name=f"esg_selection_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
+                    mime="application/zip",
+                    key="zip_download_final_btn"
+                )
+
         # Logic to sync changes (Streamlit data_editor doesn't auto-sync to DB)
-        # We check for differences between original 'v_links' and 'edited_df' 
-        # But 'edited_df' is just the current state.
-        # A simpler way for a "SAVE" action is checking the state returned by data_editor
         
-        # Actually, st.data_editor returns the new dataframe.
-        # We can add a "Save Changes" button, OR rely on state session changes if we want auto-save.
-        # Given the volume, a "Save Changes" button is safer and clearer.
-        
-        if st.button("💾 Save Changes to Database", type="primary", key="save_links_db"):
-            changes_count = 0
-            
-            # 1. Detect Deletions
-            # It's hard to track deletions just from the DF without the original IDs or URL list.
-            # But we have 'v_links' (original list). 
-            original_urls = set(l['url'] for l in v_links if 'url' in l)
-            new_urls = set(edited_df['url'].dropna().tolist())
-            
-            deleted_urls = original_urls - new_urls
-            
-            with st.spinner("Syncing changes..."):
-                 # Process Deletes
-                 for d_url in deleted_urls:
-                     mongo_db.delete_link("verified_links", d_url)
-                     changes_count += 1
-                     
-                 # Process Updates/Adds
-                 # We simply upsert everything in the edited DF. 
-                 # Since we disabled URL editing, these are either existing rows (updates) or new rows (if user added one).
-                 # If user added a row, they must fill in the URL.
-                 # Wait, if URL is disabled, they can't Add a row with a URL easily in the editor if it mandates a URL.
-                 # Actually, for "dynamic", adding rows might be tricky if a key column is disabled.
-                 # Let's Re-enable URL editing BUT handle the "Rename" case? 
-                 # Or just rely on separate "Add" form for new ones.
-                 # For now, let's assume "dynamic" is mostly for deletes.
-                 # Use iterrows to update all (or filtered diffs if we optimized, but distinct upsert is cheap enought for small lists)
-                 
-                 for index, row in edited_df.iterrows():
-                     # Skip empty URLs
-                     if not row.get('url'): continue
-                     
-                     # Simple conversion to dict
-                     link_data = row.where(pd.notnull(row), None).to_dict()
-                     mongo_db.save_link("verified_links", link_data)
-                     
-                 st.success("✅ Database updated successfully!")
+        with col_save:
+            if st.button("💾 Save Changes to Database", type="primary", key="save_links_db"):
+                changes_count = 0
+                
+                # 1. Detect Deletions
+                original_urls = set(l['url'] for l in v_links if 'url' in l)
+                new_urls = set(edited_df['url'].dropna().tolist())
+                deleted_urls = original_urls - new_urls
+                
+                with st.spinner("Syncing changes..."):
+                     # Process Deletes
+                     for d_url in deleted_urls:
+                         mongo_db.delete_link("verified_links", d_url)
+                         changes_count += 1
+                         
+                     # Process Updates/Adds
+                     for index, row in edited_df.iterrows():
+                         if not row.get('url'): continue
+                         # Convert to dict and CLEANUP UI columns
+                         link_data = row.where(pd.notnull(row), None).to_dict()
+                         if 'Select' in link_data:
+                             del link_data['Select']
+                             
+                         mongo_db.save_link("verified_links", link_data)
+                         
+                     st.success("✅ Database updated successfully!")
+                     st.session_state.pop('zip_ready', None) # Clear zip cache on DB update
+
     else:
         st.info("ℹ️ Database is empty. Save links from search results to populate it!")
 
