@@ -1967,8 +1967,29 @@ with tab_db:
         if 'timestamp' in df.columns:
              df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         
-        # Add Select Column for Checkboxes
+        # --- SELECT ALL LOGIC ---
+        if 'editor_key' not in st.session_state: st.session_state.editor_key = 0
+        if 'select_state' not in st.session_state: st.session_state.select_state = None # None means no action
+
+        # Buttons
+        c_sel_all, c_desel_all, c_fill = st.columns([0.2, 0.2, 0.6])
+        with c_sel_all:
+            if st.button("✅ Select All", key="btn_select_all", help="Select all rows for download"):
+                st.session_state.select_state = True
+                st.session_state.editor_key += 1
+                st.rerun()
+        with c_desel_all:
+             if st.button("❌ Deselect All", key="btn_deselect_all", help="Uncheck all rows"):
+                st.session_state.select_state = False
+                st.session_state.editor_key += 1
+                st.rerun()
+
+        # Apply Selection State to DF if triggered
+        # Default is False
         df.insert(0, "Select", False)
+        
+        if st.session_state.select_state is not None:
+             df['Select'] = st.session_state.select_state
         
         # Download button (CSV only here, ZIP moved below)
         col_csv, col_spacer = st.columns([0.3, 0.7])
@@ -1983,6 +2004,9 @@ with tab_db:
         
         # Interactive table (Editable)
         st.caption("📝 **Manage Links:** Select items to download, or edit details directly in the table.")
+        
+        # We use a dynamic key to force reload if Select All is clicked
+        editor_key = f"saved_links_editor_{st.session_state.editor_key}"
         
         edited_df = st.data_editor(
             df,
@@ -2000,7 +2024,7 @@ with tab_db:
             },
             hide_index=True,
             num_rows="dynamic", 
-            key="saved_links_editor",
+            key=editor_key,
             # selection_mode="multi-row" # DISABLED: Using explicit checkbox column instead
         )
 
