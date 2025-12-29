@@ -2015,6 +2015,11 @@ with tab_db:
                                      # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
                                      if item_url.lower().endswith('.pdf') and ext != '.pdf':
                                          ext = '.pdf'
+                                     
+                                     # SKIP non-PDF files (user only wants PDFs in ZIP)
+                                     if ext != '.pdf':
+                                         fail_count += 1
+                                         continue
                                          
                                      # Create safe filename
                                      safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
