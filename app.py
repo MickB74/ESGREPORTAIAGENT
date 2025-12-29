@@ -547,20 +547,33 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             links = scraper.scan_url(known_website)
             
             if links:
-                # Filter to PDFs only (actual reports)
+                # Separate PDFs and non-PDFs
                 pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
+                non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
                 
-                if pdf_links:
-                    print(f"   ✅ Hybrid scraper found {len(pdf_links)} PDF reports.")
+                # Filter non-PDFs to only relevant ones (exclude navigation/footer links)
+                relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                    'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                relevant_non_pdfs = [
+                    l for l in non_pdf_links 
+                    if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
+                ]
+                
+                # Combine: PDFs first, then relevant webpages
+                all_links = pdf_links + relevant_non_pdfs
+                
+                if all_links:
+                    print(f"   ✅ Hybrid scraper found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} relevant webpages")
                     
                     # Convert to app's format
                     import pandas as pd
                     candidates = []
-                    for l in pdf_links:
+                    for l in all_links:
+                        is_pdf = l['url'].lower().endswith('.pdf')
                         candidates.append({
                             'title': l.get('text', 'Report'),
                             'href': l['url'],
-                            'body': 'Found via Hybrid Scraper'
+                            'body': 'PDF Report' if is_pdf else 'Webpage Report / Resource'
                         })
                     
                     df = pd.DataFrame(candidates)
@@ -568,10 +581,10 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                     return {
                         "reports": df.to_dict('records'),
                         "website": {"title": "Verified Site", "href": known_website, "body": "Scanned via Hybrid Scraper"},
-                        "search_log": [f"Hybrid Scraper: Found {len(pdf_links)} PDF reports"]
+                        "search_log": [f"Hybrid Scraper: Found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} webpages"]
                     }
                 else:
-                    print(f"   ⚠️ Scraper found {len(links)} links but no PDFs. Trying fallback...")
+                    print(f"   ⚠️ Scraper found {len(links)} links but none relevant. Trying fallback...")
             else:
                 print("   ⚠️ Scraper found no links. Trying fallback...")
 
@@ -670,19 +683,34 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 links = scraper.scan_url(url)
                 
                 if links:
-                    # Filter to PDFs only
+                    # Separate PDFs and non-PDFs
                     pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
+                    non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
                     
-                    if pdf_links:
-                        print(f"   ✅ Found {len(pdf_links)} PDF reports")
+                    # Filter non-PDFs to only relevant ones
+                    relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
+                                        'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
+                    relevant_non_pdfs = [
+                        l for l in non_pdf_links 
+                        if any(kw in l.get('text', '').lower() for kw in relevant_keywords) and l.get('score', 0) >= 3
+                    ]
+                    
+                    if pdf_links or relevant_non_pdfs:
+                        print(f"   ✅ Found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} relevant webpages")
                         for l in pdf_links:
                             all_reports.append({
                                 'title': l.get('text', 'Report'),
                                 'href': l['url'],
-                                'body': 'Found via Hybrid Scraper'
+                                'body': 'PDF Report'
+                            })
+                        for l in relevant_non_pdfs:
+                            all_reports.append({
+                                'title': l.get('text', 'Resource'),
+                                'href': l['url'],
+                                'body': 'Webpage Report / Resource'
                             })
                     else:
-                        print(f"   ⚠️ Found {len(links)} links but no PDFs on {url}")
+                        print(f"   ⚠️ Found {len(links)} links but none relevant on {url}")
                 else:
                     print(f"   ⚠️ No links found on {url}")
                     
