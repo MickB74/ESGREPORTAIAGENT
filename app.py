@@ -1403,7 +1403,8 @@ with tab_search:
                         company_name, 
                         fetch_reports=True, 
                         symbol=sym,
-                        known_website=final_target_website
+                        known_website=final_target_website,
+                        pdfs_only=pdfs_only  # Pass PDFs only flag
                     )
                     st.session_state.esg_data = data
     
