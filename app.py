@@ -2048,16 +2048,16 @@ with tab_db:
                                  # print(f"Zip download error: {e}")
                                  fail_count += 1
                      
-                st.success(f"Bundled {success_count} items! ({fail_count} failed)")
-                
-                # Show Download Button for the Zip
-                st.download_button(
-                    label="⬇️ Click to Save ZIP",
-                    data=zip_buffer.getvalue(),
-                    file_name=f"esg_content_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
-                    mime="application/zip",
-                    key="zip_download_final"
-                )
+                    st.success(f"Bundled {success_count} items! ({fail_count} failed)")
+                    
+                    # Show Download Button for the Zip
+                    st.download_button(
+                        label="⬇️ Click to Save ZIP",
+                        data=zip_buffer.getvalue(),
+                        file_name=f"esg_content_bundle_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
+                        mime="application/zip",
+                        key="zip_download_final"
+                    )
         
         # Interactive table (Editable)
         st.caption("📝 **Edit directly in the table below.** Select rows and press 'Delete' to remove.")
