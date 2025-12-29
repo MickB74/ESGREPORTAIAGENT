@@ -2089,7 +2089,10 @@ with tab_db:
                             except Exception as e:
                                 fail_count += 1
                     
-                    st.success(f"Ready! {success_count} items bundled.")
+                    if success_count == 0:
+                        st.success("✅ Ready! CSV Manifest bundled (No PDFs downloaded).")
+                    else:
+                        st.success(f"✅ Ready! CSV Manifest + {success_count} PDFs bundled!")
                     st.session_state['zip_ready'] = zip_buffer.getvalue()
 
             # Show Download Button if ready
