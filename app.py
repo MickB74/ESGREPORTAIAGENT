@@ -1593,7 +1593,12 @@ with tab_search:
                  st.markdown(f"{prefix} [{web['title']}]({web['href']})")
                  if web.get('body'): st.caption(web['body'])
              else:
-                 st.warning("⚠️ No Verified ESG Hub found for this company.")
+                 # Only show warning if we TRIED to scan (scan_results=True)
+                 # If just showing saved links, this is info, not an error.
+                 if st.session_state.get('show_scan_results'):
+                     st.warning("⚠️ No Verified ESG Hub found for this company.")
+                 else:
+                     st.info("ℹ️ No Verified ESG Hub recorded.")
                  
         with col_edit:
              btn_label = "✏️ Edit" if web else "➕ Add"
