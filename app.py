@@ -1953,20 +1953,29 @@ with tab_db:
             )
         
         with col_zip:
-            if st.button("📦 Download All Content (ZIP)", help="Bundle all reports/pages for easy NotebookLM import"):
-                zip_buffer = io.BytesIO()
+            if st.button("📦 Download Selected Content (ZIP)", help="Download only the checked rows as a ZIP bundle"):
+                # Get selection state from data editor
+                selection = st.session_state.get("saved_links_editor", {}).get("selection", {})
+                selected_rows = selection.get("rows", [])
+                
+                if not selected_rows:
+                    st.warning("⚠️ No rows selected! Check the boxes next to the links you want to download.")
+                else:
+                    # Filter DataFrame to only selected rows
+                    df_selected = df.iloc[selected_rows]
+                    zip_buffer = io.BytesIO()
                 success_count = 0
                 fail_count = 0
                 import mimetypes # Import locally to avoid global scope changes if preferred, or rely on top level if added.
                 # Actually, better to just use simple logic if possible, but mimetypes is standard.
                 
-                with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
+                with st.spinner(f"Downloading {len(df_selected)} selected items... (Web pages & PDFs)"):
                      with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                          # 1. Augment data with verified ESG hub URLs
-                         augmented_data = df.to_dict('records')
+                         augmented_data = df_selected.to_dict('records')
                          
                          # Get unique companies and their ESG hub URLs
-                         unique_companies = df['company'].dropna().unique()
+                         unique_companies = df_selected['company'].dropna().unique()
                          all_companies = mongo_db.get_all_companies()
                          
                          for company_name in unique_companies:
@@ -1993,7 +2002,7 @@ with tab_db:
                          zip_file.writestr("sources.csv", csv_buffer.getvalue())
                          
                          # 3. Download Content Files
-                         for index, row in df.iterrows():
+                         for index, row in df_selected.iterrows():
                              item_url = row.get('url')
                              if not item_url: continue
                              
