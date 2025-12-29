@@ -2220,7 +2220,22 @@ with tab_all:
                                            help="Case-insensitive search")
         
         if filter_combined:
-            mask = df_combined.apply(lambda r: filter_combined.lower() in str(r).lower(), axis=1)
+            query = filter_combined.lower()
+            
+            # Support for "term1 OR term2" (any match)
+            if " or " in query:
+                terms = [t.strip() for t in query.split(" or ") if t.strip()]
+                mask = df_combined.apply(lambda r: any(term in str(r).lower() for term in terms), axis=1)
+                
+            # Support for "term1 AND term2" (all match)
+            elif " and " in query:
+                terms = [t.strip() for t in query.split(" and ") if t.strip()]
+                mask = df_combined.apply(lambda r: all(term in str(r).lower() for term in terms), axis=1)
+                
+            # Standard single search
+            else:
+                mask = df_combined.apply(lambda r: query in str(r).lower(), axis=1)
+                
             df_display_combined = df_combined[mask]
         else:
             df_display_combined = df_combined
