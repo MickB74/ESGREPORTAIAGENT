@@ -1588,14 +1588,36 @@ with tab_search:
         if st.session_state.get('show_saved_links', False):  # Only show when explicitly requested
             try:
                 bk_company = data.get("company", st.session_state.current_company)
-                # Filter from all saved links (in memory for now)
+                bk_symbol = data.get("symbol", st.session_state.get('company_symbol', ''))
+                
+                # Filter from all saved links with more flexible matching
                 all_bks = mongo_db.get_all_links("verified_links")
-                # Flexible matching: Check if search query is in saved name OR saved name is in search query
-                saved_bks = [
-                    l for l in all_bks 
-                    if bk_company.lower() in l.get('company', '').lower() 
-                    or l.get('company', '').lower() in bk_company.lower()
-                ]
+                
+                # Extract company name without symbol/ticker (e.g., "BLOOMBERG (BLP)" -> "BLOOMBERG")
+                import re
+                clean_company = re.sub(r'\s*\([^)]*\)', '', bk_company).strip()
+                
+                # More flexible matching logic
+                saved_bks = []
+                for l in all_bks:
+                    link_company = l.get('company', '').lower()
+                    link_symbol = l.get('symbol', '').lower()
+                    search_company = clean_company.lower()
+                    search_symbol = bk_symbol.lower() if bk_symbol else ''
+                    
+                    # Match by symbol (strongest match)
+                    if search_symbol and link_symbol and search_symbol == link_symbol:
+                        saved_bks.append(l)
+                        continue
+                    
+                    # Match by any significant word in company name (3+ chars)
+                    search_words = [w for w in search_company.split() if len(w) >= 3]
+                    link_words = [w for w in link_company.split() if len(w) >= 3]
+                    
+                    if any(word in link_company for word in search_words) or \
+                       any(word in search_company for word in link_words):
+                        saved_bks.append(l)
+                        continue
                 
                 st.markdown("---")
                 st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
