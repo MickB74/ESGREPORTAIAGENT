@@ -1448,6 +1448,7 @@ with tab_search:
                     "company": company_name,
                     "website": {"title": "Verified ESG Hub", "href": known_website} if known_website else None
                 }
+                st.rerun()  # Force page refresh to show saved links
             else:
                 st.warning("Please select a company first.")
     
