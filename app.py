@@ -1384,14 +1384,14 @@ with st.sidebar:
     st.markdown("---")
 
 # --- TABS LAYOUT ---
-tab_search, tab_intro, tab_db, tab_data = st.tabs(["🔍 Search & Analyze", "🏠 Introduction", "📂 User Saved Links", "✅ Verified ESG Sites"])
+tab_search, tab_db, tab_data, tab_faq = st.tabs(["🔍 Search & Analyze", "📂 User Saved Links", "✅ Verified ESG Sites", "❓ FAQs"])
 
 # ====================
-# TAB 0: INTRODUCTION
+# TAB 3: FAQs (Formerly Intro)
 # ====================
-with tab_intro:
+with tab_faq:
     st.markdown("""
-    ### Welcome to the ESG Report AI Agent 🤖
+    ### Friendly Guide & FAQs 🤖
     
     This powerful tool helps you discover, analyze, and manage Environmental, Social, and Governance (ESG) reports for companies, with a focus on S&P 500 data.
     
