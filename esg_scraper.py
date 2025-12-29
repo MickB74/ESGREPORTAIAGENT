@@ -255,9 +255,13 @@ class ESGScraper:
             # 2. Filter: Must be a PDF OR have a good score
             # Score 1 is sufficient if we have a robust EXCLUDE list (which we do now)
             # This captures HTML pages like "Sound Governance" or "Community Impact"
-            if href.lower().endswith(".pdf") or score >= 1:
+            
+            # Relaxed PDF check for malformed extensions (e.g. Humana "...Reportpdf")
+            is_pdf = href.lower().endswith(".pdf") or href.lower().endswith("pdf")
+            
+            if is_pdf or score >= 1:
                 # Boost score for PDF to keep them top priority
-                if href.lower().endswith(".pdf"):
+                if is_pdf:
                     score += 3
                 
                 candidates.append({"url": href, "text": text, "score": score})

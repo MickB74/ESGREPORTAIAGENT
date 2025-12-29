@@ -1022,7 +1022,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                         if not text: text = "Unknown Web Resource"
 
                         # BROADENED SCOPE: Check both PDF and HTML for relevance
-                        is_pdf = normalized.lower().endswith('.pdf')
+                        is_pdf = normalized.lower().endswith('.pdf') or normalized.lower().endswith('pdf')
                         
                         # 1. Relevance Check (Keywords)
                         if is_report_link(text, normalized):
@@ -2021,7 +2021,7 @@ with tab_db:
                                         else: ext = '.html' # Default to html for web pages
                                     
                                     # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
-                                    if item_url.lower().endswith('.pdf') and ext != '.pdf':
+                                    if item_url.lower().endswith('pdf') and ext != '.pdf':
                                         ext = '.pdf'
                                     
                                     # SKIP non-PDF files (user only wants PDFs in ZIP)
