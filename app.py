@@ -1266,7 +1266,7 @@ with st.sidebar:
     st.markdown("---")
 
 # --- TABS LAYOUT ---
-tab_search, tab_data, tab_db, tab_faq = st.tabs(["🔍 Search & Analyze", "✅ Verified ESG Sites", "📂 User Saved Links", "❓ FAQs"])
+tab_search, tab_all, tab_data, tab_db, tab_faq = st.tabs(["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "❓ FAQs"])
 
 # ====================
 # TAB 3: FAQs (Formerly Intro)
@@ -2112,7 +2112,77 @@ with tab_db:
 
 
 # ==========================================
-# TAB 4: DATA MANAGER (MongoDB Companies)
+# TAB 2: ALL RESOURCES (Combined View)
+# ==========================================
+with tab_all:
+    st.header("📊 All Resources")
+    st.caption("Unified view of verified ESG hub URLs and saved report links")
+    
+    # Fetch both datasets
+    all_companies = mongo_db.get_all_companies()
+    all_saved_links = mongo_db.get_all_links("verified_links")
+    
+    # Combine into one unified dataset
+    combined_resources = []
+    
+    # Add verified ESG hubs
+    for company in all_companies:
+        if company.get('Website'):
+            combined_resources.append({
+                'Type': 'ESG Hub',
+                'Company': company.get('Company Name', ''),
+                'Symbol': company.get('Symbol', ''),
+                'Title': 'ESG / Sustainability Hub',
+                'URL': company.get('Website'),
+                'Description': company.get('Company Description', 'Official ESG/Sustainability website'),
+                'Timestamp': company.get('created_at', '')
+            })
+    
+    # Add saved links
+    for link in all_saved_links:
+        combined_resources.append({
+            'Type': 'Saved Report',
+            'Company': link.get('company', ''),
+            'Symbol': link.get('symbol', ''),
+            'Title': link.get('title', ''),
+            'URL': link.get('url', ''),
+            'Description': link.get('description', ''),
+            'Timestamp': link.get('timestamp', '')
+        })
+    
+    if combined_resources:
+        df_combined = pd.DataFrame(combined_resources)
+        
+        st.metric("Total Resources", len(df_combined))
+        
+        # Filter
+        filter_combined = st.text_input("🔍 Filter by Company, Symbol, or Title", 
+                                       placeholder="Type to search...", 
+                                       key="filter_combined")
+        
+        if filter_combined:
+            mask = df_combined.apply(lambda r: filter_combined.lower() in str(r).lower(), axis=1)
+            df_display_combined = df_combined[mask]
+        else:
+            df_display_combined = df_combined
+        
+        st.caption(f"Showing {len(df_display_combined)} of {len(df_combined)} resources")
+        
+        # Display table
+        st.dataframe(
+            df_display_combined,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "URL": st.column_config.LinkColumn("URL"),
+                "Timestamp": st.column_config.DatetimeColumn("Added", format="MMM DD, YYYY")
+            }
+        )
+    else:
+        st.info("No resources found. Add companies to Verified ESG Sites or save some links!")
+
+# ==========================================
+# TAB 3: DATA MANAGER (MongoDB Companies)
 # ==========================================
 with tab_data:
     st.header("✅ Verified ESG Sites")
