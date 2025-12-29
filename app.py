@@ -2029,6 +2029,16 @@ with tab_db:
                  fail_count = 0
                  import mimetypes 
                  
+                 # Initialize MD content
+                 md_lines = [
+                     "# Downloaded ESG Reports",
+                     f"Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                     "",
+                     "## Contents",
+                     "| Company | Report/Title | Year/Label | Filename | Source URL |",
+                     "|---|---|---|---|---|"
+                 ]
+                 
                  with st.spinner(f"Bundling {count_selected} items..."):
                     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
                         # 1. Augment data with verified ESG hub URLs
@@ -2090,10 +2100,17 @@ with tab_db:
                                     
                                     zip_file.writestr(filename, response.content)
                                     success_count += 1
+                                    
+                                    # Add to MD
+                                    md_line = f"| {row.get('company', '')} | {row.get('title', '')} | {year_hint} | `{filename}` | {item_url} |"
+                                    md_lines.append(md_line)
                                 else:
                                     fail_count += 1
                             except Exception as e:
                                 fail_count += 1
+                        
+                        # Write MD file
+                        zip_file.writestr("CONTENTS.md", "\n".join(md_lines))
                     
                     if success_count == 0:
                         st.success("✅ Ready! CSV Manifest bundled (No PDFs downloaded).")
@@ -2283,8 +2300,8 @@ with tab_all:
                 )
         
         with c_download:
-            selected_count = st.session_state.get(f'all_res_selected_count', 0)
-            st.button(f"📦 Download {selected_count} (ZIP)", key="all_res_show_zip", disabled=(selected_count == 0), help="Download selected PDFs as ZIP")
+            # Placeholder for ZIP button (populated below after selection logic)
+            zip_btn_placeholder = st.empty()
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
@@ -2316,6 +2333,105 @@ with tab_all:
         st.session_state.all_res_selected_count = len(selected_rows)
         
         st.caption(f"Showing {len(df_display_combined)} of {len(df_combined)} resources | {len(selected_rows)} selected")
+
+        # --- ZIP DOWNLOAD LOGIC (ALL RESOURCES) ---
+        with zip_btn_placeholder:
+             btn_label_ar = f"📦 Download {len(selected_rows)} (ZIP)"
+             
+             if st.button(btn_label_ar, key="all_res_zip_btn_real", disabled=(len(selected_rows) == 0)):
+                 zip_buffer_ar = io.BytesIO()
+                 success_count_ar = 0
+                 fail_count_ar = 0
+                 import mimetypes
+                 
+                 # Initialize MD content
+                 md_lines_ar = [
+                     "# Downloaded ESG Resources",
+                     f"Generated on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                     "",
+                     "## Contents",
+                     "| Company | Report/Title | Type | Filename | Source URL |",
+                     "|---|---|---|---|---|"
+                 ]
+                 
+                 with st.spinner(f"Bundling {len(selected_rows)} items..."):
+                     with zipfile.ZipFile(zip_buffer_ar, "a", zipfile.ZIP_DEFLATED, False) as zip_file_ar:
+                         # 1. Add CSV Manifest
+                         import io
+                         csv_buffer_ar = io.StringIO()
+                         selected_rows.drop(columns=['☑']).to_csv(csv_buffer_ar, index=False)
+                         zip_file_ar.writestr("resources_list.csv", csv_buffer_ar.getvalue())
+                         
+                         # 2. Download Files
+                         for index, row in selected_rows.iterrows():
+                             item_url = row.get('URL')
+                             if not item_url: continue
+                             
+                             try:
+                                 # Fetch content
+                                 response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                 if response.status_code == 200:
+                                     # Determine Extension
+                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
+                                     ext = mimetypes.guess_extension(content_type)
+                                     if not ext:
+                                         if 'pdf' in content_type: ext = '.pdf'
+                                         elif 'html' in content_type: ext = '.html'
+                                         else: ext = '.html'
+                                     
+                                     # Force PDF extension if URL ends in PDF but mime was wrong/generic
+                                     if item_url.lower().endswith('pdf') and ext != '.pdf': ext = '.pdf'
+                                     
+                                     # Skip non-PDFs if we want strict mode? user just said "zip", implied reports.
+                                     # But this is "All Resources" which includes hubs.
+                                     # For Hubs (HTML), maybe just save a shortcut or HTML file?
+                                     # Let's save whatever we get, but try to be smart.
+                                     
+                                     if ext != '.pdf' and row.get('Type') == 'ESG Hub':
+                                          # For hubs, maybe we just skip downloading the HTML body and just keep it in the CSV/MD?
+                                          # Or we save a small redirect file?
+                                          # User said "Download selected PDFs as ZIP" in the button help text.
+                                          # So let's prioritize PDFs.
+                                          if 'pdf' not in content_type:
+                                               # Check if we should skip
+                                               pass 
+                                     
+                                     # Create safe filename
+                                     safe_co = "".join(c for c in str(row.get('Company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
+                                     safe_ti = "".join(c for c in str(row.get('Title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
+                                     filename_ar = f"{safe_co}_{safe_ti}{ext}"
+                                     
+                                     zip_file_ar.writestr(filename_ar, response.content)
+                                     success_count_ar += 1
+                                     
+                                     # Add to MD
+                                     md_line = f"| {row.get('Company', '')} | {row.get('Title', '')} | {row.get('Type', '')} | `{filename_ar}` | {item_url} |"
+                                     md_lines_ar.append(md_line)
+                                     
+                                 else:
+                                     fail_count_ar += 1
+                             except Exception as e:
+                                 fail_count_ar += 1
+                         
+                         # Write MD file
+                         zip_file_ar.writestr("CONTENTS.md", "\n".join(md_lines_ar))
+                 
+                 if success_count_ar == 0:
+                     st.success("✅ Manifest created (No files downloaded).")
+                 else:
+                     st.success(f"✅ Bundled {success_count_ar} files!")
+                 
+                 st.session_state['all_res_zip_ready'] = zip_buffer_ar.getvalue()
+             
+             # Show Download Button
+             if 'all_res_zip_ready' in st.session_state and len(selected_rows) > 0:
+                 st.download_button(
+                     label="⬇️ Click to Save ZIP",
+                     data=st.session_state['all_res_zip_ready'],
+                     file_name=f"esg_resources_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
+                     mime="application/zip",
+                     key="all_res_zip_final_download"
+                 )
     else:
         st.info("No resources found. Add companies to Verified ESG Sites or save some links!")
 
