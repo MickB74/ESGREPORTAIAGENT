@@ -1373,7 +1373,7 @@ def get_symbol_from_map(company_name):
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/leaf.png", width=60)
     st.title("ESG Agent v2.3 🌿")
-    st.caption(f"Last Update: {datetime.datetime.now().strftime('%H:%M:%S')}")
+    st.caption(f"Last Update: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ET")
     st.markdown("---")
     
     # DB Status
