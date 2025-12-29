@@ -2186,20 +2186,20 @@ with tab_all:
             df_display_combined = df_combined
         
         # Buttons - Row 1: Select/Deselect
-        c_sel, c_desel = st.columns(2)
-        with c_sel:
-            if st.button("✅ Select All", key="all_res_select_all"):
+        c_sel_all, c_desel_all, c_fill = st.columns([0.2, 0.2, 0.6])
+        with c_sel_all:
+            if st.button("✅ Select All", key="all_res_select_all", help="Select all rows for download"):
                 st.session_state.all_res_select_state = 'select_all'
                 st.session_state.all_res_editor_key += 1
-        with c_desel:
-            if st.button("❌ Deselect All", key="all_res_deselect_all"):
+        with c_desel_all:
+            if st.button("❌ Deselect All", key="all_res_deselect_all", help="Deselect all rows"):
                 st.session_state.all_res_select_state = 'deselect_all'
                 st.session_state.all_res_editor_key += 1
         
         # Buttons - Row 2: Export/Download
-        c_export, c_download = st.columns(2)
+        c_export, c_download, c_fill2 = st.columns([0.2, 0.2, 0.6])
         with c_export:
-            if st.button("📄 Export CSV", key="all_res_export_csv", use_container_width=True):
+            if st.button("📄 Export CSV", key="all_res_export_csv", help="Export visible rows to CSV"):
                 csv = df_display_combined.to_csv(index=False)
                 st.download_button(
                     label="⬇️ Download CSV",
@@ -2211,7 +2211,7 @@ with tab_all:
         
         with c_download:
             selected_count = st.session_state.get(f'all_res_selected_count', 0)
-            st.button(f"📦 Download {selected_count} (ZIP)", key="all_res_show_zip", disabled=(selected_count == 0), use_container_width=True)
+            st.button(f"📦 Download {selected_count} (ZIP)", key="all_res_show_zip", disabled=(selected_count == 0), help="Download selected PDFs as ZIP")
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
