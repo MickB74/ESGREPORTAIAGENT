@@ -1762,13 +1762,16 @@ with tab_search:
                     if report.get('body'):
                         st.caption(report['body'])
                 
-                # Prepare safe suffix for keys
-                c_key_safe = data.get('company', 'comp').replace(' ', '_')
+                # Prepare safe suffix for keys using the REPORT URL to ensure true uniqueness
+                # If the URL changes (new report), the key changes, resetting the widget.
+                import hashlib
+                url_hash = hashlib.md5(report['href'].encode()).hexdigest()[:8]
+                c_key_safe = f"{idx}_{url_hash}"
                 
                 with r_save:
                     # Label Input (Auto-fill with Title)
-                    # Use a unique key based on index AND company
-                    key_label = f"lbl_{c_key_safe}_{idx}"
+                    # Use a unique key based on report URL hash
+                    key_label = f"lbl_{c_key_safe}"
                     user_label = st.text_input("Label", value=report['title'], key=key_label, placeholder="Label (e.g. 2024 Report)", label_visibility="collapsed")
                     
                     # Symbol Input
@@ -1782,15 +1785,15 @@ with tab_search:
                         if resolved:
                             def_sym = resolved
                             
-                    key_sym = f"sym_{c_key_safe}_{idx}"
+                    key_sym = f"sym_{c_key_safe}"
                     user_symbol = st.text_input("Symbol", value=def_sym if def_sym else "", key=key_sym, placeholder="Stock Symbol (Optional)", label_visibility="collapsed")
                     
                     # Note Input
-                    key_note = f"note_{c_key_safe}_{idx}"
+                    key_note = f"note_{c_key_safe}"
                     user_note = st.text_input("Note", value="", key=key_note, placeholder="Note (Optional)", label_visibility="collapsed")
                     
                     # Save Button
-                    key_save = f"save_rep_{c_key_safe}_{idx}"
+                    key_save = f"save_rep_{c_key_safe}"
                     if st.button("Save 💾", key=key_save, use_container_width=True):
                         # Determine Label
                         final_label = user_label if user_label else report['title']
