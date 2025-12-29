@@ -648,7 +648,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             log(f"Screenshot capture failed: {screenshot_error}")
             # Continue without screenshot
 
-    # 3. Deep Scan (Requests-based)
+    # 3. Deep Scan - Use Hybrid Scraper for ALL URLs
     all_reports = []
     max_scan = 1 if strict_mode else 3
     
@@ -659,42 +659,51 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 if not is_likely_official_domain(url, company_name):
                     continue
             
-            print(f"   Scanning (Requests): {url}...")
-            # Use requests to get HTML
+            print(f"   🔍 Scanning: {url}...")
+            
+            # USE HYBRID SCRAPER FOR ALL URLS
             try:
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1'
-                }
-                resp = requests.get(url, headers=headers, timeout=15)
+                from esg_scraper import ESGScraper
+                scraper = ESGScraper(headless=True)
                 
-                # AUTOMATIC BYPASS: If 403 Forbidden, use Playwright
-                if resp.status_code in [403, 401, 429, 503]:
-                    print(f"   ⚠️ Access Denied ({resp.status_code}). Engaging Playwright Bypass...")
-                    st.toast(f"Bot detected via requests. Switching to stealth Playwright... 🕵️‍♂️")
+                print(f"   🚀 Using hybrid scraper on {url}")
+                links = scraper.scan_url(url)
+                
+                if links:
+                    # Filter to PDFs only
+                    pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
                     
-                    from esg_scraper import ESGScraper
-                    scraper = ESGScraper(headless=True)
-                    # Run single site config
-                    # Note: We rely on scraper to handle the "wait_for" logic (defaults to body)
-                    res_map = scraper.run([{'url': url, 'name': 'fallback_target'}])
+                    if pdf_links:
+                        print(f"   ✅ Found {len(pdf_links)} PDF reports")
+                        for l in pdf_links:
+                            all_reports.append({
+                                'title': l.get('text', 'Report'),
+                                'href': l['url'],
+                                'body': 'Found via Hybrid Scraper'
+                            })
+                    else:
+                        print(f"   ⚠️ Found {len(links)} links but no PDFs on {url}")
+                else:
+                    print(f"   ⚠️ No links found on {url}")
                     
-                    if res_map and 'fallback_target' in res_map:
-                        found_links = res_map['fallback_target']
-                        # Convert to app format and add to results
-                        for fl in found_links:
-                             all_reports.append({
-                                 'title': fl.get('text', 'Unknown'),
-                                 'href': fl.get('url', '#'),
-                                 'body': 'Extracted via Stealth Mode'
-                             })
-                    continue # Skip standard parsing
+            except Exception as scraper_error:
+                print(f"   ⚠️ Hybrid scraper failed for {url}: {scraper_error}")
+                # Could add fallback to old requests logic here if needed
+                
+        except Exception as e:
+            log(f"  Error processing domain {url}: {e}")
+    
+    # If we found reports, return them
+    if all_reports:
+        return {
+            "reports": all_reports,
+            "website": {"title": "Scanned Site", "href": unique_domains[0] if unique_domains else known_website, "body": "Scanned via Hybrid Scraper"},
+            "search_log": [f"Hybrid Scraper: Found {len(all_reports)} PDF reports total"]
+        }
+    
+    # OLD REQUESTS-BASED SCANNING REMOVED - Now using hybrid scraper for everything
+    # If no reports found via hybrid scraper, continue to fallback logic below
+    
                     
                 page_content = resp.text
                 page_url = resp.url # Effective URL
