@@ -1342,9 +1342,38 @@ with tab_search:
             )
             known_website = company_data_match.get('Website') if company_data_match else None
             
-            # Debug: Show retrieved website
             if known_website:
-                st.caption(f"🔗 Found saved website: {known_website}")
+                col_link, col_edit = st.columns([0.85, 0.15])
+                with col_link:
+                    st.caption(f"🔗 Found saved website: {known_website}")
+                with col_edit:
+                    if st.button("✏️", key="edit_saved_url", help="Edit saved URL"):
+                        st.session_state.show_url_editor = True
+                
+                # Show inline editor if button clicked
+                if st.session_state.get('show_url_editor'):
+                    with st.form("edit_url_form"):
+                        new_url = st.text_input("Update URL:", value=known_website, key="url_input")
+                        col_save, col_cancel = st.columns(2)
+                        with col_save:
+                            if st.form_submit_button("💾 Save"):
+                                # Update in MongoDB
+                                success, msg = mongo_db.save_company({
+                                    "Symbol": company_symbol,
+                                    "Company Name": company_name,
+                                    "Website": new_url
+                                })
+                                if success:
+                                    st.success("✅ URL updated!")
+                                    known_website = new_url
+                                    st.session_state.show_url_editor = False
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                        with col_cancel:
+                            if st.form_submit_button("Cancel"):
+                                st.session_state.show_url_editor = False
+                                st.rerun()
             else:
                 st.caption(f"⚠️ No saved website found for {company_symbol}")
         else:
