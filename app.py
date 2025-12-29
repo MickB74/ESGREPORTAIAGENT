@@ -1932,22 +1932,22 @@ with tab_db:
     
     st.divider()
     
-        if len(v_links) > 0:
-            # Convert to DataFrame for display
-            df = pd.DataFrame(v_links)
-            
-            # Ensure all structural columns exist
-            expected_cols = ['timestamp', 'company', 'symbol', 'title', 'label', 'url', 'description', 'source']
-            for c in expected_cols:
-                if c not in df.columns:
-                    df[c] = None 
-            
-            # Reorder
-            df = df[expected_cols]
+    if len(v_links) > 0:
+        # Convert to DataFrame for display
+        df = pd.DataFrame(v_links)
+        
+        # Ensure all structural columns exist
+        expected_cols = ['timestamp', 'company', 'symbol', 'title', 'label', 'url', 'description', 'source']
+        for c in expected_cols:
+            if c not in df.columns:
+                df[c] = None 
+        
+        # Reorder
+        df = df[expected_cols]
 
-            # Convert timestamp to datetime objects for DatetimeColumn compatibility
-            if 'timestamp' in df.columns:
-                 df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        # Convert timestamp to datetime objects for DatetimeColumn compatibility
+        if 'timestamp' in df.columns:
+             df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         
         # Download button
         col_csv, col_zip = st.columns([1, 1])
