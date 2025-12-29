@@ -1992,7 +1992,10 @@ with tab_db:
              df['Select'] = st.session_state.select_state
         
         # Download button (CSV only here, ZIP moved below)
-        col_csv, col_spacer = st.columns([0.3, 0.7])
+        # We want ZIP button to appear HERE (next to CSV), but it depends on 'edited_df' which is below.
+        # Solution: Use st.empty() placeholder here, and populate it later.
+        
+        col_csv, col_zip_placeholder, col_spacer = st.columns([0.2, 0.25, 0.55])
         with col_csv:
             csv_export = df.drop(columns=['Select']).to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -2030,17 +2033,16 @@ with tab_db:
 
         
         # --- SELECTIVE DOWNLOAD & ACTIONS ---
-        st.markdown("")
         # Filter checked items
         selected_rows = edited_df[edited_df["Select"] == True]
         count_selected = len(selected_rows)
         
-        col_actions, col_save = st.columns([1, 1])
-        
-        with col_actions:
-            btn_label = f"📦 Download {count_selected} Selected (ZIP)" if count_selected > 0 else "📦 Download Selected (ZIP)"
+        # Render ZIP Button into the Placeholder at the TOP
+        with col_zip_placeholder:
+            btn_label = f"📦 Download {count_selected} (ZIP)" if count_selected > 0 else "📦 Download (ZIP)"
             
-            if st.button(btn_label, type="secondary", disabled=(count_selected == 0), help="Download PDF content for checked items"):
+            # Use unique key to avoid duplicate ID issues if rendered elsewhere
+            if st.button(btn_label, type="secondary", disabled=(count_selected == 0), help="Download PDF content for checked items", key="zip_btn_top"):
                  # ZIP GENERATION LOGIC
                  zip_buffer = io.BytesIO()
                  success_count = 0
@@ -2119,18 +2121,20 @@ with tab_db:
                         st.success(f"✅ Ready! CSV Manifest + {success_count} PDFs bundled!")
                     st.session_state['zip_ready'] = zip_buffer.getvalue()
 
-            # Show Download Button if ready
-            if 'zip_ready' in st.session_state and count_selected > 0: # Ensure valid state
+            # Show Download Button if ready (Also render into placeholder)
+            if 'zip_ready' in st.session_state and count_selected > 0: 
                  st.download_button(
                     label="⬇️ Click to Save ZIP",
                     data=st.session_state['zip_ready'],
                     file_name=f"esg_selection_{datetime.datetime.now().strftime('%Y%m%d')}.zip",
                     mime="application/zip",
-                    key="zip_download_final_btn"
+                    key="zip_download_final_btn_top"
                 )
 
         # Logic to sync changes (Streamlit data_editor doesn't auto-sync to DB)
         
+        st.divider()
+        col_dummy, col_save = st.columns([0.7, 0.3])
         with col_save:
             if st.button("💾 Save Changes to Database", type="primary", key="save_links_db"):
                 changes_count = 0
