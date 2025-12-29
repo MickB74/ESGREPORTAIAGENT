@@ -1969,84 +1969,84 @@ with tab_db:
                 import mimetypes 
                 
                 with st.spinner(f"Downloading {len(df)} items... (Web pages & PDFs)"):
-                     with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                         # 1. Augment data with verified ESG hub URLs
-                         augmented_data = df.to_dict('records')
-                         
-                         # Get unique companies and their ESG hub URLs
-                         unique_companies = df['company'].dropna().unique()
-                         all_companies = mongo_db.get_all_companies()
-                         
-                         for company_name in unique_companies:
-                             # Find the company's ESG website
-                             company_record = next((c for c in all_companies if c.get('Company Name', '').lower() == company_name.lower()), None)
-                             
-                             if company_record and company_record.get('Website'):
-                                 # Add ESG hub as a separate entry
-                                 augmented_data.append({
-                                     'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                     'company': company_name,
-                                     'symbol': company_record.get('Symbol', ''),
-                                     'title': 'ESG / Sustainability Hub',
-                                     'label': 'Verified ESG Site',
-                                     'url': company_record.get('Website'),
-                                     'description': 'Official ESG/Sustainability website',
-                                     'source': 'Verified Hub'
-                                 })
-                         
-                         # 2. Add CSV Manifest (Metadata + Links including ESG hubs)
-                         import io
-                         csv_buffer = io.StringIO()
-                         pd.DataFrame(augmented_data).to_csv(csv_buffer, index=False)
-                         zip_file.writestr("sources.csv", csv_buffer.getvalue())
-                         
-                         # 3. Download Content Files
-                         for index, row in df.iterrows():
-                             item_url = row.get('url')
-                             if not item_url: continue
-                             
-                             try:
-                                 # Fetch content
-                                 response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                                 
-                                 if response.status_code == 200:
-                                     # Determine Extension
-                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
-                                     ext = mimetypes.guess_extension(content_type)
-                                     
-                                     # Fallbacks/Overwrites
-                                     if not ext:
-                                         if 'pdf' in content_type: ext = '.pdf'
-                                         elif 'html' in content_type: ext = '.html'
-                                         else: ext = '.html' # Default to html for web pages
-                                     
-                                     # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
-                                     if item_url.lower().endswith('.pdf') and ext != '.pdf':
-                                         ext = '.pdf'
-                                     
-                                     # SKIP non-PDF files (user only wants PDFs in ZIP)
-                                     if ext != '.pdf':
-                                         fail_count += 1
-                                         continue
-                                         
-                                     # Create safe filename
-                                     safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
-                                     safe_title = "".join(c for c in str(row.get('title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
-                                     year_hint = str(row.get('label', ''))
-                                     
-                                     # Deduplicate filenames in zip? ZipFile handles duplicate paths by adding them, but extracting might warn.
-                                     # We'll rely on the uniqueness of the combination or sequence.
-                                     filename = f"{safe_company}_{year_hint}_{safe_title}{ext}"
-                                     
-                                     # Write to zip
-                                     zip_file.writestr(filename, response.content)
-                                     success_count += 1
-                                 else:
-                                     fail_count += 1
-                             except Exception as e:
-                                 # print(f"Zip download error: {e}")
-                                 fail_count += 1
-                     
+                    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                        # 1. Augment data with verified ESG hub URLs
+                        augmented_data = df.to_dict('records')
+                        
+                        # Get unique companies and their ESG hub URLs
+                        unique_companies = df['company'].dropna().unique()
+                        all_companies = mongo_db.get_all_companies()
+                        
+                        for company_name in unique_companies:
+                            # Find the company's ESG website
+                            company_record = next((c for c in all_companies if c.get('Company Name', '').lower() == company_name.lower()), None)
+                            
+                            if company_record and company_record.get('Website'):
+                                # Add ESG hub as a separate entry
+                                augmented_data.append({
+                                    'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    'company': company_name,
+                                    'symbol': company_record.get('Symbol', ''),
+                                    'title': 'ESG / Sustainability Hub',
+                                    'label': 'Verified ESG Site',
+                                    'url': company_record.get('Website'),
+                                    'description': 'Official ESG/Sustainability website',
+                                    'source': 'Verified Hub'
+                                })
+                        
+                        # 2. Add CSV Manifest (Metadata + Links including ESG hubs)
+                        import io
+                        csv_buffer = io.StringIO()
+                        pd.DataFrame(augmented_data).to_csv(csv_buffer, index=False)
+                        zip_file.writestr("sources.csv", csv_buffer.getvalue())
+                        
+                        # 3. Download Content Files
+                        for index, row in df.iterrows():
+                            item_url = row.get('url')
+                            if not item_url: continue
+                            
+                            try:
+                                # Fetch content
+                                response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                
+                                if response.status_code == 200:
+                                    # Determine Extension
+                                    content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
+                                    ext = mimetypes.guess_extension(content_type)
+                                    
+                                    # Fallbacks/Overwrites
+                                    if not ext:
+                                        if 'pdf' in content_type: ext = '.pdf'
+                                        elif 'html' in content_type: ext = '.html'
+                                        else: ext = '.html' # Default to html for web pages
+                                    
+                                    # Ensure PDF extension if URL says so (sometimes headers are generic octet-stream)
+                                    if item_url.lower().endswith('.pdf') and ext != '.pdf':
+                                        ext = '.pdf'
+                                    
+                                    # SKIP non-PDF files (user only wants PDFs in ZIP)
+                                    if ext != '.pdf':
+                                        fail_count += 1
+                                        continue
+                                        
+                                    # Create safe filename
+                                    safe_company = "".join(c for c in str(row.get('company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
+                                    safe_title = "".join(c for c in str(row.get('title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
+                                    year_hint = str(row.get('label', ''))
+                                    
+                                    # Deduplicate filenames in zip? ZipFile handles duplicate paths by adding them, but extracting might warn.
+                                    # We'll rely on the uniqueness of the combination or sequence.
+                                    filename = f"{safe_company}_{year_hint}_{safe_title}{ext}"
+                                    
+                                    # Write to zip
+                                    zip_file.writestr(filename, response.content)
+                                    success_count += 1
+                                else:
+                                    fail_count += 1
+                            except Exception as e:
+                                # print(f"Zip download error: {e}")
+                                fail_count += 1
+                    
                     st.success(f"Bundled {success_count} items! ({fail_count} failed)")
                     
                     # Show Download Button for the Zip
