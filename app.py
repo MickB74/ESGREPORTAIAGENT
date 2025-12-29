@@ -1400,7 +1400,7 @@ with tab_intro:
     #### 🚀 Key Features & How to Use
     
     **1. 🔍 Search & Analyze** (Main Tab)
-    *   **Find Reports**: Select a company from the S&P 500 list to automatically load their verified ESG hub
+    *   **Find Reports**: Select a company from the database to automatically load their verified ESG hub
     *   **Direct URL Scan**: Enter any ESG website URL to scan for PDF reports
     *   **Batch Save**: Save all discovered reports at once with one click
     *   **Edit Hub URLs**: Correct or update the verified ESG website for any company
