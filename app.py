@@ -2075,6 +2075,7 @@ with tab_db:
             },
             hide_index=True,
             num_rows="dynamic", # Allows adding/deleting rows
+            selection_mode="multi-row", # Enable row selection
             key="saved_links_editor"
         )
         
