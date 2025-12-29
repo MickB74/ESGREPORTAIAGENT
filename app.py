@@ -2153,12 +2153,31 @@ with tab_all:
     if combined_resources:
         df_combined = pd.DataFrame(combined_resources)
         
-        st.metric("Total Resources", len(df_combined))
+        # Convert timestamp to datetime
+        if 'Timestamp' in df_combined.columns:
+            df_combined['Timestamp'] = pd.to_datetime(df_combined['Timestamp'], errors='coerce')
+        
+        # Metrics
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Resources", len(df_combined))
+        with col2:
+            unique_companies = len(set(r.lower() for r in df_combined['Company'] if r))
+            st.metric("Unique Companies", unique_companies)
+        
+        st.divider()
+        
+        # SELECT ALL LOGIC
+        if 'all_res_editor_key' not in st.session_state: st.session_state.all_res_editor_key = 0
+        if 'all_res_select_state' not in st.session_state: st.session_state.all_res_select_state = None
         
         # Filter
-        filter_combined = st.text_input("🔍 Filter by Company, Symbol, or Title", 
-                                       placeholder="Type to search...", 
-                                       key="filter_combined")
+        c_filter, c_spacer = st.columns([0.4, 0.6])
+        with c_filter:
+            filter_combined = st.text_input("🔍 Filter by Company, Symbol, or Title", 
+                                           placeholder="Type to search...", 
+                                           key="filter_combined_resources",
+                                           help="Case-insensitive search")
         
         if filter_combined:
             mask = df_combined.apply(lambda r: filter_combined.lower() in str(r).lower(), axis=1)
@@ -2166,18 +2185,62 @@ with tab_all:
         else:
             df_display_combined = df_combined
         
-        st.caption(f"Showing {len(df_display_combined)} of {len(df_combined)} resources")
+        # Buttons
+        c_sel, c_desel, c_export, c_download, c_fill = st.columns([0.15, 0.15, 0.15, 0.15, 0.4])
+        with c_sel:
+            if st.button("✅ Select All", key="all_res_select_all"):
+                st.session_state.all_res_select_state = 'select_all'
+                st.session_state.all_res_editor_key += 1
+        with c_desel:
+            if st.button("❌ Deselect All", key="all_res_deselect_all"):
+                st.session_state.all_res_select_state = 'deselect_all'
+                st.session_state.all_res_editor_key += 1
         
-        # Display table
-        st.dataframe(
+        with c_export:
+            if st.button("📄 Export CSV", key="all_res_export_csv"):
+                csv = df_display_combined.to_csv(index=False)
+                st.download_button(
+                    label="⬇️ Download CSV",
+                    data=csv,
+                    file_name="all_esg_resources.csv",
+                    mime="text/csv",
+                    key="all_res_csv_download"
+                )
+        
+        with c_download:
+            selected_count = st.session_state.get(f'all_res_selected_count', 0)
+            st.button(f"📦 Download {selected_count} (ZIP)", key="all_res_show_zip", disabled=(selected_count == 0))
+        
+        st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
+        
+        # Editable Table
+        if st.session_state.all_res_select_state == 'select_all':
+            df_display_combined.insert(0, '☑', True)
+        elif st.session_state.all_res_select_state == 'deselect_all':
+            df_display_combined.insert(0, '☑', False)
+        elif '☑' not in df_display_combined.columns:
+            df_display_combined.insert(0, '☑', False)
+        
+        st.session_state.all_res_select_state = None
+        
+        edited_combined = st.data_editor(
             df_display_combined,
             use_container_width=True,
             hide_index=True,
+            num_rows="fixed",
+            key=f"all_resources_editor_{st.session_state.all_res_editor_key}",
             column_config={
+                "☑": st.column_config.CheckboxColumn("Select", width="small"),
                 "URL": st.column_config.LinkColumn("URL"),
                 "Timestamp": st.column_config.DatetimeColumn("Added", format="MMM DD, YYYY")
             }
         )
+        
+        # Count selected
+        selected_rows = edited_combined[edited_combined['☑'] == True]
+        st.session_state.all_res_selected_count = len(selected_rows)
+        
+        st.caption(f"Showing {len(df_display_combined)} of {len(df_combined)} resources | {len(selected_rows)} selected")
     else:
         st.info("No resources found. Add companies to Verified ESG Sites or save some links!")
 
