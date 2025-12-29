@@ -127,6 +127,20 @@ class ESGScraper:
             aria = (node.attributes.get("aria-label") or "").strip()
             title = (node.attributes.get("title") or "").strip()
             
+            # 2.5. Check for nested role="link" divs with better aria-labels
+            # This handles cases like Honeywell where the structure is:
+            # <a href="..." aria-label="Click on tile">
+            #   <div role="link" aria-label="2025 Impact Report about sustainability">
+            #     <div><span>Impact Report</span></div>
+            #   </div>
+            # </a>
+            nested_role_link = node.css_first("div[role='link'], span[role='link']")
+            if nested_role_link:
+                nested_aria = (nested_role_link.attributes.get("aria-label") or "").strip()
+                # If nested aria-label is more descriptive than parent, use it
+                if nested_aria and len(nested_aria) > 10 and "click" not in nested_aria.lower():
+                    aria = nested_aria
+            
             # 3. Image Alt Text (if link wraps an image)
             alt_text = ""
             img = node.css_first("img")
@@ -296,16 +310,40 @@ class ESGScraper:
         """Aggressive interaction: Click 'Load More', Year Tabs, etc."""
         print("   🔨 Attempting to expand page content...")
         try:
+            # 0. Scroll to bottom to trigger lazy-loaded content
+            try:
+                print("      Scrolling to page bottom to trigger lazy loading...")
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                time.sleep(2)  # Wait for lazy-loaded content
+            except Exception as e:
+                print(f"      Scroll warning: {e}")
+            
             # 1. Click "Load More" / "Show All" buttons
             # Use a broad selector for buttons containing specific text
-            more_buttons = page.locator("button, a, div[role='button']").filter(has_text=re.compile(r"load more|show all|view all|archive", re.IGNORECASE))
-            count = more_buttons.count()
-            if count > 0:
-                print(f"      Found {count} expansion buttons. Clicking first one...")
+            more_selectors = [
+                "button:has-text('Show More')",
+                "button:has-text('Load More')",
+                "button:has-text('View All')",
+                "a:has-text('Show More')",
+                "a:has-text('Load More')",
+                "div[role='button']:has-text('Show More')",
+                "div[onclick]:has-text('Show More')",
+            ]
+            
+            for selector in more_selectors:
                 try:
-                    more_buttons.first.click(timeout=3000)
-                    time.sleep(2)
-                except: pass
+                    btn = page.locator(selector).first
+                    if btn.count() > 0:
+                        print(f"      Found expansion button with selector: {selector}")
+                        btn.click(timeout=3000)
+                        # Wait for network to settle after click
+                        try:
+                            page.wait_for_load_state("networkidle", timeout=5000)
+                        except:
+                            time.sleep(2)  # Fallback wait
+                        break
+                except:
+                    continue
             
             # 2. Click Recent Years (2024, 2023) if they look like filters
             # This is risky as it might navigate away, but we want aggressive.
@@ -328,6 +366,15 @@ class ESGScraper:
         hubs = []
         
         try:
+            # Scroll to bottom first to trigger any lazy-loaded content
+            try:
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                time.sleep(2)
+                page.evaluate("window.scrollTo(0, 0)")  # Scroll back to top
+                time.sleep(1)
+            except:
+                pass
+            
             # OPTIONAL: Interact to reveal content
             self.expand_page_interaction(page)
             
@@ -373,9 +420,9 @@ class ESGScraper:
         
         try:
             # 1. Visit Main Page
-            wait_strategy = site.get("wait_until", "load")
+            wait_strategy = site.get("wait_until", "networkidle")
             print(f"   ➡️ Visiting Main: {site['url']}")
-            page.goto(site['url'], timeout=60000, wait_until=wait_strategy)
+            page.goto(site['url'], timeout=90000, wait_until=wait_strategy)
             
             # Handle cookies/popups if possible (basic click)
             try: 
@@ -482,16 +529,48 @@ class ESGScraper:
 
     def scan_url(self, url):
         """
-        Standalone method to scan a single URL using Playwright with robust stealth settings.
-        Useful for dynamic sites where requests fails.
+        Standalone method to scan a single URL with hybrid approach.
+        STRATEGY: Try simple requests first (fast, less detectable), 
+        then fall back to Playwright for dynamic/protected sites.
         """
-        from playwright.sync_api import sync_playwright
         import time
+        import requests
         
-        print(f"🕵️‍♀️ Deep Scanning (Playwright Stealth): {url}")
+        print(f"🔍 Scanning: {url}")
+        
+        # STEP 1: Try simple requests first (works for most sites, bypasses bot detection)
+        print("   📡 Attempting fast fetch (requests)...")
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+            }
+            
+            response = requests.get(url, headers=headers, timeout=30, allow_redirects=True)
+            
+            if response.status_code == 200:
+                # Parse with our existing method
+                links = self.get_report_links(response.text, url)
+                
+                if links and len(links) > 0:
+                    print(f"   ✅ Simple fetch succeeded: Found {len(links)} links")
+                    return links
+                else:
+                    print("   ⚠️ Simple fetch returned no links, trying Playwright...")
+            else:
+                print(f"   ⚠️ HTTP {response.status_code}, falling back to Playwright...")
+                
+        except Exception as e:
+            print(f"   ⚠️ Simple fetch failed ({str(e)[:50]}), trying Playwright...")
+        
+        # STEP 2: Fall back to Playwright for dynamic/protected sites
+        print("   🕵️‍♀️ Deep Scanning (Playwright Stealth)...")
         links = []
         
         try:
+            from playwright.sync_api import sync_playwright
+            
             with sync_playwright() as p:
                 launch_args = [
                     "--disable-blink-features=AutomationControlled",
@@ -511,30 +590,86 @@ class ESGScraper:
                 
                 page = context.new_page()
                 try:
-                    # Robust navigation
-                    page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                    time.sleep(5) # Allow dynamic content to load
+                    # Robust navigation with multiple fallback strategies
+                    navigation_success = False
+                    
+                    # Strategy 1: Try networkidle (waits for network to be idle)
+                    try:
+                        print("      Attempting networkidle wait strategy...")
+                        page.goto(url, wait_until="networkidle", timeout=90000)
+                        navigation_success = True
+                        print("      ✓ Page loaded with networkidle")
+                    except Exception as e1:
+                        print(f"      networkidle failed: {str(e1)[:100]}")
+                        
+                        # Strategy 2: Fall back to 'load' 
+                        try:
+                            print("      Attempting 'load' wait strategy...")
+                            page.goto(url, wait_until="load", timeout=90000)
+                            navigation_success = True
+                            print("      ✓ Page loaded with 'load'")
+                        except Exception as e2:
+                            print(f"      load failed: {str(e2)[:100]}")
+                            
+                            # Strategy 3: Last resort - domcontentloaded
+                            try:
+                                print("      Attempting 'domcontentloaded' wait strategy...")
+                                page.goto(url, wait_until="domcontentloaded", timeout=90000)
+                                navigation_success = True
+                                print("      ✓ Page loaded with 'domcontentloaded'")
+                            except Exception as e3:
+                                print(f"      All navigation strategies failed: {str(e3)[:100]}")
+                    
+                    # Allow extra time for dynamic content even if navigation succeeded
+                    if navigation_success:
+                        time.sleep(5) # Allow dynamic content to load
                     
                     # Try to expand content interactively
                     self.expand_page_interaction(page)
                     
-                    # Extract
+                    # Extract links
                     link_data, _ = self.scrape_page_content(page, url)
                     links = link_data
                     
                 except Exception as e:
-                    print(f"Playwright navigation error ({url}): {e}")
-                    # Try to scrape whatever loaded
+                    print(f"      Playwright error ({url}): {e}")
+                    # Try to scrape whatever loaded (partial results better than nothing)
                     try:
+                        print("      Attempting to scrape partial content...")
                         link_data, _ = self.scrape_page_content(page, url)
                         links = link_data
-                    except: pass
+                        if links:
+                            print(f"      ✓ Retrieved {len(links)} links from partial content")
+                    except Exception as e2:
+                        print(f"      Partial scrape also failed: {e2}")
+                
+                # ALWAYS capture screenshot, even on failure
+                try:
+                    import os
+                    from urllib.parse import urlparse
+                    
+                    # Create screenshots directory if it doesn't exist
+                    screenshots_dir = "screenshots"
+                    os.makedirs(screenshots_dir, exist_ok=True)
+                    
+                    # Generate filename from URL
+                    parsed = urlparse(url)
+                    domain = parsed.netloc.replace(".", "_")
+                    path = parsed.path.replace("/", "_").strip("_") or "home"
+                    screenshot_path = os.path.join(screenshots_dir, f"{domain}_{path}.png")
+                    
+                    # Take screenshot of whatever is loaded
+                    page.screenshot(path=screenshot_path, full_page=True)
+                    print(f"      📸 Screenshot saved: {screenshot_path}")
+                    
+                except Exception as screenshot_error:
+                    print(f"      Screenshot capture failed: {screenshot_error}")
                 
                 browser.close()
                 return links
 
         except Exception as e:
-            print(f"scan_url failed: {e}")
+            print(f"   Playwright failed: {e}")
             return []
 
 def detect_config(url):
