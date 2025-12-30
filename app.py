@@ -1976,6 +1976,82 @@ with tab_db:
                     else:
                         st.error(f"Error: {msg}")
     
+    
+    # --- Bulk CSV Upload ---
+    with st.expander("📥 Bulk Upload Links (CSV)"):
+        st.markdown("""
+        Upload a CSV file with columns: `url` (required), `title`, `company`, `symbol`, `label`, `description`.
+        """)
+        
+        # Template Download
+        template_data = pd.DataFrame([{
+            'url': 'https://example.com/report.pdf',
+            'title': '2024 ESG Report',
+            'company': 'Example Corp',
+            'symbol': 'EXMP',
+            'label': '2024 Report',
+            'description': 'Description of the report'
+        }])
+        csv_template = template_data.to_csv(index=False).encode('utf-8')
+        st.download_button("⬇️ Download CSV Template", csv_template, "links_template.csv", "text/csv")
+        
+        uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
+        if uploaded_file:
+            if st.button("Process Upload", type="primary"):
+                try:
+                    df_upload = pd.read_csv(uploaded_file)
+                    
+                    # Normalize columns
+                    df_upload.columns = [c.lower().strip() for c in df_upload.columns]
+                    
+                    if 'url' not in df_upload.columns:
+                        st.error("❌ CSV must contain a 'url' column.")
+                    else:
+                        success_count = 0
+                        error_log = []
+                        
+                        progress_bar = st.progress(0)
+                        
+                        for idx, row in df_upload.iterrows():
+                            # Update progress
+                            progress_bar.progress((idx + 1) / len(df_upload))
+                            
+                            r_url = str(row.get('url', '')).strip()
+                            if not r_url or r_url.lower() == 'nan':
+                                continue
+                                
+                            # Prepare Data
+                            link_data = {
+                                "company": str(row.get('company', 'Unknown')).strip(),
+                                "title": str(row.get('title', 'Imported Link')).strip(),
+                                "url": r_url,
+                                "label": str(row.get('label', row.get('title', 'Link'))).strip(),
+                                "description": str(row.get('description', 'Imported via CSV')).strip(),
+                                "symbol": str(row.get('symbol', '')).strip(),
+                                "source": "CSV Import",
+                                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            
+                            # Clean up NaN/None strings if any
+                            for k, v in link_data.items():
+                                if v.lower() == 'nan': link_data[k] = ""
+                            
+                            # Save
+                            saved, msg = mongo_db.save_link("verified_links", link_data)
+                            if saved:
+                                success_count += 1
+                            else:
+                                error_log.append(f"Row {idx+1}: {msg}")
+                        
+                        st.success(f"✅ Processed! Saved: {success_count} links.")
+                        if error_log:
+                            with st.expander(f"⚠️ {len(error_log)} Issues"):
+                                for e in error_log:
+                                    st.write(e)
+                                    
+                except Exception as e:
+                    st.error(f"Error processing CSV: {e}")
+
     st.divider()
     
     if len(v_links) > 0:
