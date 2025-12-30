@@ -12,8 +12,87 @@ import difflib
 import numpy as np
 import zipfile
 import io
-# MongoDB Handler
-from mongo_handler import MongoHandler
+import traceback
+
+# ... (rest of imports) ...
+
+# ... (CSV Processing Block) ...
+                try:
+                    df_upload = process_data
+                    
+                    # Normalize columns (Handle potential integer headers by casting to str)
+                    df_upload.columns = [str(c).lower().strip() for c in df_upload.columns]
+                    
+                    if 'url' not in df_upload.columns:
+                        st.error("❌ CSV must contain a 'url' column.")
+                    else:
+                        success_count = 0
+                        skipped_count = 0
+                        error_log = []
+                        
+                        # Pre-fetch existing URLs to check for duplicates
+                        existing_links_data = mongo_db.get_all_links("verified_links")
+                        existing_urls_set = {str(l.get('url', '')).strip() for l in existing_links_data}
+                        
+                        progress_bar = st.progress(0)
+                        
+                        total_rows = len(df_upload)
+                        for idx, row in df_upload.iterrows():
+                            # Update progress safely
+                            if total_rows > 0:
+                                progress_bar.progress((idx + 1) / total_rows)
+                            
+                            r_url = str(row.get('url', '')).strip()
+                            if not r_url or r_url.lower() == 'nan':
+                                continue
+                            
+                            # Check for duplicate
+                            if r_url in existing_urls_set:
+                                skipped_count += 1
+                                continue
+                                
+                            # Prepare Data
+                            link_data = {
+                                "company": str(row.get('company', 'Unknown')).strip(),
+                                "title": str(row.get('title', 'Imported Link')).strip(),
+                                "url": r_url,
+                                "label": str(row.get('label', row.get('title', 'Link'))).strip(),
+                                "description": str(row.get('description', 'Imported via CSV')).strip(),
+                                "symbol": str(row.get('symbol', '')).strip(),
+                                "source": "CSV Import",
+                                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            
+                            # Clean up NaN/None strings if any
+                            for k, v in link_data.items():
+                                if v.lower() == 'nan': link_data[k] = ""
+                            
+                            # Save
+                            saved, msg = mongo_db.save_link("verified_links", link_data)
+                            if saved:
+                                success_count += 1
+                                # Add to set to prevent duplicates within same CSV
+                                existing_urls_set.add(r_url)
+                            else:
+                                error_log.append(f"Row {idx+1}: {msg}")
+                        
+                        if success_count > 0:
+                            st.success(f"✅ Saved {success_count} new links!")
+                        
+                        if skipped_count > 0:
+                            st.info(f"🔄 Skipped {skipped_count} links (already existed).")
+                            
+                        if success_count == 0 and skipped_count == 0:
+                             st.warning("⚠️ No valid links found to process.")
+
+                        if error_log:
+                            with st.expander(f"⚠️ {len(error_log)} Issues"):
+                                for e in error_log:
+                                    st.write(e)
+                                    
+                except Exception as e:
+                    st.error(f"Error processing Data: {e}")
+                    st.code(traceback.format_exc())
 
 # Initialize MongoDB Handler
 if "mongo" not in st.session_state:
@@ -1356,6 +1435,11 @@ with tab_search:
                 col_link, col_edit = st.columns([0.85, 0.15])
                 with col_link:
                     st.caption(f"🔗 Found saved website: {known_website}")
+                    
+                    # Show Company Description if available
+                    c_desc = company_data_match.get('Company Description')
+                    if c_desc:
+                        st.info(f"📝 **Description:** {c_desc}")
                 with col_edit:
                     if st.button("✏️", key="edit_saved_url", help="Edit saved URL"):
                         st.session_state.show_url_editor = True
