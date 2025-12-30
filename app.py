@@ -2535,7 +2535,11 @@ if selected_tab == "📊 All Resources":
             zip_btn_placeholder = st.empty()
         
         with c_fill2:
-            st.markdown(
+            try:
+                st.link_button("✨ Generate Report with ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Upload ZIP here", type="primary")
+            except AttributeError:
+                # Fallback for older Streamlit versions
+                 st.markdown(
                 """
                 <div style="padding-top: 5px;">
                     <a href="https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app" target="_blank" style="text-decoration: none; color: inherit;">
@@ -2551,8 +2555,8 @@ if selected_tab == "📊 All Resources":
                             min-height: 38.4px;
                             margin: 0px;
                             line-height: 1.6;
-                            color: rgb(49, 51, 63);
-                            background-color: rgb(255, 255, 255);
+                            color: #31333F;
+                            background-color: #FFFFFF;
                             border: 1px solid rgba(49, 51, 63, 0.2);
                             width: auto;
                             cursor: pointer;
@@ -2561,7 +2565,6 @@ if selected_tab == "📊 All Resources":
                         ✨ Generate Report with ESG Opal
                         </button>
                     </a>
-                    <span style="font-size: 0.8em; color: grey; margin-left: 10px;">(Upload ZIP here)</span>
                 </div>
                 """, 
                 unsafe_allow_html=True
