@@ -1277,12 +1277,20 @@ with st.sidebar:
     st.markdown("---")
 
 # --- TABS LAYOUT ---
-tab_search, tab_all, tab_data, tab_db, tab_faq = st.tabs(["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "❓ FAQs"])
+# --- NAVIGATION ---
+# Using radio instead of tabs to ensure state persistence across reruns
+selected_tab = st.radio(
+    "Navigation", 
+    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "❓ FAQs"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
+st.markdown("---")
 
 # ====================
 # TAB 3: FAQs (Formerly Intro)
 # ====================
-with tab_faq:
+if selected_tab == "❓ FAQs":
     st.markdown("""
     ### Friendly Guide & FAQs 🤖
     
@@ -1316,7 +1324,7 @@ with tab_faq:
 # ====================
 # TAB 1: SEARCH
 # ====================
-with tab_search:
+if selected_tab == "🔍 Search & Analyze":
     st.subheader("Find ESG Reports")
     
     # Single combined company selector
@@ -1929,7 +1937,7 @@ with tab_search:
 # ==========================================
 # TAB 2: USER SAVED LINKS (MongoDB)
 # ==========================================
-with tab_db:
+if selected_tab == "📂 User Saved Links":
     st.header("📂 User Saved Links")
     st.markdown("All links saved to your permanent **MongoDB Atlas** database.")
     
@@ -2394,7 +2402,7 @@ with tab_db:
 # ==========================================
 # TAB 2: ALL RESOURCES (Combined View)
 # ==========================================
-with tab_all:
+if selected_tab == "📊 All Resources":
     st.header("📊 All Resources")
     st.caption("Unified view of verified ESG hub URLs and saved report links")
     
@@ -2667,7 +2675,7 @@ with tab_all:
 # ==========================================
 # TAB 3: DATA MANAGER (MongoDB Companies)
 # ==========================================
-with tab_data:
+if selected_tab == "✅ Verified ESG Sites":
     st.header("✅ Verified ESG Sites")
     st.caption("Manage your verified company database. Add companies to make them searchable and pre-populate their ESG sites.")
 
