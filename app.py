@@ -2534,41 +2534,19 @@ if selected_tab == "📊 All Resources":
             # Placeholder for ZIP button (populated below after selection logic)
             zip_btn_placeholder = st.empty()
         
-        with c_fill2:
-            try:
-                st.link_button("✨ Generate Report with ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Upload ZIP here", type="primary")
-            except AttributeError:
-                # Fallback for older Streamlit versions
-                 st.markdown(
-                """
-                <div style="padding-top: 5px;">
-                    <a href="https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app" target="_blank" style="text-decoration: none; color: inherit;">
-                        <button style="
-                            display: inline-flex;
-                            -webkit-box-align: center;
-                            align-items: center;
-                            -webkit-box-pack: center;
-                            justify-content: center;
-                            font-weight: 400;
-                            padding: 0.25rem 0.75rem;
-                            border-radius: 0.5rem;
-                            min-height: 38.4px;
-                            margin: 0px;
-                            line-height: 1.6;
-                            color: #31333F;
-                            background-color: #FFFFFF;
-                            border: 1px solid rgba(49, 51, 63, 0.2);
-                            width: auto;
-                            cursor: pointer;
-                            font-size: 1rem;
-                        ">
-                        ✨ Generate Report with ESG Opal
-                        </button>
-                    </a>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+        st.write("") # Spacer
+        
+        # ESG Opal Integration
+        c_opal_info, c_opal_btn = st.columns([0.7, 0.3])
+        with c_opal_info:
+            st.info("💡 **Next Step:** After downloading your ZIP, upload it to **ESG Opal** to generate a report.")
+        with c_opal_btn:
+             # Center vertially relative to the info box
+             st.write("") 
+             try:
+                st.link_button("✨ Go to ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Generate Report with ESG Opal", type="primary", use_container_width=True)
+             except AttributeError:
+                st.markdown(f"[✨ Go to ESG Opal](https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app)")
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
