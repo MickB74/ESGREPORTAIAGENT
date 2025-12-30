@@ -2157,7 +2157,11 @@ with tab_db:
         # We want ZIP button to appear HERE (next to CSV), but it depends on 'edited_df' which is below.
         # Solution: Use st.empty() placeholder here, and populate it later.
         
-        col_csv, col_zip_placeholder, col_spacer = st.columns([0.2, 0.25, 0.55])
+        # Download button (CSV only here, ZIP moved below)
+        # We want ZIP button to appear HERE (next to CSV), but it depends on 'edited_df' which is below.
+        # Solution: Use st.empty() placeholder here, and populate it later.
+        
+        col_csv, col_zip_placeholder, col_del_placeholder, col_spacer = st.columns([0.2, 0.25, 0.25, 0.3])
         with col_csv:
             csv_export = df_display.drop(columns=['Select']).to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -2199,7 +2203,25 @@ with tab_db:
         selected_rows = edited_df[edited_df["Select"] == True]
         count_selected = len(selected_rows)
         
-        # Render ZIP Button into the Placeholder at the TOP
+
+                 
+        # Render Delete Button
+        with col_del_placeholder:
+            del_label = f"🗑️ Delete {count_selected}" if count_selected > 0 else "🗑️ Delete"
+            if st.button(del_label, type="primary", disabled=(count_selected == 0), key="btn_delete_selected", help="Permanently delete selected links"):
+                deleted_count = 0
+                for idx, row in selected_rows.iterrows():
+                    r_url = row.get('url')
+                    if r_url:
+                        mongo_db.delete_link("verified_links", r_url)
+                        deleted_count += 1
+                
+                if deleted_count > 0:
+                    st.toast(f"✅ Deleted {deleted_count} links!", icon="🗑️")
+                    time.sleep(1) # Give toast time to show
+                    st.rerun()
+
+        # Re-enter Zip Placeholder for existing logic (which was at start of 2203)
         with col_zip_placeholder:
             btn_label = f"📦 Download {count_selected} (ZIP)" if count_selected > 0 else "📦 Download (ZIP)"
             
