@@ -1615,22 +1615,33 @@ with tab_search:
                     search_company = clean_company.lower()
                     search_symbol = bk_symbol.lower() if bk_symbol else ''
                     
-                    # Match by symbol (strongest match)
-                    if search_symbol and link_symbol and search_symbol == link_symbol:
+                    # PREFERENCE 1: Strict Symbol Match
+                    # If both have symbols, they MUST match.
+                    if search_symbol and link_symbol:
+                        if search_symbol == link_symbol:
+                            saved_bks.append(l)
+                        # If symbols exist but differ, it's a mismatch. Do not fall back to name matching.
+                        continue
+                    
+                    # PREFERENCE 2: Name Matching (Fallback)
+                    # Only used if one or both missing symbols.
+                    # Exclude common corporate stopwords to avoid "Corporation" == "Corporation" matches.
+                    stop_words = {'inc', 'incorporated', 'corp', 'corporation', 'plc', 'ltd', 'limited', 
+                                  'group', 'holdings', 'company', 'co', 'sa', 'ag', 'nv', 'se', 'the', '&'}
+                    
+                    search_words = [w for w in re.findall(r'\w+', search_company) if w not in stop_words and len(w) >= 2]
+                    link_words = [w for w in re.findall(r'\w+', link_company) if w not in stop_words and len(w) >= 2]
+                    
+                    if not search_words or not link_words:
+                        continue
+                        
+                    # Check for exact word overlap (e.g. "Ball" in "Ball Corp")
+                    if any(word in link_words for word in search_words):
                         saved_bks.append(l)
                         continue
                     
-                    # Match by any significant word in company name (2+ chars for more matches)
-                    search_words = [w for w in search_company.split() if len(w) >= 2]
-                    link_words = [w for w in link_company.split() if len(w) >= 2]
-                    
-                    # More aggressive matching: if ANY word from search is in link company, it matches
-                    if any(word in link_company for word in search_words):
-                        saved_bks.append(l)
-                        continue
-                    
-                    # Reverse: if ANY word from link is in search company
-                    if any(word in search_company for word in link_words):
+                    # Reverse check
+                    if any(word in search_words for word in link_words):
                         saved_bks.append(l)
                         continue
                 
@@ -1701,12 +1712,18 @@ with tab_search:
                 existing_urls = {link.get('url') for link in all_existing}
                 
                 skipped_count = 0
+                processed_urls_batch = set()
+                
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
-                        # Skip if already exists
-                        if r_item['href'] in existing_urls:
+                        r_url = r_item['href']
+                        
+                        # Check global existing AND local batch processed
+                        if r_url in existing_urls or r_url in processed_urls_batch:
                             skipped_count += 1
                             continue
+                        
+                        processed_urls_batch.add(r_url)
                             
                         success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
@@ -1831,12 +1848,18 @@ with tab_search:
                 existing_urls = {link.get('url') for link in all_existing}
                 
                 skipped_count = 0
+                processed_urls_batch = set()
+                
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
-                        # Skip if already exists
-                        if r_item['href'] in existing_urls:
+                        r_url = r_item['href']
+                        
+                        # Check global existing AND local batch processed
+                        if r_url in existing_urls or r_url in processed_urls_batch:
                             skipped_count += 1
                             continue
+
+                        processed_urls_batch.add(r_url)
 
                         success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
