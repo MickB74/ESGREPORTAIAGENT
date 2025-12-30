@@ -749,10 +749,20 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     
     # If we found reports via hybrid scraper, return them
     if all_reports:
+        # Deduplicate by URL
+        seen_urls = set()
+        unique_reports = []
+        for r in all_reports:
+            # Normalize URL for deduplication (strip trailing slash)
+            u = r['href'].strip().rstrip('/')
+            if u not in seen_urls:
+                seen_urls.add(u)
+                unique_reports.append(r)
+                
         return {
-            "reports": all_reports,
+            "reports": unique_reports,
             "website": {"title": "Scanned Site", "href": unique_domains[0] if unique_domains else known_website, "body": "Scanned via Hybrid Scraper"},
-            "search_log": [f"Hybrid Scraper: Found {len(all_reports)} PDF reports total"]
+            "search_log": [f"Hybrid Scraper: Found {len(unique_reports)} unique reports (from {len(all_reports)} total)"]
         }
     
     # Fallback to homepage if no ESG site found
@@ -1633,7 +1643,7 @@ with tab_search:
                         sym_badge = f"**[{row.get('symbol', '')}]** " if row.get('symbol') else ""
                         url = row.get('url', '#')
                         timestamp = row.get('timestamp', '')
-                        st.markdown(f"- {sym_badge}[{lbl}]({url})  `{timestamp[:10] if timestamp else ''}`")
+                        st.markdown(f"- {sym_badge}[{lbl}]({url})  `{str(timestamp)[:10] if timestamp else ''}`")
                 else:
                     # Debug: Show what we searched for
                     with st.expander("🔍 Debug: Search Details"):
@@ -1803,6 +1813,7 @@ with tab_search:
             st.divider()
             
             # --- BOTTOM SAVE ALL BUTTON ---
+            # --- BOTTOM SAVE ALL BUTTON ---
             if st.button("💾 Save All Reports", key="save_all_bottom", type="primary"):
                 saved_count = 0
                 error_msgs = set()
@@ -1815,8 +1826,18 @@ with tab_search:
                     if resolved:
                         def_sym = resolved
                 
+                # Get existing URLs to check for duplicates
+                all_existing = mongo_db.get_all_links("verified_links")
+                existing_urls = {link.get('url') for link in all_existing}
+                
+                skipped_count = 0
                 with st.spinner(f"Saving {len(data['reports'])} reports..."):
                     for r_item in data["reports"]:
+                        # Skip if already exists
+                        if r_item['href'] in existing_urls:
+                            skipped_count += 1
+                            continue
+
                         success, msg = mongo_db.save_link("verified_links", {
                             "company": c_name,
                             "title": r_item['title'],
@@ -1833,7 +1854,9 @@ with tab_search:
                 
                 if saved_count > 0:
                     st.success(f"✅ Successfully saved {saved_count} reports!")
-                else:
+                if skipped_count > 0:
+                    st.info(f"🔄 Skipped {skipped_count} duplicate(s) (already saved)")
+                if saved_count == 0 and skipped_count == 0:
                     if error_msgs:
                         st.error(f"❌ Failed to save reports. Errors: {', '.join(error_msgs)}")
                     else:
