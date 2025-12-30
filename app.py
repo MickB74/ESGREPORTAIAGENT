@@ -2095,6 +2095,7 @@ with tab_db:
                         zip_file.writestr("sources.csv", csv_buffer.getvalue())
                         
                         # 3. Download Content Files
+                        notebooklm_urls = []
                         for index, row in selected_rows.iterrows():
                             item_url = row.get('url')
                             if not item_url: continue
@@ -2111,6 +2112,11 @@ with tab_db:
                                         elif 'html' in content_type: ext = '.html'
                                         else: ext = '.html' 
                                     if item_url.lower().endswith('pdf') and ext != '.pdf': ext = '.pdf'
+                                    
+                                    # Track non-PDF URLs for NotebookLM
+                                    if ext != '.pdf':
+                                        notebooklm_urls.append(item_url)
+
                                     if ext != '.pdf':
                                         fail_count += 1
                                         continue
@@ -2134,6 +2140,10 @@ with tab_db:
                         
                         # Write MD file
                         zip_file.writestr("CONTENTS.md", "\n".join(md_lines))
+                        
+                        # Write NotebookLM helper file
+                        if notebooklm_urls:
+                             zip_file.writestr("notebooklm_source_urls.txt", "\n".join(notebooklm_urls))
                     
                     if success_count == 0:
                         st.success("✅ Ready! CSV Manifest bundled (No PDFs downloaded).")
@@ -2386,6 +2396,7 @@ with tab_all:
                          zip_file_ar.writestr("resources_list.csv", csv_buffer_ar.getvalue())
                          
                          # 2. Download Files
+                         notebooklm_urls_ar = []
                          for index, row in selected_rows.iterrows():
                              item_url = row.get('URL')
                              if not item_url: continue
@@ -2417,6 +2428,7 @@ with tab_all:
                                           # So let's prioritize PDFs.
                                           if 'pdf' not in content_type:
                                                # Check if we should skip
+                                               notebooklm_urls_ar.append(item_url)
                                                pass 
                                      
                                      # Create safe filename
@@ -2438,6 +2450,10 @@ with tab_all:
                          
                          # Write MD file
                          zip_file_ar.writestr("CONTENTS.md", "\n".join(md_lines_ar))
+                         
+                         # Write NotebookLM helper file
+                         if notebooklm_urls_ar:
+                              zip_file_ar.writestr("notebooklm_source_urls.txt", "\n".join(notebooklm_urls_ar))
                  
                  if success_count_ar == 0:
                      st.success("✅ Manifest created (No files downloaded).")
