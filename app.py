@@ -2034,7 +2034,12 @@ with tab_db:
                         st.error("❌ CSV must contain a 'url' column.")
                     else:
                         success_count = 0
+                        skipped_count = 0
                         error_log = []
+                        
+                        # Pre-fetch existing URLs to check for duplicates
+                        existing_links_data = mongo_db.get_all_links("verified_links")
+                        existing_urls_set = {l.get('url', '').strip() for l in existing_links_data}
                         
                         progress_bar = st.progress(0)
                         
@@ -2044,6 +2049,11 @@ with tab_db:
                             
                             r_url = str(row.get('url', '')).strip()
                             if not r_url or r_url.lower() == 'nan':
+                                continue
+                            
+                            # Check for duplicate
+                            if r_url in existing_urls_set:
+                                skipped_count += 1
                                 continue
                                 
                             # Prepare Data
@@ -2066,10 +2076,20 @@ with tab_db:
                             saved, msg = mongo_db.save_link("verified_links", link_data)
                             if saved:
                                 success_count += 1
+                                # Add to set to prevent duplicates within same CSV
+                                existing_urls_set.add(r_url)
                             else:
                                 error_log.append(f"Row {idx+1}: {msg}")
                         
-                        st.success(f"✅ Processed! Saved: {success_count} links.")
+                        if success_count > 0:
+                            st.success(f"✅ Saved {success_count} new links!")
+                        
+                        if skipped_count > 0:
+                            st.info(f"🔄 Skipped {skipped_count} links (already existed).")
+                            
+                        if success_count == 0 and skipped_count == 0:
+                             st.warning("⚠️ No valid links found to process.")
+
                         if error_log:
                             with st.expander(f"⚠️ {len(error_log)} Issues"):
                                 for e in error_log:
