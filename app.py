@@ -1993,13 +1993,39 @@ with tab_db:
             'description': 'Description of the report'
         }])
         csv_template = template_data.to_csv(index=False).encode('utf-8')
+        # ... (Template Download Code above) ...
+        csv_template = template_data.to_csv(index=False).encode('utf-8')
         st.download_button("⬇️ Download CSV Template", csv_template, "links_template.csv", "text/csv")
         
-        uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
-        if uploaded_file:
-            if st.button("Process Upload", type="primary"):
+        st.markdown("---")
+        
+        # Method 1: File Upload
+        uploaded_file = st.file_uploader("Option 1: Upload CSV File", type=['csv'])
+        
+        # Method 2: Paste Text
+        paste_text = st.text_area("Option 2: Paste CSV Data", height=150, placeholder="url,title,company,symbol,label,description\nhttps://example.com/report.pdf,2024 Report,Acme,ACME,Report,My Description")
+        
+        process_data = None
+        
+        if st.button("Process Upload", type="primary"):
+            if uploaded_file:
                 try:
-                    df_upload = pd.read_csv(uploaded_file)
+                    process_data = pd.read_csv(uploaded_file)
+                except Exception as e:
+                    st.error(f"Error reading file: {e}")
+            elif paste_text:
+                try:
+                    # Use StringIO to read string as CSV
+                    import io
+                    process_data = pd.read_csv(io.StringIO(paste_text))
+                except Exception as e:
+                    st.error(f"Error parse pasted text: {e}")
+            else:
+                st.warning("⚠️ Please upload a file or paste CSV text.")
+                
+            if process_data is not None:
+                try:
+                    df_upload = process_data
                     
                     # Normalize columns
                     df_upload.columns = [c.lower().strip() for c in df_upload.columns]
@@ -2050,7 +2076,7 @@ with tab_db:
                                     st.write(e)
                                     
                 except Exception as e:
-                    st.error(f"Error processing CSV: {e}")
+                    st.error(f"Error processing Data: {e}")
 
     st.divider()
     
