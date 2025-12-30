@@ -1607,6 +1607,13 @@ with tab_search:
                 import re
                 clean_company = re.sub(r'\s*\([^)]*\)', '', bk_company).strip()
                 
+                # Attempt to resolve symbol if missing to enable strict filtering
+                if not bk_symbol:
+                     resolved_sym = get_symbol_from_map(clean_company)
+                     if resolved_sym:
+                         bk_symbol = resolved_sym
+                         # Update logic uses this
+                
                 # More flexible matching logic
                 saved_bks = []
                 for l in all_bks:
@@ -1635,15 +1642,22 @@ with tab_search:
                     if not search_words or not link_words:
                         continue
                         
-                    # Check for exact word overlap (e.g. "Ball" in "Ball Corp")
-                    if any(word in link_words for word in search_words):
+                    if not search_words or not link_words:
+                        continue
+                        
+                    # Check for exact word overlap
+                    common = set(link_words) & set(search_words)
+                    if common:
+                        # print(f"MATCH (Name): {link_company} matches {search_company} on {common}")
                         saved_bks.append(l)
                         continue
                     
-                    # Reverse check
-                    if any(word in search_words for word in link_words):
-                        saved_bks.append(l)
-                        continue
+                    # Reverse check (redundant with set intersection but keeping structure)
+                    # if any(word in search_words for word in link_words): ...
+                    
+                    # Debug print for false positives
+                    # if 'oracle' in link_company and 'ball' in search_company:
+                    #    print(f"FAILED MATCH: {link_company} vs {search_company} | S_Words: {search_words} | L_Words: {link_words}")
                 
                 st.markdown("---")
                 st.markdown(f"### 🔖 Your Saved Links for **{bk_company}**")
