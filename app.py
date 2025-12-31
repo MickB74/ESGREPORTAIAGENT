@@ -2572,6 +2572,9 @@ if selected_tab == "📊 All Resources":
             }
         )
         
+        # CRITICAL: Store edited state in session for persistence across button clicks
+        st.session_state['all_res_edited_df'] = edited_combined
+        
         # Count selected
         selected_rows = edited_combined[edited_combined['☑'] == True]
         st.session_state.all_res_selected_count = len(selected_rows)
@@ -2582,10 +2585,18 @@ if selected_tab == "📊 All Resources":
         btn_label_ar = f"📦 Download {len(selected_rows)} Selected (ZIP)"
         
         if st.button(btn_label_ar, key="all_res_zip_btn_real", disabled=(len(selected_rows) == 0)):
+            # Get the ACTUAL selected rows from session state (fresher than local variable)
+            if 'all_res_edited_df' in st.session_state:
+                actual_edited = st.session_state['all_res_edited_df']
+                selected_rows_for_download = actual_edited[actual_edited['☑'] == True]
+            else:
+                selected_rows_for_download = selected_rows
+            
             zip_buffer_ar = io.BytesIO()
             success_count_ar = 0
             fail_count_ar = 0
             import mimetypes
+            
             
             # Initialize MD content
             md_lines_ar = [
@@ -2601,15 +2612,15 @@ if selected_tab == "📊 All Resources":
             debug_info = []
             
             # UI Debug Info
-            debug_info.append(f"📊 Selected rows: {len(selected_rows)}")
-            debug_info.append(f"📋 Columns: {selected_rows.columns.tolist()}")
+            debug_info.append(f"📊 Selected rows: {len(selected_rows_for_download)}")
+            debug_info.append(f"📋 Columns: {selected_rows_for_download.columns.tolist()}")
             
-            with st.spinner(f"Bundling {len(selected_rows)} items..."):
+            with st.spinner(f"Bundling {len(selected_rows_for_download)} items..."):
                 with zipfile.ZipFile(zip_buffer_ar, "a", zipfile.ZIP_DEFLATED, False) as zip_file_ar:
                     # 1. Add CSV Manifest
                     import io
                     csv_buffer_ar = io.StringIO()
-                    selected_rows.drop(columns=['☑']).to_csv(csv_buffer_ar, index=False)
+                    selected_rows_for_download.drop(columns=['☑']).to_csv(csv_buffer_ar, index=False)
                     zip_file_ar.writestr("resources_list.csv", csv_buffer_ar.getvalue())
                     
                     # 2. Download Files
@@ -2621,9 +2632,9 @@ if selected_tab == "📊 All Resources":
                         requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
                     except: pass
 
-                    print(f"[ZIP] Starting download of {len(selected_rows)} items...")
+                    print(f"[ZIP] Starting download of {len(selected_rows_for_download)} items...")
 
-                    for index, row in selected_rows.iterrows():
+                    for index, row in selected_rows_for_download.iterrows():
                         item_url = row.get('URL')
                         if not item_url: 
                             print(f"[ZIP] Skipping row {index}: No URL")
