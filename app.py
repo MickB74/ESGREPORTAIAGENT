@@ -2544,23 +2544,33 @@ if selected_tab == "📊 All Resources":
              st.write("") 
              try:
                 st.link_button("✨ Go to ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Generate Report with ESG Opal", type="primary", use_container_width=True)
-             except AttributeError:
+            except AttributeError:
                 st.markdown(f"[✨ Go to ESG Opal](https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app)")
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
-        # Editable Table
-        if st.session_state.all_res_select_state == 'select_all':
-            df_display_combined.insert(0, '☑', True)
-        elif st.session_state.all_res_select_state == 'deselect_all':
-            df_display_combined.insert(0, '☑', False)
-        elif '☑' not in df_display_combined.columns:
-            df_display_combined.insert(0, '☑', False)
+        # Initialize persistent dataframe in session state if not exists
+        if 'all_res_persistent_df' not in st.session_state:
+            st.session_state.all_res_persistent_df = None
+        
+        # Determine which dataframe to use for data_editor initialization
+        if st.session_state.all_res_persistent_df is not None:
+            # Use the persistent version (preserves checkbox states)
+            df_for_editor = st.session_state.all_res_persistent_df
+        else:
+            # First time or after Select All/Deselect All - set up checkbox column
+            if st.session_state.all_res_select_state == 'select_all':
+                df_display_combined.insert(0, '☑', True)
+            elif st.session_state.all_res_select_state == 'deselect_all':
+                df_display_combined.insert(0, '☑', False)
+            elif '☑' not in df_display_combined.columns:
+                df_display_combined.insert(0, '☑', False)
+            df_for_editor = df_display_combined
         
         st.session_state.all_res_select_state = None
         
         edited_combined = st.data_editor(
-            df_display_combined,
+            df_for_editor,
             use_container_width=True,
             hide_index=True,
             num_rows="fixed",
@@ -2572,8 +2582,8 @@ if selected_tab == "📊 All Resources":
             }
         )
         
-        # CRITICAL: Store edited state in session for persistence across button clicks
-        st.session_state['all_res_edited_df'] = edited_combined
+        # CRITICAL: Store edited state back to session for next rerun
+        st.session_state.all_res_persistent_df = edited_combined
         
         # Count selected
         selected_rows = edited_combined[edited_combined['☑'] == True]
