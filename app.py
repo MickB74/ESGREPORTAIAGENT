@@ -2600,6 +2600,11 @@ if selected_tab == "📊 All Resources":
                  ]
                  
                  download_errors = []
+                 debug_info = []
+                 
+                 # UI Debug Info
+                 debug_info.append(f"📊 Selected rows: {len(selected_rows)}")
+                 debug_info.append(f"📋 Columns: {selected_rows.columns.tolist()}")
                  
                  with st.spinner(f"Bundling {len(selected_rows)} items..."):
                      with zipfile.ZipFile(zip_buffer_ar, "a", zipfile.ZIP_DEFLATED, False) as zip_file_ar:
@@ -2612,11 +2617,6 @@ if selected_tab == "📊 All Resources":
                          # 2. Download Files
                          notebooklm_urls_ar = []
                          
-                         print(f"[ZIP] DEBUG: selected_rows shape: {selected_rows.shape}")
-                         print(f"[ZIP] DEBUG: selected_rows columns: {selected_rows.columns.tolist()}")
-                         if not selected_rows.empty:
-                            print(f"[ZIP] DEBUG: First row data: {selected_rows.iloc[0].to_dict()}")
-
                          # Suppress SSL warnings
                          try:
                              from urllib3.exceptions import InsecureRequestWarning
@@ -2629,9 +2629,11 @@ if selected_tab == "📊 All Resources":
                              item_url = row.get('URL')
                              if not item_url: 
                                  print(f"[ZIP] Skipping row {index}: No URL")
+                                 debug_info.append(f"⚠️ Row {index}: Missing URL")
                                  continue
                              
                              print(f"[ZIP] Attempting: {item_url}")
+                             debug_info.append(f"🔄 Downloading: {item_url[:50]}...")
                              
                              try:
                                  # Fetch content with simpler headers (sometimes works better)
@@ -2666,6 +2668,7 @@ if selected_tab == "📊 All Resources":
                                      
                                      zip_file_ar.writestr(filename_ar, response.content)
                                      success_count_ar += 1
+                                     debug_info.append(f"✅ Saved: {filename_ar}")
                                      
                                      # Add to MD
                                      md_line = f"| {row.get('Company', '')} | {row.get('Title', '')} | {row.get('Type', '')} | `{filename_ar}` | {item_url} |"
@@ -2674,9 +2677,11 @@ if selected_tab == "📊 All Resources":
                                  else:
                                      fail_count_ar += 1
                                      download_errors.append(f"HTTP {response.status_code}: {item_url}")
+                                     debug_info.append(f"❌ HTTP {response.status_code}: {item_url[:50]}...")
                              except Exception as e:
                                  fail_count_ar += 1
                                  download_errors.append(f"Error ({str(e)}): {item_url}")
+                                 debug_info.append(f"❌ Error: {str(e)[:50]}...")
                          
                          # Write MD file
                          zip_file_ar.writestr("CONTENTS.md", "\n".join(md_lines_ar))
@@ -2689,6 +2694,11 @@ if selected_tab == "📊 All Resources":
                      st.success(f"✅ Bundled {success_count_ar} files! ({fail_count_ar} failed)")
                  else:
                      st.error(f"❌ No files downloaded. {fail_count_ar} failed.")
+                     
+                 # Show debug info
+                 with st.expander("🔍 Debug Information", expanded=(success_count_ar == 0)):
+                     for info in debug_info:
+                         st.write(info)
                      
                  if download_errors:
                      with st.expander("⚠️ View Download Errors", expanded=False):
