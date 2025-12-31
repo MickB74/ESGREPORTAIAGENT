@@ -2618,18 +2618,27 @@ if selected_tab == "📊 All Resources":
                                  requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
                              except: pass
 
+                             print(f"[ZIP] Starting download of {len(selected_rows)} items...")
+
                              for index, row in selected_rows.iterrows():
                                  item_url = row.get('URL')
-                                 if not item_url: continue
+                                 if not item_url: 
+                                     print(f"[ZIP] Skipping row {index}: No URL")
+                                     continue
+                                 
+                                 print(f"[ZIP] Attempting: {item_url}")
                                  
                                  try:
-                                     # Fetch content with robust settings
+                                     # Fetch content with simpler headers (sometimes works better)
                                      response = requests.get(
                                          item_url, 
-                                         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}, 
+                                         headers={"User-Agent": "Mozilla/5.0"}, 
                                          timeout=30, 
                                          verify=False
                                      )
+                                     
+                                     print(f"[ZIP] Status {response.status_code} for {item_url}")
+
                                      
                                      if response.status_code == 200:
                                          # Determine Extension
