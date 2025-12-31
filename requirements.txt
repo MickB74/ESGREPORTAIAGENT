@@ -9,5 +9,6 @@ pymongo
 certifi
 pandas
 numpy
+cloudscraper
 
 

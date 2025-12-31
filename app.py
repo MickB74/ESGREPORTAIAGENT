@@ -2665,31 +2665,13 @@ if selected_tab == "📊 All Resources":
                         debug_info.append(f"🔄 Downloading: {item_url[:50]}...")
                         
                         try:
-                            # Extract domain for referrer
-                            from urllib.parse import urlparse
-                            parsed_url = urlparse(item_url)
-                            domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
+                            # Use CloudScraper to bypass Cloudflare/bot protection
+                            import cloudscraper
+                            scraper = cloudscraper.create_scraper()
                             
-                            # Full browser headers to avoid 403 errors
-                            headers = {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                                "Accept-Language": "en-US,en;q=0.5",
-                                "Accept-Encoding": "gzip, deflate, br",
-                                "Referer": domain,
-                                "DNT": "1",
-                                "Connection": "keep-alive",
-                                "Upgrade-Insecure-Requests": "1",
-                                "Sec-Fetch-Dest": "document",
-                                "Sec-Fetch-Mode": "navigate",
-                                "Sec-Fetch-Site": "none"
-                            }
-                            
-                            response = requests.get(
+                            response = scraper.get(
                                 item_url, 
-                                headers=headers, 
-                                timeout=30, 
-                                verify=False,
+                                timeout=30,
                                 allow_redirects=True
                             )
                             
