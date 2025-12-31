@@ -2599,96 +2599,96 @@ if selected_tab == "📊 All Resources":
                      "|---|---|---|---|---|"
                  ]
                  
-                     download_errors = []
-                     
-                     with st.spinner(f"Bundling {len(selected_rows)} items..."):
-                         with zipfile.ZipFile(zip_buffer_ar, "a", zipfile.ZIP_DEFLATED, False) as zip_file_ar:
-                             # 1. Add CSV Manifest
-                             import io
-                             csv_buffer_ar = io.StringIO()
-                             selected_rows.drop(columns=['☑']).to_csv(csv_buffer_ar, index=False)
-                             zip_file_ar.writestr("resources_list.csv", csv_buffer_ar.getvalue())
-                             
-                             # 2. Download Files
-                             notebooklm_urls_ar = []
-                             
-                             # Suppress SSL warnings
-                             try:
-                                 from urllib3.exceptions import InsecureRequestWarning
-                                 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-                             except: pass
-
-                             print(f"[ZIP] Starting download of {len(selected_rows)} items...")
-
-                             for index, row in selected_rows.iterrows():
-                                 item_url = row.get('URL')
-                                 if not item_url: 
-                                     print(f"[ZIP] Skipping row {index}: No URL")
-                                     continue
-                                 
-                                 print(f"[ZIP] Attempting: {item_url}")
-                                 
-                                 try:
-                                     # Fetch content with simpler headers (sometimes works better)
-                                     response = requests.get(
-                                         item_url, 
-                                         headers={"User-Agent": "Mozilla/5.0"}, 
-                                         timeout=30, 
-                                         verify=False
-                                     )
-                                     
-                                     print(f"[ZIP] Status {response.status_code} for {item_url}")
-
-                                     
-                                     if response.status_code == 200:
-                                         # Determine Extension
-                                         content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
-                                         ext = mimetypes.guess_extension(content_type)
-                                         if not ext:
-                                             if 'pdf' in content_type: ext = '.pdf'
-                                             elif 'html' in content_type: ext = '.html'
-                                             else: ext = '.html'
-                                         
-                                         # Force PDF extension if URL ends in PDF but mime was wrong/generic
-                                         if item_url.lower().endswith('pdf') and ext != '.pdf': ext = '.pdf'
-                                         
-                                         # Create safe filename
-                                         safe_co = "".join(c for c in str(row.get('Company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
-                                         safe_ti = "".join(c for c in str(row.get('Title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
-                                         
-                                         # Ensure unique filename in zip
-                                         filename_ar = f"{safe_co}_{safe_ti}{ext}"
-                                         
-                                         zip_file_ar.writestr(filename_ar, response.content)
-                                         success_count_ar += 1
-                                         
-                                         # Add to MD
-                                         md_line = f"| {row.get('Company', '')} | {row.get('Title', '')} | {row.get('Type', '')} | `{filename_ar}` | {item_url} |"
-                                         md_lines_ar.append(md_line)
-                                         
-                                     else:
-                                         fail_count_ar += 1
-                                         download_errors.append(f"HTTP {response.status_code}: {item_url}")
-                                 except Exception as e:
-                                     fail_count_ar += 1
-                                     download_errors.append(f"Error ({str(e)}): {item_url}")
-                             
-                             # Write MD file
-                             zip_file_ar.writestr("CONTENTS.md", "\n".join(md_lines_ar))
-                             
-                             # Write NotebookLM helper file
-                             if notebooklm_urls_ar:
-                                  zip_file_ar.writestr("notebooklm_source_urls.txt", "\n".join(notebooklm_urls_ar))
-                     
-                     if success_count_ar > 0:
-                         st.success(f"✅ Bundled {success_count_ar} files! ({fail_count_ar} failed)")
-                     else:
-                         st.error(f"❌ No files downloaded. {fail_count_ar} failed.")
+                 download_errors = []
+                 
+                 with st.spinner(f"Bundling {len(selected_rows)} items..."):
+                     with zipfile.ZipFile(zip_buffer_ar, "a", zipfile.ZIP_DEFLATED, False) as zip_file_ar:
+                         # 1. Add CSV Manifest
+                         import io
+                         csv_buffer_ar = io.StringIO()
+                         selected_rows.drop(columns=['☑']).to_csv(csv_buffer_ar, index=False)
+                         zip_file_ar.writestr("resources_list.csv", csv_buffer_ar.getvalue())
                          
-                     if download_errors:
-                         with st.expander("⚠️ View Download Errors", expanded=False):
-                             for err in download_errors:
-                                 st.write(err)
+                         # 2. Download Files
+                         notebooklm_urls_ar = []
+                         
+                         # Suppress SSL warnings
+                         try:
+                             from urllib3.exceptions import InsecureRequestWarning
+                             requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+                         except: pass
+
+                         print(f"[ZIP] Starting download of {len(selected_rows)} items...")
+
+                         for index, row in selected_rows.iterrows():
+                             item_url = row.get('URL')
+                             if not item_url: 
+                                 print(f"[ZIP] Skipping row {index}: No URL")
+                                 continue
+                             
+                             print(f"[ZIP] Attempting: {item_url}")
+                             
+                             try:
+                                 # Fetch content with simpler headers (sometimes works better)
+                                 response = requests.get(
+                                     item_url, 
+                                     headers={"User-Agent": "Mozilla/5.0"}, 
+                                     timeout=30, 
+                                     verify=False
+                                 )
+                                 
+                                 print(f"[ZIP] Status {response.status_code} for {item_url}")
+
+                                 
+                                 if response.status_code == 200:
+                                     # Determine Extension
+                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()
+                                     ext = mimetypes.guess_extension(content_type)
+                                     if not ext:
+                                         if 'pdf' in content_type: ext = '.pdf'
+                                         elif 'html' in content_type: ext = '.html'
+                                         else: ext = '.html'
+                                     
+                                     # Force PDF extension if URL ends in PDF but mime was wrong/generic
+                                     if item_url.lower().endswith('pdf') and ext != '.pdf': ext = '.pdf'
+                                     
+                                     # Create safe filename
+                                     safe_co = "".join(c for c in str(row.get('Company', 'Doc')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")
+                                     safe_ti = "".join(c for c in str(row.get('Title', 'Item')) if c.isalnum() or c in " ._-").strip().replace(" ", "_")[:30]
+                                     
+                                     # Ensure unique filename in zip
+                                     filename_ar = f"{safe_co}_{safe_ti}{ext}"
+                                     
+                                     zip_file_ar.writestr(filename_ar, response.content)
+                                     success_count_ar += 1
+                                     
+                                     # Add to MD
+                                     md_line = f"| {row.get('Company', '')} | {row.get('Title', '')} | {row.get('Type', '')} | `{filename_ar}` | {item_url} |"
+                                     md_lines_ar.append(md_line)
+                                     
+                                 else:
+                                     fail_count_ar += 1
+                                     download_errors.append(f"HTTP {response.status_code}: {item_url}")
+                             except Exception as e:
+                                 fail_count_ar += 1
+                                 download_errors.append(f"Error ({str(e)}): {item_url}")
+                         
+                         # Write MD file
+                         zip_file_ar.writestr("CONTENTS.md", "\n".join(md_lines_ar))
+                         
+                         # Write NotebookLM helper file
+                         if notebooklm_urls_ar:
+                              zip_file_ar.writestr("notebooklm_source_urls.txt", "\n".join(notebooklm_urls_ar))
+                 
+                 if success_count_ar > 0:
+                     st.success(f"✅ Bundled {success_count_ar} files! ({fail_count_ar} failed)")
+                 else:
+                     st.error(f"❌ No files downloaded. {fail_count_ar} failed.")
+                     
+                 if download_errors:
+                     with st.expander("⚠️ View Download Errors", expanded=False):
+                         for err in download_errors:
+                             st.write(err)
                  
                  st.session_state['all_res_zip_ready'] = zip_buffer_ar.getvalue()
              
