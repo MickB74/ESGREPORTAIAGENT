@@ -2543,9 +2543,9 @@ if selected_tab == "📊 All Resources":
              # Center vertially relative to the info box
              st.write("") 
              try:
-                st.link_button("✨ Go to ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Generate Report with ESG Opal", type="primary", use_container_width=True)
-            except AttributeError:
-                st.markdown(f"[✨ Go to ESG Opal](https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app)")
+                 st.link_button("✨ Go to ESG Opal", "https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app", help="Generate Report with ESG Opal", type="primary", use_container_width=True)
+             except AttributeError:
+                 st.markdown(f"[✨ Go to ESG Opal](https://opal.google/?flow=drive:/1TwRmfsWhfu9kjyrUSIL_WsWoPHVDdKOu&shared&mode=app)")
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
