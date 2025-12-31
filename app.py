@@ -2549,16 +2549,26 @@ if selected_tab == "📊 All Resources":
         
         st.caption("💡 Manage Links: Select items to download, or edit details directly in the table.")
         
+        # Track filter changes to reset persistent state
+        current_filter = filter_combined if filter_combined else ""
+        if 'all_res_last_filter' not in st.session_state:
+            st.session_state.all_res_last_filter = current_filter
+        
         # Initialize persistent dataframe in session state if not exists
         if 'all_res_persistent_df' not in st.session_state:
             st.session_state.all_res_persistent_df = None
         
+        # Reset persistent DF if filter changed or Select/Deselect All was clicked
+        if current_filter != st.session_state.all_res_last_filter or st.session_state.all_res_select_state is not None:
+            st.session_state.all_res_persistent_df = None
+            st.session_state.all_res_last_filter = current_filter
+        
         # Determine which dataframe to use for data_editor initialization
-        if st.session_state.all_res_persistent_df is not None:
-            # Use the persistent version (preserves checkbox states)
+        if st.session_state.all_res_persistent_df is not None and len(st.session_state.all_res_persistent_df) == len(df_display_combined):
+            # Use the persistent version (preserves checkbox states) ONLY if same length (same filter)
             df_for_editor = st.session_state.all_res_persistent_df
         else:
-            # First time or after Select All/Deselect All - set up checkbox column
+            # First time, filter changed, or after Select All/Deselect All - set up checkbox column
             if st.session_state.all_res_select_state == 'select_all':
                 df_display_combined.insert(0, '☑', True)
             elif st.session_state.all_res_select_state == 'deselect_all':
@@ -2583,7 +2593,7 @@ if selected_tab == "📊 All Resources":
         )
         
         # CRITICAL: Store edited state back to session for next rerun
-        st.session_state.all_res_persistent_df = edited_combined
+        st.session_state.all_res_persistent_df = edited_combined.copy()
         
         # Count selected
         selected_rows = edited_combined[edited_combined['☑'] == True]
