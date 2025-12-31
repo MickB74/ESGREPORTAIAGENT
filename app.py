@@ -2612,6 +2612,11 @@ if selected_tab == "📊 All Resources":
                          # 2. Download Files
                          notebooklm_urls_ar = []
                          
+                         print(f"[ZIP] DEBUG: selected_rows shape: {selected_rows.shape}")
+                         print(f"[ZIP] DEBUG: selected_rows columns: {selected_rows.columns.tolist()}")
+                         if not selected_rows.empty:
+                            print(f"[ZIP] DEBUG: First row data: {selected_rows.iloc[0].to_dict()}")
+
                          # Suppress SSL warnings
                          try:
                              from urllib3.exceptions import InsecureRequestWarning
