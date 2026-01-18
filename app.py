@@ -1281,7 +1281,7 @@ with st.sidebar:
 # Using radio instead of tabs to ensure state persistence across reruns
 selected_tab = st.radio(
     "Navigation", 
-    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "❓ FAQs"],
+    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "RE100 List", "❓ FAQs"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -2942,3 +2942,76 @@ if selected_tab == "✅ Verified ESG Sites":
                  else:
                      st.error(f"❌ Migration failed: {msg}")
 
+# ==========================================
+# TAB: RE100 LIST
+# ==========================================
+if selected_tab == "RE100 List":
+    st.header("RE100 Members List")
+    st.markdown("Companies committed to 100% renewable electricity.")
+    
+    # Load Data
+    try:
+        with open("re100_companies.json", "r") as f:
+            re100_data = json.load(f)
+            
+        if re100_data:
+            df = pd.DataFrame(re100_data)
+            
+            # Key Metrics
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Members", len(df))
+            
+            # Simple Industry Breakdown if available
+            if "industry" in df.columns:
+                top_ind = df['industry'].mode()[0] if not df['industry'].empty else "N/A"
+                col2.metric("Top Industry", top_ind)
+                
+            # Target Year Analysis
+            if "target_year" in df.columns:
+                # convert to numeric/year
+                valid_years = pd.to_numeric(df['target_year'], errors='coerce')
+                min_year = int(valid_years.min()) if not valid_years.dropna().empty else "N/A"
+                col3.metric("Earliest Target", min_year)
+
+            st.divider()
+            
+            # Search / Filter
+            search = st.text_input("🔍 Search Company", placeholder="Type company name...")
+            if search:
+                mask = df.astype(str).apply(lambda x: x.str.contains(search, case=False)).any(axis=1)
+                df_display = df[mask]
+            else:
+                df_display = df
+            
+            # Display Table
+            st.dataframe(
+                df_display,
+                use_container_width=True,
+                column_config={
+                    "company_name": "Company",
+                    "description": "Description",
+                    "target_year": "Target Year",
+                    "website": st.column_config.LinkColumn("Website"),
+                    "industry": "Industry",
+                    "hq": "Headquarters"
+                },
+                hide_index=True
+            )
+            
+            # Download
+            csv = df_display.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "⬇️ Download CSV",
+                csv,
+                "re100_companies.csv",
+                "text/csv",
+                key='download-re100'
+            )
+            
+        else:
+            st.warning("⚠️ No data found in re100_companies.json")
+            
+    except FileNotFoundError:
+        st.error("❌ 're100_companies.json' not found. Please run the scraper first.")
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
