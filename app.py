@@ -2949,6 +2949,22 @@ if selected_tab == "RE100 List":
     st.header("RE100 Members List")
     st.markdown("Companies committed to 100% renewable electricity. (Source: MongoDB)")
     
+    # Refresh Button
+    if st.button("🔄 Refresh Data", key="refresh_re100"):
+        with st.spinner("Scraping RE100 data... this may take a minute..."):
+            try:
+                import subprocess
+                import sys
+                result = subprocess.run([sys.executable, "scripts/scrape_re100.py"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    st.success("✅ Data updated successfully!")
+                    load_re100_data.clear() # Clear cache
+                    st.rerun()
+                else:
+                    st.error(f"❌ Scraper failed: {result.stderr}")
+            except Exception as e:
+                st.error(f"❌ Error running scraper: {e}")
+    
     # Load Data from MongoDB with Caching
     @st.cache_data(ttl=3600)
     def load_re100_data():
@@ -3028,6 +3044,23 @@ if selected_tab == "RE100 List":
 if selected_tab == "🌿 SBTi Targets":
     st.header("Science Based Targets (SBTi)")
     st.markdown("Companies taking ambitious climate action with validated science-based targets. (Source: SBTi Dashboard)")
+    
+    # Refresh Button
+    if st.button("🔄 Refresh Data", key="refresh_sbti"):
+        with st.spinner("Downloading latest SBTi data..."):
+            try:
+                import subprocess
+                import sys
+                # Run the scraper
+                result = subprocess.run([sys.executable, "scripts/scrape_sbti.py"], capture_output=True, text=True)
+                if result.returncode == 0:
+                    st.success("✅ Data updated successfully!")
+                    load_sbti_data.clear() # Clear cache
+                    st.rerun()
+                else:
+                    st.error(f"❌ Scraper failed: {result.stderr}")
+            except Exception as e:
+                st.error(f"❌ Error running scraper: {e}")
     
     # Load Data from MongoDB with Caching
     @st.cache_data(ttl=3600)
