@@ -1281,7 +1281,7 @@ with st.sidebar:
 # Using radio instead of tabs to ensure state persistence across reruns
 selected_tab = st.radio(
     "Navigation", 
-    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "RE100 List", "❓ FAQs"],
+    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "RE100 List", "🌿 SBTi Targets", "❓ FAQs"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -3021,3 +3021,88 @@ if selected_tab == "RE100 List":
     else:
         st.warning("⚠️ No data found in MongoDB or database is disconnected.")
         st.info("Ensure you have run the scraper and imported the data.")
+
+# ==========================================
+# TAB: SBTi TARGETS
+# ==========================================
+if selected_tab == "🌿 SBTi Targets":
+    st.header("Science Based Targets (SBTi)")
+    st.markdown("Companies taking ambitious climate action with validated science-based targets. (Source: SBTi Dashboard)")
+    
+    # Load Data from MongoDB with Caching
+    @st.cache_data(ttl=3600)
+    def load_sbti_data():
+        if "mongo" in st.session_state and st.session_state.mongo.client:
+            try:
+                # Exclude _id
+                data = list(st.session_state.mongo.db.sbti_companies.find({}, {"_id": 0}))
+                return data
+            except Exception as e:
+                print(f"Mongo Query Error: {e}")
+                return []
+        return []
+
+    sbti_data = load_sbti_data()
+    
+    if sbti_data:
+        df_sbti = pd.DataFrame(sbti_data)
+        
+        # Key Metrics
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Total Companies", len(df_sbti))
+        
+        # 'near_term_status' : 'Targets set'
+        if "near_term_status" in df_sbti.columns:
+            set_targets = df_sbti[df_sbti['near_term_status'] == 'Targets set']
+            m2.metric("Targets Set", len(set_targets))
+            
+        if "near_term_target_classification" in df_sbti.columns:
+             # Count 1.5°C
+             aligned = df_sbti[df_sbti['near_term_target_classification'].astype(str).str.contains("1.5", na=False)]
+             m3.metric("1.5°C Aligned", len(aligned))
+             
+        if "sector" in df_sbti.columns:
+            top_sector = df_sbti['sector'].mode()[0] if not df_sbti['sector'].empty else "N/A"
+            m4.metric("Top Sector", top_sector)
+            
+        st.divider()
+        
+        # Search
+        search_sbti = st.text_input("🔍 Search SBTi Database", placeholder="Company, ISIN, Sector...")
+        
+        if search_sbti:
+            mask = df_sbti.astype(str).apply(lambda x: x.str.contains(search_sbti, case=False)).any(axis=1)
+            df_display_sbti = df_sbti[mask]
+        else:
+            df_display_sbti = df_sbti
+                    
+        # Display Table
+        st.dataframe(
+            df_display_sbti,
+            use_container_width=True,
+            column_config={
+                "company_name": "Company",
+                "isin": "ISIN",
+                "near_term_status": "Status",
+                "near_term_target_classification": "Temp Alignment",
+                "near_term_target_year": st.column_config.NumberColumn("Target Year", format="%d"),
+                "sector": "Sector",
+                "location": "Location",
+                "full_target_language": "Target Description"
+            },
+            column_order=["company_name", "sector", "location", "near_term_status", "near_term_target_classification", "near_term_target_year", "full_target_language"],
+            hide_index=True
+        )
+        
+        # Download
+        csv_sbti = df_display_sbti.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "⬇️ Download SBTi Data CSV",
+            csv_sbti,
+            "sbti_companies.csv",
+            "text/csv",
+            key='download-sbti'
+        )
+        
+    else:
+        st.info("⏳ Loading data or database empty. Please run the scraper if this persists.")
