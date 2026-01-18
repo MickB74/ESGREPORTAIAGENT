@@ -1,0 +1,41 @@
+name: Weekly RE100 Scraper
+
+on:
+  schedule:
+    # Run at 02:00 UTC every Monday
+    - cron: '0 2 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        playwright install chromium
+
+    - name: Run Scraper
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+      run: |
+        # Using streamlit run is tricky in CI because it stays open.
+        # We should run the script directly with python since we made it runnable via logic in scrape_re100.py?
+        # WAIT, scrape_re100.py currently has `if __name__ == "__main__": scrape_re100()`?
+        # Note: The script was designed to run with Streamlit for local dev, but it should work as a standalone script
+        # if the logic allows. Let's check scrape_re100.py validity for direct python execution.
+        # Actually simplest way is using `streamlit run` with a flag if supported, OR just `python scripts/scrape_re100.py`
+        # if the script has the proper entry point.
+        # Looking at previous view: It has `def scrape_re100():` and `if __name__ == "__main__": scrape_re100()`.
+        # So `python scripts/scrape_re100.py` should work!
+        python scripts/scrape_re100.py
