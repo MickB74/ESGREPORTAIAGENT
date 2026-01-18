@@ -51,6 +51,30 @@ def install_playwright():
 
 install_playwright()
 
+# --- Data Loading Helpers ---
+@st.cache_data(ttl=3600)
+def load_re100_data():
+    if "mongo" in st.session_state and st.session_state.mongo.client:
+        try:
+            # Exclude _id from result for DataFrame compatibility
+            data = list(st.session_state.mongo.db.re100_companies.find({}, {"_id": 0}))
+            return data
+        except Exception as e:
+            print(f"Mongo Query Error: {e}")
+            return []
+    return []
+
+@st.cache_data(ttl=3600)
+def load_sbti_data():
+    if "mongo" in st.session_state and st.session_state.mongo.client:
+        try:
+            # Exclude _id
+            data = list(st.session_state.mongo.db.sbti_companies.find({}, {"_id": 0}))
+            return data
+        except Exception as e:
+            print(f"Mongo Query Error: {e}")
+            return []
+    return []
 # ... (rest of imports/code) ...
 
 
@@ -2949,6 +2973,8 @@ if selected_tab == "RE100 List":
     st.header("RE100 Members List")
     st.markdown("Companies committed to 100% renewable electricity. (Source: MongoDB)")
     
+
+
     # Refresh Button
     if st.button("🔄 Refresh Data", key="refresh_re100"):
         with st.spinner("Scraping RE100 data... this may take a minute..."):
@@ -2964,19 +2990,6 @@ if selected_tab == "RE100 List":
                     st.error(f"❌ Scraper failed: {result.stderr}")
             except Exception as e:
                 st.error(f"❌ Error running scraper: {e}")
-    
-    # Load Data from MongoDB with Caching
-    @st.cache_data(ttl=3600)
-    def load_re100_data():
-        if "mongo" in st.session_state and st.session_state.mongo.client:
-            try:
-                # Exclude _id from result for DataFrame compatibility
-                data = list(st.session_state.mongo.db.re100_companies.find({}, {"_id": 0}))
-                return data
-            except Exception as e:
-                print(f"Mongo Query Error: {e}")
-                return []
-        return []
 
     re100_data = load_re100_data()
     
@@ -3045,6 +3058,8 @@ if selected_tab == "🌿 SBTi Targets":
     st.header("Science Based Targets (SBTi)")
     st.markdown("Companies taking ambitious climate action with validated science-based targets. (Source: SBTi Dashboard)")
     
+
+
     # Refresh Button
     if st.button("🔄 Refresh Data", key="refresh_sbti"):
         with st.spinner("Downloading latest SBTi data..."):
@@ -3061,19 +3076,6 @@ if selected_tab == "🌿 SBTi Targets":
                     st.error(f"❌ Scraper failed: {result.stderr}")
             except Exception as e:
                 st.error(f"❌ Error running scraper: {e}")
-    
-    # Load Data from MongoDB with Caching
-    @st.cache_data(ttl=3600)
-    def load_sbti_data():
-        if "mongo" in st.session_state and st.session_state.mongo.client:
-            try:
-                # Exclude _id
-                data = list(st.session_state.mongo.db.sbti_companies.find({}, {"_id": 0}))
-                return data
-            except Exception as e:
-                print(f"Mongo Query Error: {e}")
-                return []
-        return []
 
     sbti_data = load_sbti_data()
     
