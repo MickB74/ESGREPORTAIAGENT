@@ -3110,24 +3110,34 @@ if selected_tab == "🌿 SBTi Targets":
             df_display_sbti = df_sbti[mask]
         else:
             df_display_sbti = df_sbti
-                    
+            
+        # Toggle for All Columns
+        show_all_cols = st.checkbox("Show All Data Columns", value=False, help="Display all raw fields from the SBTi Excel file")
+        
         # Display Table
-        st.dataframe(
-            df_display_sbti,
-            use_container_width=True,
-            column_config={
-                "company_name": "Company",
-                "isin": "ISIN",
-                "near_term_status": "Status",
-                "near_term_target_classification": "Temp Alignment",
-                "near_term_target_year": st.column_config.NumberColumn("Target Year", format="%d"),
-                "sector": "Sector",
-                "location": "Location",
-                "full_target_language": "Target Description"
-            },
-            column_order=["company_name", "sector", "location", "near_term_status", "near_term_target_classification", "near_term_target_year", "full_target_language"],
-            hide_index=True
-        )
+        if show_all_cols:
+            st.dataframe(
+                df_display_sbti,
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.dataframe(
+                df_display_sbti,
+                use_container_width=True,
+                column_config={
+                    "company_name": "Company",
+                    "isin": "ISIN",
+                    "near_term_status": "Status",
+                    "near_term_target_classification": "Temp Alignment",
+                    "near_term_target_year": st.column_config.NumberColumn("Target Year", format="%d"),
+                    "sector": "Sector",
+                    "location": "Location",
+                    "full_target_language": "Target Description"
+                },
+                column_order=["company_name", "sector", "location", "near_term_status", "near_term_target_classification", "near_term_target_year", "full_target_language"],
+                hide_index=True
+            )
         
         # Download
         csv_sbti = df_display_sbti.to_csv(index=False).encode('utf-8')
