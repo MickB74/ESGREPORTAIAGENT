@@ -2433,6 +2433,8 @@ if selected_tab == "📊 All Resources":
     # Fetch both datasets
     all_companies = mongo_db.get_all_companies()
     all_saved_links = mongo_db.get_all_links("verified_links")
+    re100_list = load_re100_data()
+    sbti_list = load_sbti_data()
     
     # Combine into one unified dataset
     combined_resources = []
@@ -2461,6 +2463,30 @@ if selected_tab == "📊 All Resources":
             'Description': link.get('description', ''),
             'Timestamp': link.get('timestamp', '')
         })
+
+    # Add RE100 Companies
+    for company in re100_list:
+        combined_resources.append({
+            'Type': 'RE100',
+            'Company': company.get('company_name', ''),
+            'Symbol': '',
+            'Title': 'RE100 Member',
+            'URL': company.get('website', ''),
+            'Description': f"Target Year: {company.get('target_year', 'N/A')}",
+            'Timestamp': ''
+        })
+
+    # Add SBTi Companies
+    for company in sbti_list:
+        combined_resources.append({
+            'Type': 'SBTi',
+            'Company': company.get('company_name', ''),
+            'Symbol': company.get('code', '') or company.get('isin', ''),
+            'Title': 'SBTi Target',
+            'URL': '', # SBTi download doesn't always have a direct company URL
+            'Description': f"Status: {company.get('near_term_status', 'N/A')}",
+            'Timestamp': ''
+        })
     
     if combined_resources:
         df_combined = pd.DataFrame(combined_resources)
@@ -2470,12 +2496,17 @@ if selected_tab == "📊 All Resources":
             df_combined['Timestamp'] = pd.to_datetime(df_combined['Timestamp'], errors='coerce')
         
         # Metrics
-        col1, col2 = st.columns(2)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Resources", len(df_combined))
         with col2:
             unique_companies = len(set(r.lower() for r in df_combined['Company'] if r))
             st.metric("Unique Companies", unique_companies)
+        with col3:
+             st.metric("RE100", len(re100_list))
+        with col4:
+             st.metric("SBTi", len(sbti_list))
+
         
         st.divider()
         
