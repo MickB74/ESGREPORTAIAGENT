@@ -19,12 +19,10 @@ class MongoHandler:
             uri = st.secrets["MONGO_URI"]
             # Connect with server selection timeout to fail fast if config is wrong
             # Use certifi for SSL certificate verification to prevent handshake errors
-            # Adding tlsAllowInvalidCertificates=True as a fallback for strict cloud environments
             self.client = MongoClient(
-                uri, 
+                uri,
                 serverSelectionTimeoutMS=5000,
-                tlsCAFile=certifi.where(),
-                tlsAllowInvalidCertificates=True
+                tlsCAFile=certifi.where()
             )
             
             # Default database name (can be anything, e.g. 'esg_agent')
@@ -218,7 +216,6 @@ class MongoHandler:
             if companies_list:
                 col.insert_many(companies_list)
             return True, f"Successfully imported {len(companies_list)} companies."
-            return True, f"Successfully imported {len(companies_list)} companies."
         except Exception as e:
             return False, f"Bulk Error: {e}"
     
@@ -233,7 +230,7 @@ class MongoHandler:
         try:
             # Read CSV
             df = pd.read_csv(csv_path, encoding='utf-8', on_bad_lines='skip')
-        except:
+        except (UnicodeDecodeError, Exception):
             try:
                 df = pd.read_csv(csv_path, encoding='latin1', on_bad_lines='skip')
             except Exception as e:

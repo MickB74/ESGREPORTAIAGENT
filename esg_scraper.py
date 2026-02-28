@@ -2,9 +2,23 @@
 import time
 import re
 import os
+import logging
 from playwright.sync_api import sync_playwright
 from selectolax.parser import HTMLParser
 from urllib.parse import urljoin
+
+from config import (
+    REPORT_KEYWORDS, EXCLUDE_KEYWORDS, HUB_KEYWORDS,
+    EXPAND_SELECTORS, GENERIC_LINK_TERMS, JUNK_PATTERNS,
+    USER_AGENT, VIEWPORT, BROWSER_ARGS,
+    PLAYWRIGHT_NAV_TIMEOUT_MS, PLAYWRIGHT_HUB_TIMEOUT_MS,
+    PLAYWRIGHT_CLICK_TIMEOUT_MS, PLAYWRIGHT_NETWORKIDLE_TIMEOUT_MS,
+    PLAYWRIGHT_COOKIE_TIMEOUT_MS,
+    LAZY_LOAD_WAIT_S, PAGE_SETTLE_WAIT_S, DYNAMIC_CONTENT_WAIT_S,
+    REQUESTS_DOWNLOAD_TIMEOUT_S, MIN_LINK_SCORE, PDF_SCORE_BOOST,
+)
+
+logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION: The "Brain" of the Tool ---
 # This is where you adapt to new sites without rewriting the engine.
@@ -44,14 +58,7 @@ SITES = [
     }
 ]
 
-# Keywords to score "good" links if we are guessing
-REPORT_KEYWORDS = [
-    "report", "esg", "sustainability", "csr", "annual", "impact", 
-    "environmental", "social", "governance", "climate", "carbon", 
-    "diversity", "inclusion", "responsibility", "stewardship", 
-    "citizenship", "community", "ethics", "transparency",
-    "2024", "2025", "2023", "tcfd"
-]
+# REPORT_KEYWORDS imported from config.py
 
 class ESGScraper:
     def __init__(self, headless=True):
@@ -65,18 +72,8 @@ class ESGScraper:
         tree = HTMLParser(page_content)
         candidates = []
         
-        GENERIC_TERMS = ["download", "pdf", "click here", "read more", "view", "report", "file", "link"]
-        
-        # Negative keywords to exclude (non-report pages)
-        EXCLUDE_KEYWORDS = [
-            "login", "career", "job", "apply", "search", "contact",
-            "privacy policy", "terms", "cookie", "faq", "about us"
-        ]
-
-        def extract_year(text):
-            """Extract 4-digit year from text (2020-2030)"""
-            years = re.findall(r'\b(202[0-9]|203[0])\b', text)
-            return years[0] if years else None
+        # GENERIC_LINK_TERMS and EXCLUDE_KEYWORDS imported from config.py
+        from utils import extract_year
             
         def get_preceding_header(node):
             """
@@ -147,22 +144,15 @@ class ESGScraper:
             if img:
                 alt_text = (img.attributes.get("alt") or "").strip()
 
-            # Enhanced Generic Detection
-            generic_terms = [
-                "download", "pdf", "click here", "read more", "view", "report", 
-                "file", "link", "learn more", "see more", "details", "here",
-                "more info", "accessibility", "opens in"
-            ]
-            
             # Enhanced Name Selection with URL Parsing
-            is_text_generic = not text or any(term in text.lower() for term in generic_terms) or len(text) < 4
+            is_text_generic = not text or any(term in text.lower() for term in GENERIC_LINK_TERMS) or len(text) < 4
             
             base_text = text
             if is_text_generic:
                 # Try attributes first
-                if aria and not any(term in aria.lower() for term in generic_terms): 
+                if aria and not any(term in aria.lower() for term in GENERIC_LINK_TERMS): 
                     base_text = aria
-                elif title and not any(term in title.lower() for term in generic_terms): 
+                elif title and not any(term in title.lower() for term in GENERIC_LINK_TERMS): 
                     base_text = title
                 elif alt_text: 
                     base_text = alt_text
@@ -179,21 +169,15 @@ class ESGScraper:
                         clean_name = ' '.join(word.capitalize() for word in clean_name.split())
                         if len(clean_name) > 15:  # Only use if substantial
                             base_text = clean_name
-                    except:
+                    except (ValueError, IndexError):
                         pass
             
             # If we have basic text but attributes are much better/longer
             elif aria and len(aria) > len(text) + 5:
                 base_text = aria
             
-            # Clean junk text
-            junk_patterns = [
-                r'\(opens in (?:a )?new (?:window|tab)\)',
-                r'opens in (?:a )?new (?:window|tab)',
-                r'\[read more\]',
-                r'►', r'◄', r'📄'
-            ]
-            for pattern in junk_patterns:
+            # Clean junk text using shared patterns from config
+            for pattern in JUNK_PATTERNS:
                 base_text = re.sub(pattern, '', base_text, flags=re.IGNORECASE)
             base_text = re.sub(r'\s+', ' ', base_text).strip()
                 
@@ -217,7 +201,7 @@ class ESGScraper:
 
             # B. Check Preceding Header (for grouped lists)
             # Only do this if text is somewhat generic or short
-            if len(base_text) < 30 or any(t in base_text.lower() for t in generic_terms):
+            if len(base_text) < 30 or any(t in base_text.lower() for t in GENERIC_LINK_TERMS):
                 header = get_preceding_header(node)
                 if header and len(header) < 50: # Don't prepend massive headers
                     # Clean header
@@ -287,8 +271,7 @@ class ESGScraper:
     def get_hub_links(self, tree, base_url):
         """Identify potential 'Report Hubs' or 'Archives' to traverse."""
         hubs = []
-        # Expanded keywords for aggressive discovery
-        HUB_KEYWORDS = ["archive", "library", "downloads", "all reports", "past reports", "previous reports", "resources", "investor", "financial", "filing", "result", "quarterly", "annual", "sustainability", "esg"]
+        # HUB_KEYWORDS imported from config.py
         
         for node in tree.css("a"):
             href = node.attributes.get("href")
@@ -318,19 +301,8 @@ class ESGScraper:
             except Exception as e:
                 print(f"      Scroll warning: {e}")
             
-            # 1. Click "Load More" / "Show All" buttons
-            # Use a broad selector for buttons containing specific text
-            more_selectors = [
-                "button:has-text('Show More')",
-                "button:has-text('Load More')",
-                "button:has-text('View All')",
-                "a:has-text('Show More')",
-                "a:has-text('Load More')",
-                "div[role='button']:has-text('Show More')",
-                "div[onclick]:has-text('Show More')",
-            ]
-            
-            for selector in more_selectors:
+            # 1. Click "Load More" / "Show All" buttons (selectors from config)
+            for selector in EXPAND_SELECTORS:
                 try:
                     btn = page.locator(selector).first
                     if btn.count() > 0:
@@ -339,10 +311,10 @@ class ESGScraper:
                         # Wait for network to settle after click
                         try:
                             page.wait_for_load_state("networkidle", timeout=5000)
-                        except:
+                        except Exception:
                             time.sleep(2)  # Fallback wait
                         break
-                except:
+                except Exception:
                     continue
             
             # 2. Click Recent Years (2024, 2023) if they look like filters
@@ -355,7 +327,8 @@ class ESGScraper:
                     try:
                         year_btn.first.click(timeout=3000)
                         time.sleep(1.5)
-                    except: pass
+                    except Exception:
+                        pass
                     
         except Exception as e:
             print(f"      Interaction warning: {e}")
@@ -372,8 +345,8 @@ class ESGScraper:
                 time.sleep(2)
                 page.evaluate("window.scrollTo(0, 0)")  # Scroll back to top
                 time.sleep(1)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Scroll failed: {e}")
             
             # OPTIONAL: Interact to reveal content
             self.expand_page_interaction(page)
@@ -402,7 +375,8 @@ class ESGScraper:
                             # Mark them coming from a frame
                             for l in f_links: l['text'] += " [Frame]"
                             links.extend(f_links)
-                    except: pass
+                    except Exception:
+                        pass
 
             return links, hubs
         except Exception as e:
@@ -425,9 +399,10 @@ class ESGScraper:
             page.goto(site['url'], timeout=90000, wait_until=wait_strategy)
             
             # Handle cookies/popups if possible (basic click)
-            try: 
-                page.click("button:has-text('Accept')", timeout=2000)
-            except: pass
+            try:
+                page.click("button:has-text('Accept')", timeout=PLAYWRIGHT_COOKIE_TIMEOUT_MS)
+            except Exception:
+                pass
 
             time.sleep(3) # Settle
             
@@ -498,20 +473,13 @@ class ESGScraper:
     
     def run(self, sites_config=SITES):
         with sync_playwright() as p:
-            # Launch browser with Stealth Args for robustness
-            args = [
-                "--disable-blink-features=AutomationControlled",
-                "--disable-http2", 
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-            ]
-            browser = p.chromium.launch(headless=self.headless, args=args)
-            
+            browser = p.chromium.launch(headless=self.headless, args=BROWSER_ARGS)
+
             context = browser.new_context(
-                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                user_agent=USER_AGENT,
                 ignore_https_errors=True,
                 java_script_enabled=True,
-                viewport={"width": 1920, "height": 1080}
+                viewport=VIEWPORT,
             )
             context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
             
@@ -542,12 +510,12 @@ class ESGScraper:
         print("   📡 Attempting fast fetch (requests)...")
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': USER_AGENT,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
             }
-            
-            response = requests.get(url, headers=headers, timeout=30, allow_redirects=True)
+
+            response = requests.get(url, headers=headers, timeout=REQUESTS_DOWNLOAD_TIMEOUT_S, allow_redirects=True)
             
             if response.status_code == 200:
                 # Parse with our existing method
@@ -572,19 +540,13 @@ class ESGScraper:
             from playwright.sync_api import sync_playwright
             
             with sync_playwright() as p:
-                launch_args = [
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-http2", 
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                ]
-                browser = p.chromium.launch(headless=self.headless, args=launch_args)
-                
+                browser = p.chromium.launch(headless=self.headless, args=BROWSER_ARGS)
+
                 context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                    viewport={"width": 1920, "height": 1080},
+                    user_agent=USER_AGENT,
+                    viewport=VIEWPORT,
                     ignore_https_errors=True,
-                    java_script_enabled=True
+                    java_script_enabled=True,
                 )
                 context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
                 

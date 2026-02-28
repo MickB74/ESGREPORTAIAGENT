@@ -12,9 +12,20 @@ import difflib
 import numpy as np
 import zipfile
 import io
-import traceback
 # MongoDB Handler
 from mongo_handler import MongoHandler
+# Shared utilities and config
+from utils import (
+    get_significant_token, is_likely_official_domain, clean_title,
+    extract_year, is_report_link, filter_relevant_links,
+)
+from config import (
+    REQUESTS_TIMEOUT_S, REQUESTS_HUB_TIMEOUT_S, REQUESTS_DOWNLOAD_TIMEOUT_S,
+    MIN_PDF_SIZE_BYTES, SKIP_VERIFY_SIZE_BYTES, USER_AGENT,
+    REPORT_VERIFICATION_KEYWORDS, BLOCKED_DOMAINS,
+    MAX_REPORTS_TOTAL, MAX_HUBS_TO_VISIT, THREAD_POOL_WORKERS,
+    MAX_SCAN_URLS_STRICT, MAX_SCAN_URLS_NORMAL, MAX_DEEP_SCAN_REPORTS,
+)
 
 # Initialize MongoDB Handler
 if "mongo" not in st.session_state:
@@ -75,12 +86,7 @@ def load_sbti_data():
             print(f"Mongo Query Error: {e}")
             return []
     return []
-# ... (rest of imports/code) ...
-
-
-
-# Helper to checking if domain is likely an official site (heuristic)
-# Helper to checking if domain is likely an official site (heuristic)
+# --- Web Search Helper ---
 def search_web(query, max_results, ddgs_instance=None):
     """
     Wrapper for DuckDuckGo search.
@@ -101,32 +107,8 @@ def search_web(query, max_results, ddgs_instance=None):
         return []
 
 
-# Helper to checking if domain is likely an official site (heuristic)
-def is_likely_official_domain(url, company_name):
-    try:
-        domain = urlparse(url).netloc.lower()
-    except:
-        return False
-    # Block list of common non-corporate domains
-    block_list = [
-        'wikipedia.org', 'bloomberg.com', 'reuters.com', 'yahoo.com', 
-        'finance.yahoo.com', 'wsj.com', 'cnbc.com', 'forbes.com', 
-        'investopedia.com', 'morningstar.com', 'marketwatch.com', 
-        'motleyfool.com', 'seekingalpha.com', 'barrons.com',
-        'bing.com' # Filter out search engine ad links
-    ]
-    if any(b in domain for b in block_list):
-        return False
-    return True
 
-def get_significant_token(name):
-    """Returns the most significant part of a company name for verification."""
-    stopwords = ['the', 'inc', 'corp', 'corporation', 'company', 'ltd', 'limited', 'group', 'holdings', 'plc', 'nv', 'sa', 'ag']
-    parts = name.lower().replace('.', '').replace(',', '').split()
-    significant = [p for p in parts if p not in stopwords and len(p) > 2] # >2 chars
-    if significant:
-        return significant[0] # Return first significant word (e.g. "Gap" from "The Gap Inc")
-    return name.split()[0].lower() # Fallback
+# NOTE: is_likely_official_domain, get_significant_token imported from utils.py
 
 def verify_pdf_content(url, title, company_name, context="report"):
     """
@@ -152,12 +134,15 @@ def verify_pdf_content(url, title, company_name, context="report"):
         }
 
         # Stream request to check headers first
+        import certifi
         try:
-            from urllib3.exceptions import InsecureRequestWarning
-            requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-            response = requests.get(url, headers=headers, timeout=10, stream=True)
+            response = requests.get(url, headers=headers, timeout=10, stream=True, verify=certifi.where())
         except requests.exceptions.SSLError:
-             response = requests.get(url, headers=headers, timeout=10, stream=True, verify=False)
+            # Retry with default CA bundle as fallback
+            try:
+                response = requests.get(url, headers=headers, timeout=10, stream=True)
+            except Exception:
+                return None
         except Exception:
             return None
 
@@ -217,7 +202,7 @@ def verify_pdf_content(url, title, company_name, context="report"):
         
         try:
             reader = pypdf.PdfReader(f)
-        except:
+        except Exception:
             return None
         
         if len(reader.pages) == 0:
@@ -233,7 +218,8 @@ def verify_pdf_content(url, title, company_name, context="report"):
                 meta_t = reader.metadata.title.strip()
                 if len(meta_t) > 5 and "micros" not in meta_t.lower() and "untitled" not in meta_t.lower():
                      pdf_title = meta_t
-        except: pass
+        except Exception:
+            pass
         
         # 2. Try Filename from URL
         url_filename = os.path.basename(urlparse(url).path)
@@ -268,17 +254,11 @@ def verify_pdf_content(url, title, company_name, context="report"):
         for i in range(pages_to_check):
             try:
                 text_content += reader.pages[i].extract_text().lower() + " "
-            except:
+            except Exception:
                 pass
         
         # Check Company Name (SMARTER)
-        sig_token = get_significant_token(company_name) 
-        if sig_token not in text_content:
-            log_v(f"[SKIP] Company token '{sig_token}' not found.")
-            return None
-            
-        # Check Company Name (SMARTER)
-        sig_token = get_significant_token(company_name) 
+        sig_token = get_significant_token(company_name)
         if sig_token not in text_content:
             log_v(f"[SKIP] Company token '{sig_token}' not found.")
             return None
@@ -298,31 +278,7 @@ def verify_pdf_content(url, title, company_name, context="report"):
     except Exception as e:
         return None
 
-# Function to clean scraped titles
-def clean_title(text):
-    if not text:
-        return "ESG Report"
-    
-    # Remove common junk from scraping icons/svgs
-    junk_phrases = [
-        "PDFCreated with Sketch.", 
-        "backgroundLayer", 
-        "Created with Sketch",
-        "Shape",
-        "Path"
-    ]
-    
-    for junk in junk_phrases:
-        text = text.replace(junk, " ")
-        
-    # Collapse whitespace
-    text = " ".join(text.split())
-    
-    # If text became empty or too short, fallback
-    if len(text) < 5:
-        return "ESG Report"
-        
-    return text
+# NOTE: clean_title imported from utils.py
 
 # --- Saved Links Logic ---
 LINKS_FILE = os.path.join(os.path.dirname(__file__), "saved_links.json")
@@ -333,7 +289,7 @@ def load_links_from_disk():
     try:
         with open(LINKS_FILE, "r") as f:
             return json.load(f)
-    except:
+    except (json.JSONDecodeError, OSError):
         return []
 
 # Initialize Session State for Saved Links
@@ -401,8 +357,7 @@ def delete_link_by_url(target_url):
     print(f"[DEBUG] NO MATCH FOUND for '{target_clean}'. Count remains {initial_count}.")
     return False
 
-# Function to perform searches
-# Function to perform searches
+# --- Main Search Engine ---
 def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol=None, strict_mode=False, pdfs_only=False):
 
     import concurrent.futures
@@ -433,26 +388,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
     results["search_log"].append(f"Starting search for: {company_name} (Known Symbol: {symbol}, Fetch Reports: {fetch_reports})")
 
     with DDGS() as ddgs:
-        # --- 0. Shared Helpers ---
-        
-        def is_report_link(text, url):
-            text_lower = text.lower()
-
-            url_lower = url.lower()
-            
-            # 1. Negative Filters (Strong Rejection)
-            negative_terms = ['policy', 'charter', 'code of conduct', 'guidelines', 'framework', 'presentation', 'investor presentation', 'earnings', 'quarterly', 'q1', 'q2', 'q3', 'slide', 'webcast']
-            if any(term in text_lower for term in negative_terms):
-                return False
-
-            # 2. Positive Filters (Must have "Report" intent)
-            # Strict: Must have [Year] or "Report"
-            has_report_keyword = any(w in text_lower for w in ['report', 'sustainability', 'esg', 'annual', 'integrated', 'csr'])
-            if not has_report_keyword:
-                return False
-                
-            return True
-
+        # NOTE: is_report_link imported from utils.py
 
         # --- 0.5 Load Company Map (Known Hubs) ---
         known_url = None
@@ -514,7 +450,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             results["search_log"].append(f"Domain Search: \"{domain_query}\"")
             try:
                 domain_results = search_web(domain_query, max_results=5, ddgs_instance=ddgs)
-            except:
+            except Exception:
                 domain_results = []
         
         # Process domain results (either from Search or Fast Path)
@@ -572,40 +508,12 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             links = scraper.scan_url(known_website)
             
             if links:
-                # Separate PDFs and non-PDFs
-                pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
-                non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
-                
-                # Filter non-PDFs based on mode
-                if pdfs_only:
-                    # PDFs only mode: No non-PDFs
-                    relevant_non_pdfs = []
-                else:
-                    # Default greedy mode: Show all except obvious header/footer junk
-                    header_footer_terms = ['home', 'about', 'contact', 'careers', 'privacy', 'terms', 
-                                          'cookie', 'sitemap', 'search', 'logo', 'menu', 'nav']
-                    relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
-                                        'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
-                    
-                    relevant_non_pdfs = [
-                        l for l in non_pdf_links 
-                        if (
-                            # Show all score >= 2
-                            l.get('score', 0) >= 2 and
-                            # Unless it's header/footer junk without relevant keywords
-                            not (any(term in l.get('text', '').lower() for term in header_footer_terms) and 
-                                 not any(kw in l.get('text', '').lower() for kw in relevant_keywords))
-                        )
-                    ]
-                
-                # Combine: PDFs first, then relevant webpages
+                pdf_links, relevant_non_pdfs = filter_relevant_links(links, pdfs_only)
                 all_links = pdf_links + relevant_non_pdfs
-                
+
                 if all_links:
                     print(f"   ✅ Hybrid scraper found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} relevant webpages")
-                    
-                    # Convert to app's format
-                    import pandas as pd
+
                     candidates = []
                     for l in all_links:
                         is_pdf = l['url'].lower().endswith('.pdf')
@@ -614,11 +522,9 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                             'href': l['url'],
                             'body': 'PDF Report' if is_pdf else 'Webpage Report / Resource'
                         })
-                    
-                    df = pd.DataFrame(candidates)
-                    # Return in app's expected format
+
                     return {
-                        "reports": df.to_dict('records'),
+                        "reports": candidates,
                         "website": {"title": "Verified Site", "href": known_website, "body": "Scanned via Hybrid Scraper"},
                         "search_log": [f"Hybrid Scraper: Found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} webpages"]
                     }
@@ -722,30 +628,8 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                 links = scraper.scan_url(url)
                 
                 if links:
-                    # Separate PDFs and non-PDFs
-                    pdf_links = [l for l in links if l['url'].lower().endswith('.pdf')]
-                    non_pdf_links = [l for l in links if not l['url'].lower().endswith('.pdf')]
-                    
-                    # Filter non-PDFs based on mode
-                    if pdfs_only:
-                        # PDFs only mode: No non-PDFs
-                        relevant_non_pdfs = []
-                    else:
-                        # Default greedy mode: Show all except obvious header/footer junk
-                        header_footer_terms = ['home', 'about', 'contact', 'careers', 'privacy', 'terms', 
-                                              'cookie', 'sitemap', 'search', 'logo', 'menu', 'nav']
-                        relevant_keywords = ['report', 'sustainability', 'esg', 'transparency', 'responsibility', 
-                                            'governance', 'annual', 'impact', 'climate', 'diversity', 'disclosure']
-                        
-                        relevant_non_pdfs = [
-                            l for l in non_pdf_links 
-                            if (
-                                l.get('score', 0) >= 2 and
-                                not (any(term in l.get('text', '').lower() for term in header_footer_terms) and 
-                                     not any(kw in l.get('text', '').lower() for kw in relevant_keywords))
-                            )
-                        ]
-                    
+                    pdf_links, relevant_non_pdfs = filter_relevant_links(links, pdfs_only)
+
                     if pdf_links or relevant_non_pdfs:
                         print(f"   ✅ Found {len(pdf_links)} PDFs + {len(relevant_non_pdfs)} relevant webpages")
                         for l in pdf_links:
@@ -874,7 +758,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
                                             return prev.get_text(strip=True)
                                         prev = prev.find_previous_sibling()
                                     current = current.parent
-                            except:
+                            except Exception:
                                 return None
                             return None
 
@@ -1457,13 +1341,12 @@ if selected_tab == "🔍 Search & Analyze":
             else:
                 # Fallback name if only URL provided
                 if not company_name and manual_url:
-                     from urllib.parse import urlparse
                      try:
                          domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
                          company_name = f"{domain} (Direct Link)"
-                     except:
+                     except Exception:
                          company_name = "Direct Link Analysis"
-                
+
                 st.session_state.current_company = company_name
                 st.session_state.show_scan_results = True
                 st.session_state.show_saved_links = False
@@ -1511,13 +1394,12 @@ if selected_tab == "🔍 Search & Analyze":
                      st.warning("Please select a company or enter a Direct URL.")
             else:
                 if not company_name and manual_url:
-                     from urllib.parse import urlparse
                      try:
                          domain = urlparse(manual_url).netloc.replace('www.', '').split('.')[0].capitalize()
                          company_name = f"{domain} (Direct Link)"
-                     except:
+                     except Exception:
                          company_name = "Direct Link Analysis"
-                
+
                 st.session_state.current_company = company_name
                 st.session_state.show_scan_results = True
                 st.session_state.show_saved_links = True
@@ -2705,7 +2587,8 @@ if selected_tab == "📊 All Resources":
                     try:
                         from urllib3.exceptions import InsecureRequestWarning
                         requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-                    except: pass
+                    except Exception:
+                        pass
 
                     print(f"[ZIP] Starting download of {len(selected_rows_for_download)} items...")
 
