@@ -1,0 +1,56 @@
+name: Batch ESG Report Scanner
+
+on:
+  schedule:
+    # Run daily at 03:00 UTC during scan period
+    # With 50 companies/day and ~528 total, a full cycle takes ~11 days
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Number of companies to scan'
+        required: false
+        default: '50'
+      company:
+        description: 'Scan a single company by symbol (e.g. AAPL)'
+        required: false
+        default: ''
+
+jobs:
+  scan-reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Batch Scanner
+      env:
+        MONGO_URI: ${{ secrets.MONGO_URI }}
+        REPORT_DOWNLOAD_DIR: downloaded_reports
+      run: |
+        ARGS="--batch-size ${{ github.event.inputs.batch_size || '50' }}"
+        if [ -n "${{ github.event.inputs.company }}" ]; then
+          ARGS="--company ${{ github.event.inputs.company }}"
+        fi
+        python scripts/batch_report_scanner.py $ARGS
+
+    - name: Upload Downloaded Reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: esg-reports-${{ github.run_number }}
+        path: downloaded_reports/
+        retention-days: 90
+        if-no-files-found: ignore

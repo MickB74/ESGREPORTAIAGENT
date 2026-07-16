@@ -11,6 +11,9 @@ verified_links_backup_*.csv
 # Screenshots from scraper
 screenshots/
 
+# Downloaded ESG reports (uploaded as GitHub Actions artifacts)
+downloaded_reports/
+
 # Test/build artifacts
 .pytest_cache/
 htmlcov/
