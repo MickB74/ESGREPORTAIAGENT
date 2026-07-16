@@ -509,13 +509,8 @@ class ESGScraper:
         # STEP 1: Try simple requests first (works for most sites, bypasses bot detection)
         print("   📡 Attempting fast fetch (requests)...")
         try:
-            headers = {
-                'User-Agent': USER_AGENT,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-            }
-
-            response = requests.get(url, headers=headers, timeout=REQUESTS_DOWNLOAD_TIMEOUT_S, allow_redirects=True)
+            from utils import robust_get
+            response = robust_get(url, timeout=REQUESTS_DOWNLOAD_TIMEOUT_S)
             
             if response.status_code == 200:
                 # Parse with our existing method

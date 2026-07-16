@@ -20,7 +20,7 @@ from mongo_handler import MongoHandler
 # Shared utilities and config
 from utils import (
     get_significant_token, is_likely_official_domain, clean_title,
-    extract_year, is_report_link, filter_relevant_links,
+    extract_year, is_report_link, filter_relevant_links, robust_get,
 )
 from config import (
     REQUESTS_TIMEOUT_S, REQUESTS_HUB_TIMEOUT_S, REQUESTS_DOWNLOAD_TIMEOUT_S,
@@ -127,22 +127,8 @@ def verify_pdf_content(url, title, company_name, context="report"):
     try:
         log_v(f"Verifying ({context}): {url}")
         
-        # Robust Headers
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-        }
-
-        # Stream request to check headers first
-        import certifi
         try:
-            response = requests.get(url, headers=headers, timeout=10, stream=True, verify=certifi.where())
-        except requests.exceptions.SSLError:
-            # Retry with default CA bundle as fallback
-            try:
-                response = requests.get(url, headers=headers, timeout=10, stream=True)
-            except Exception:
-                return None
+            response = robust_get(url, timeout=10, stream=True)
         except Exception:
             return None
 
@@ -706,9 +692,6 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
             log("Strategy Priority: Scanning ESG Website for Reports...")
             try:
                 web_url = results["website"]["href"]
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                }
                 parsed_base = urlparse(web_url)
                 primary_domain = parsed_base.netloc
 
@@ -867,7 +850,7 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
                     try:
                         log(f"  Scanning hub: {current_hub}")
-                        resp = requests.get(current_hub, headers=headers, timeout=6)
+                        resp = robust_get(current_hub, timeout=6)
                     except Exception as e:
                         log(f"  Hub request failed: {e}")
                         continue
@@ -2204,7 +2187,7 @@ if selected_tab == "📂 User Saved Links":
                             
                             try:
                                 # Fetch content
-                                response = requests.get(item_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                response = robust_get(item_url, timeout=10)
                                 if response.status_code == 200:
                                     # Determine Extension
                                     content_type = response.headers.get('Content-Type', '').split(';')[0].strip().lower()

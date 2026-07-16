@@ -4,10 +4,15 @@ Eliminates duplication between app.py and esg_scraper.py.
 """
 
 import re
+import random
+import time
+import requests
+import certifi
 from urllib.parse import urlparse
 from config import (
     COMPANY_STOPWORDS, JUNK_PHRASES, BLOCKED_DOMAINS,
     GENERIC_LINK_TERMS, JUNK_PATTERNS,
+    USER_AGENTS, REQUEST_HEADERS_BASE, MAX_RETRIES, RETRY_BACKOFF_S,
 )
 
 
@@ -114,3 +119,38 @@ def filter_relevant_links(links, pdfs_only=False):
     ]
 
     return pdf_links, relevant_non_pdfs
+
+
+def robust_get(url, timeout=10, stream=False):
+    """
+    Make an HTTP GET with rotating user-agents, realistic headers, and retry
+    with exponential backoff on 403/429/5xx responses.
+    """
+    headers = {**REQUEST_HEADERS_BASE, "User-Agent": random.choice(USER_AGENTS)}
+    last_exc = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            resp = requests.get(
+                url, headers=headers, timeout=timeout,
+                stream=stream, verify=certifi.where(),
+            )
+            if resp.status_code in (403, 429, 503):
+                wait = RETRY_BACKOFF_S * (2 ** attempt) + random.uniform(0.5, 1.5)
+                print(f"[robust_get] {resp.status_code} on {url}, retrying in {wait:.1f}s")
+                time.sleep(wait)
+                headers["User-Agent"] = random.choice(USER_AGENTS)
+                continue
+            return resp
+        except requests.exceptions.SSLError:
+            try:
+                resp = requests.get(
+                    url, headers=headers, timeout=timeout, stream=stream,
+                )
+                return resp
+            except Exception as e:
+                last_exc = e
+        except Exception as e:
+            last_exc = e
+            if attempt < MAX_RETRIES:
+                time.sleep(RETRY_BACKOFF_S * (2 ** attempt))
+    raise last_exc or requests.exceptions.ConnectionError(f"Failed after {MAX_RETRIES + 1} attempts: {url}")
