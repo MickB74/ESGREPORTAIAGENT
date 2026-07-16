@@ -38,19 +38,9 @@ jobs:
     - name: Run Batch Scanner
       env:
         MONGO_URI: ${{ secrets.MONGO_URI }}
-        REPORT_DOWNLOAD_DIR: downloaded_reports
       run: |
         ARGS="--batch-size ${{ github.event.inputs.batch_size || '50' }}"
         if [ -n "${{ github.event.inputs.company }}" ]; then
           ARGS="--company ${{ github.event.inputs.company }}"
         fi
         python scripts/batch_report_scanner.py $ARGS
-
-    - name: Upload Downloaded Reports
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: esg-reports-${{ github.run_number }}
-        path: downloaded_reports/
-        retention-days: 90
-        if-no-files-found: ignore

@@ -2,8 +2,9 @@
 Batch ESG Report Scanner
 
 Scans ~50 companies per run, finds ESG report URLs, downloads PDFs,
-and stores metadata in MongoDB. Designed to run as a daily GitHub Action
-that completes a full cycle of all companies over ~11 days.
+stores PDF files in MongoDB GridFS and metadata in esg_reports collection.
+Designed to run as a daily GitHub Action that completes a full cycle
+of all companies over ~11 days.
 
 Usage:
     python scripts/batch_report_scanner.py [--batch-size 50] [--company SYMBOL]
@@ -12,7 +13,7 @@ Usage:
 import os
 import sys
 import time
-import json
+import io
 import argparse
 import hashlib
 from datetime import datetime, timedelta
@@ -22,12 +23,12 @@ import certifi
 import requests
 import pandas as pd
 from pymongo import MongoClient
+import gridfs
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import robust_get, is_report_link
 from config import USER_AGENTS
 
-DOWNLOAD_DIR = os.environ.get("REPORT_DOWNLOAD_DIR", "downloaded_reports")
 SCAN_INTERVAL_DAYS = 30
 
 
@@ -136,45 +137,61 @@ def search_reports_ddg(company_name, symbol):
     return found
 
 
-def download_pdf(url, company_symbol, download_dir):
-    """Download a PDF and return the local path, or None on failure."""
+def download_and_store_pdf(url, company_symbol, company_name, title, fs):
+    """Download a PDF and store it in MongoDB GridFS. Returns (gridfs_id, file_size) or (None, None)."""
     try:
         resp = robust_get(url, timeout=30, stream=True)
         if resp.status_code != 200:
-            return None
+            return None, None
 
         content_type = resp.headers.get("Content-Type", "").lower()
         if "pdf" not in content_type and "octet-stream" not in content_type:
             resp.close()
-            return None
+            return None, None
 
         content_length = resp.headers.get("Content-Length")
         if content_length and int(content_length) < 50_000:
             resp.close()
-            return None
+            return None, None
+
+        pdf_data = io.BytesIO()
+        for chunk in resp.iter_content(chunk_size=8192):
+            pdf_data.write(chunk)
+
+        file_size = pdf_data.tell()
+        if file_size < 50_000:
+            return None, None
+
+        pdf_data.seek(0)
 
         url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
         filename = f"{company_symbol}_{url_hash}.pdf"
-        filepath = os.path.join(download_dir, filename)
 
-        with open(filepath, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=8192):
-                f.write(chunk)
+        # Remove existing file with same filename to avoid duplicates
+        existing = fs.find_one({"filename": filename})
+        if existing:
+            fs.delete(existing._id)
 
-        file_size = os.path.getsize(filepath)
-        if file_size < 50_000:
-            os.remove(filepath)
-            return None
+        gridfs_id = fs.put(
+            pdf_data,
+            filename=filename,
+            content_type="application/pdf",
+            symbol=company_symbol,
+            company_name=company_name,
+            title=title,
+            source_url=url,
+            uploaded_at=datetime.now(tz=None).strftime("%Y-%m-%d %H:%M:%S"),
+        )
 
-        print(f"    Downloaded: {filename} ({file_size / 1024:.0f} KB)")
-        return filepath
+        print(f"    Stored in GridFS: {filename} ({file_size / 1024:.0f} KB)")
+        return gridfs_id, file_size
 
     except Exception as e:
-        print(f"    Download failed: {e}")
-        return None
+        print(f"    Download/store failed: {e}")
+        return None, None
 
 
-def scan_company(company, download_dir):
+def scan_company(company, fs):
     """Scan a single company for ESG reports."""
     name = company.get("Company Name", "Unknown")
     symbol = company.get("Symbol", "UNK")
@@ -215,7 +232,7 @@ def scan_company(company, download_dir):
         except Exception as e:
             print(f"    Site scan error: {e}")
 
-    # Download PDFs
+    # Download PDFs and store in GridFS
     for result in search_results:
         url = result["url"]
         if not url.lower().endswith(".pdf") and "pdf" not in url.lower():
@@ -228,20 +245,20 @@ def scan_company(company, download_dir):
             })
             continue
 
-        filepath = download_pdf(url, symbol, download_dir)
+        gridfs_id, file_size = download_and_store_pdf(url, symbol, name, result["title"], fs)
         reports.append({
             "title": result["title"],
             "url": url,
             "snippet": result.get("snippet", ""),
             "type": "pdf",
-            "downloaded": filepath is not None,
-            "local_path": filepath,
-            "file_size": os.path.getsize(filepath) if filepath else None,
+            "downloaded": gridfs_id is not None,
+            "gridfs_id": str(gridfs_id) if gridfs_id else None,
+            "file_size": file_size,
         })
 
     print(f"  Total reports found: {len(reports)}")
-    pdfs_downloaded = sum(1 for r in reports if r.get("downloaded"))
-    print(f"  PDFs downloaded: {pdfs_downloaded}")
+    pdfs_stored = sum(1 for r in reports if r.get("downloaded"))
+    print(f"  PDFs stored in MongoDB: {pdfs_stored}")
 
     return reports
 
@@ -261,6 +278,7 @@ def save_results(db, company, reports):
             "snippet": report.get("snippet", ""),
             "type": report.get("type", "unknown"),
             "downloaded": report.get("downloaded", False),
+            "gridfs_id": report.get("gridfs_id"),
             "file_size": report.get("file_size"),
             "scanned_at": now,
             "source": "batch_scanner",
@@ -271,7 +289,6 @@ def save_results(db, company, reports):
             upsert=True,
         )
 
-    # Mark company as scanned even if no reports found
     if not reports:
         db.esg_reports.update_one(
             {"symbol": symbol, "type": "scan_marker"},
@@ -296,7 +313,7 @@ def main():
 
     print("=" * 60)
     print("ESG Batch Report Scanner")
-    print(f"Started: {datetime.now(tz=None).strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    print(f"Started: {datetime.now(tz=None).strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
     mongo_uri = get_mongo_uri()
@@ -307,12 +324,11 @@ def main():
     try:
         client = connect_mongo(mongo_uri)
         db = client.esg_agent
-        print("Connected to MongoDB.")
+        fs = gridfs.GridFS(db)
+        print("Connected to MongoDB (GridFS enabled).")
     except Exception as e:
         print(f"MongoDB connection failed: {e}")
         sys.exit(1)
-
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     if args.company:
         company = db.companies.find_one({"Symbol": args.company.upper()}, {"_id": 0})
@@ -325,10 +341,11 @@ def main():
 
     if not batch:
         print("No companies need scanning (all scanned within the last 30 days).")
+        client.close()
         return
 
     print(f"\nBatch: {len(batch)} companies to scan")
-    print(f"Download directory: {os.path.abspath(DOWNLOAD_DIR)}")
+    print("PDFs will be stored in MongoDB GridFS")
 
     total_reports = 0
     total_pdfs = 0
@@ -336,7 +353,7 @@ def main():
     for i, company in enumerate(batch):
         print(f"\n[{i+1}/{len(batch)}]", end="")
         try:
-            reports = scan_company(company, DOWNLOAD_DIR)
+            reports = scan_company(company, fs)
             save_results(db, company, reports)
             total_reports += len(reports)
             total_pdfs += sum(1 for r in reports if r.get("downloaded"))
@@ -345,7 +362,6 @@ def main():
             import traceback
             traceback.print_exc()
 
-        # Rate limiting between companies
         if i < len(batch) - 1:
             time.sleep(2)
 
@@ -353,7 +369,7 @@ def main():
     print(f"SCAN COMPLETE")
     print(f"Companies scanned: {len(batch)}")
     print(f"Total reports found: {total_reports}")
-    print(f"PDFs downloaded: {total_pdfs}")
+    print(f"PDFs stored in MongoDB: {total_pdfs}")
     print(f"{'='*60}")
 
     client.close()
