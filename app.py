@@ -12,6 +12,9 @@ import difflib
 import numpy as np
 import zipfile
 import io
+# --- App Configuration (Must be first!) ---
+st.set_page_config(page_title="ESG Report AI Agent", layout="wide")
+
 # MongoDB Handler
 from mongo_handler import MongoHandler
 # Shared utilities and config
@@ -31,9 +34,6 @@ from config import (
 if "mongo" not in st.session_state:
     st.session_state.mongo = MongoHandler()
 mongo_db = st.session_state.mongo
-
-# --- App Configuration (Must be first!)# Main App
-st.set_page_config(page_title="ESG Report AI Agent", layout="wide")
 
 st.title("ESG Report AI Agent 🤖")
 st.markdown("---")
@@ -1109,11 +1109,9 @@ def search_esg_info(company_name, fetch_reports=True, known_website=None, symbol
 
 
 # Function to load S&P 500 companies
-@st.cache_data
 def load_sp500_companies():
-    # Attempt to load from MongoDB first
-    if "mongo" in st.session_state:
-        return st.session_state.mongo.get_all_companies()
+    if mongo_db and mongo_db.client:
+        return mongo_db.get_all_companies()
     return []
 
 # Load companies (This will now pull from Cloud)
