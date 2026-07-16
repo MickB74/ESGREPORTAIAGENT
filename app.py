@@ -1165,6 +1165,50 @@ with st.sidebar:
         st.error("🔴 **Cloud DB Offline**")
     st.markdown("---")
 
+    # Batch Scanner Trigger
+    with st.expander("🤖 Batch Report Scanner"):
+        st.caption("Trigger the automated ESG report scanner via GitHub Actions.")
+        batch_size = st.number_input("Companies per batch", min_value=1, max_value=100, value=50, key="batch_size_input")
+        single_symbol = st.text_input("Or scan single company (symbol)", placeholder="e.g. AAPL", key="single_scan_input")
+
+        if st.button("🚀 Run Batch Scanner", key="trigger_batch_scan"):
+            gh_token = st.secrets.get("GITHUB_TOKEN", "")
+            gh_repo = st.secrets.get("GITHUB_REPO", "MickB74/ESGREPORTAIAGENT")
+            if not gh_token:
+                st.error("Add `GITHUB_TOKEN` to your Streamlit secrets to enable this feature.")
+            else:
+                import requests as _requests
+                inputs = {}
+                if single_symbol.strip():
+                    inputs["company"] = single_symbol.strip().upper()
+                else:
+                    inputs["batch_size"] = str(int(batch_size))
+                try:
+                    resp = _requests.post(
+                        f"https://api.github.com/repos/{gh_repo}/actions/workflows/batch_report_scanner.yml/dispatches",
+                        headers={
+                            "Authorization": f"Bearer {gh_token}",
+                            "Accept": "application/vnd.github.v3+json",
+                        },
+                        json={"ref": "master", "inputs": inputs},
+                        timeout=10,
+                    )
+                    if resp.status_code == 204:
+                        st.success("Batch scanner triggered! Check GitHub Actions for progress.")
+                    else:
+                        st.error(f"GitHub API error ({resp.status_code}): {resp.text}")
+                except Exception as e:
+                    st.error(f"Failed to trigger: {e}")
+
+        # Show recent scan stats
+        if "mongo" in st.session_state and st.session_state.mongo.client:
+            try:
+                report_count = st.session_state.mongo.db.esg_reports.count_documents({"type": {"$ne": "scan_marker"}})
+                companies_scanned = len(st.session_state.mongo.db.esg_reports.distinct("symbol"))
+                st.caption(f"📊 {report_count} reports found across {companies_scanned} companies")
+            except Exception:
+                pass
+
 # --- TABS LAYOUT ---
 # --- NAVIGATION ---
 # Using radio instead of tabs to ensure state persistence across reruns
