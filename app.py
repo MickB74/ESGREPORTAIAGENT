@@ -1214,7 +1214,7 @@ with st.sidebar:
 # Using radio instead of tabs to ensure state persistence across reruns
 selected_tab = st.radio(
     "Navigation", 
-    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "RE100 List", "🌿 SBTi Targets", "❓ FAQs"],
+    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "📄 Batch Reports", "RE100 List", "🌿 SBTi Targets", "❓ FAQs"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -3090,3 +3090,88 @@ if selected_tab == "🌿 SBTi Targets":
         
     else:
         st.info("⏳ Loading data or database empty. Please run the scraper if this persists.")
+
+# ====================
+# TAB: Batch Reports
+# ====================
+if selected_tab == "📄 Batch Reports":
+    st.header("📄 Batch ESG Report Scanner Results")
+
+    if "mongo" not in st.session_state or not st.session_state.mongo.client:
+        st.warning("Database not connected.")
+    else:
+        db = st.session_state.mongo.db
+
+        all_reports = list(db.esg_reports.find(
+            {"type": {"$ne": "scan_marker"}},
+            {"_id": 0}
+        ).sort("scanned_at", -1))
+
+        if not all_reports:
+            st.info("No batch scan results yet. Use the Batch Report Scanner in the sidebar to start scanning.")
+        else:
+            symbols = sorted(set(r.get("symbol", "") for r in all_reports))
+            report_types = sorted(set(r.get("type", "unknown") for r in all_reports))
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                filter_symbol = st.selectbox("Filter by company", ["All"] + symbols, key="batch_filter_symbol")
+            with col2:
+                filter_type = st.selectbox("Filter by type", ["All"] + report_types, key="batch_filter_type")
+            with col3:
+                filter_downloaded = st.selectbox("Download status", ["All", "Downloaded", "Not downloaded"], key="batch_filter_dl")
+
+            filtered = all_reports
+            if filter_symbol != "All":
+                filtered = [r for r in filtered if r.get("symbol") == filter_symbol]
+            if filter_type != "All":
+                filtered = [r for r in filtered if r.get("type") == filter_type]
+            if filter_downloaded == "Downloaded":
+                filtered = [r for r in filtered if r.get("downloaded")]
+            elif filter_downloaded == "Not downloaded":
+                filtered = [r for r in filtered if not r.get("downloaded")]
+
+            st.caption(f"Showing {len(filtered)} of {len(all_reports)} reports")
+
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("Total Reports", len(all_reports))
+            col_b.metric("Companies Scanned", len(symbols))
+            col_c.metric("PDFs Downloaded", sum(1 for r in all_reports if r.get("downloaded")))
+
+            for i, report in enumerate(filtered):
+                symbol = report.get("symbol", "?")
+                title = report.get("title", "Untitled")
+                rtype = report.get("type", "unknown")
+                downloaded = report.get("downloaded", False)
+                scanned_at = report.get("scanned_at", "")
+                source_url = report.get("url", "")
+                storage_url = report.get("storage_url", "")
+                file_size = report.get("file_size")
+
+                status_icon = "✅" if downloaded else "🔗" if rtype == "webpage" else "❌"
+                size_str = f" ({file_size / 1024:.0f} KB)" if file_size else ""
+
+                with st.expander(f"{status_icon} {symbol} — {title[:80]}{size_str}", expanded=False):
+                    st.write(f"**Company:** {report.get('company_name', symbol)}")
+                    st.write(f"**Type:** {rtype} | **Scanned:** {scanned_at}")
+                    if report.get("snippet"):
+                        st.caption(report["snippet"][:200])
+                    if source_url:
+                        st.markdown(f"[Original source]({source_url})")
+                    if storage_url:
+                        st.markdown(f"[Download PDF from Supabase]({storage_url})")
+                    if not downloaded and rtype == "pdf":
+                        st.caption("PDF could not be downloaded during scan.")
+
+            if filtered:
+                df_reports = pd.DataFrame(filtered)
+                cols_to_show = ["symbol", "company_name", "title", "type", "downloaded", "scanned_at", "url", "storage_url"]
+                cols_available = [c for c in cols_to_show if c in df_reports.columns]
+                csv_data = df_reports[cols_available].to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    "⬇️ Download Report List CSV",
+                    csv_data,
+                    "batch_reports.csv",
+                    "text/csv",
+                    key="download-batch-reports"
+                )
