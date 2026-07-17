@@ -176,9 +176,10 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
             resp.close()
             return None, None
 
-        pdf_data = b""
+        chunks = []
         for chunk in resp.iter_content(chunk_size=8192):
-            pdf_data += chunk
+            chunks.append(chunk)
+        pdf_data = b"".join(chunks)
 
         file_size = len(pdf_data)
         if file_size < 50_000:
@@ -192,7 +193,7 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
         supabase_client.storage.from_(bucket_name).upload(
             storage_path,
             pdf_data,
-            file_options={"content-type": "application/pdf", "upsert": "true"},
+            file_options={"content-type": "application/pdf", "x-upsert": "true"},
         )
 
         # Get public URL
