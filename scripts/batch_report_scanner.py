@@ -202,7 +202,9 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
         return public_url, file_size
 
     except Exception as e:
+        import traceback
         print(f"    Download/store failed: {e}")
+        traceback.print_exc()
         return None, None
 
 
@@ -354,7 +356,7 @@ def main():
         sys.exit(1)
 
     supabase_client = create_client(supa_url, supa_key)
-    print(f"Connected to Supabase (bucket: {bucket_name}).")
+    print(f"Connected to Supabase (bucket len={len(bucket_name)}, has_hyphen={'_' in bucket_name}).")
 
     if args.company:
         company = db.companies.find_one({"Symbol": args.company.upper()}, {"_id": 0})
