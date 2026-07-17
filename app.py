@@ -3102,10 +3102,80 @@ if selected_tab == "📄 Batch Reports":
     else:
         db = st.session_state.mongo.db
 
+        # --- Supabase File Browser ---
+        st.subheader("Supabase Storage Browser")
+        try:
+            supa_url = st.secrets.get("SUPABASE_URL")
+            supa_key = st.secrets.get("SUPABASE_KEY")
+            supa_bucket = st.secrets.get("SUPABASE_BUCKET", "esg_reports")
+
+            if supa_url and supa_key:
+                from supabase import create_client as _create_supa
+                supa_key_clean = "".join(c for c in supa_key.strip() if ord(c) < 128)
+                supa_client = _create_supa(supa_url.strip(), supa_key_clean)
+
+                folders = supa_client.storage.from_(supa_bucket).list()
+                company_folders = [f["name"] for f in folders if f.get("id") is None]
+
+                all_files = []
+                for folder in sorted(company_folders):
+                    files = supa_client.storage.from_(supa_bucket).list(folder)
+                    for f in files:
+                        if f.get("name", "").endswith(".pdf"):
+                            size_bytes = f.get("metadata", {}).get("size", 0) if f.get("metadata") else 0
+                            public_url = supa_client.storage.from_(supa_bucket).get_public_url(f"{folder}/{f['name']}")
+                            all_files.append({
+                                "Company": folder,
+                                "File": f["name"],
+                                "Size (KB)": round(size_bytes / 1024) if size_bytes else "—",
+                                "Created": f.get("created_at", "")[:10] if f.get("created_at") else "",
+                                "URL": public_url,
+                            })
+
+                if all_files:
+                    col_a, col_b = st.columns(2)
+                    col_a.metric("PDFs in Supabase", len(all_files))
+                    col_b.metric("Companies with PDFs", len(company_folders))
+
+                    bucket_filter = st.selectbox(
+                        "Filter by company", ["All"] + sorted(company_folders), key="bucket_filter"
+                    )
+                    display_files = all_files
+                    if bucket_filter != "All":
+                        display_files = [f for f in all_files if f["Company"] == bucket_filter]
+
+                    for f in display_files:
+                        st.markdown(
+                            f"📄 **{f['Company']}** / {f['File']} — {f['Size (KB)']} KB "
+                            f"[Download]({f['URL']})"
+                        )
+                else:
+                    st.info("No PDFs in Supabase bucket yet. Run the batch scanner to start collecting reports.")
+            else:
+                st.warning("Supabase credentials not configured.")
+        except Exception as e:
+            st.warning(f"Could not load Supabase files: {e}")
+
+        st.markdown("---")
+
+        # --- Report Metadata from MongoDB ---
+        st.subheader("Scan Results (MongoDB)")
+
         all_reports = list(db.esg_reports.find(
             {"type": {"$ne": "scan_marker"}},
             {"_id": 0}
         ).sort("scanned_at", -1))
+
+        # Cleanup button — remove reports with no PDFs downloaded
+        col_cleanup1, col_cleanup2 = st.columns([3, 1])
+        with col_cleanup2:
+            if st.button("🗑 Remove failed scans", key="cleanup_failed"):
+                result = db.esg_reports.delete_many({
+                    "source": "batch_scanner",
+                    "downloaded": {"$ne": True},
+                })
+                st.success(f"Removed {result.deleted_count} failed/non-downloaded records.")
+                st.rerun()
 
         if not all_reports:
             st.info("No batch scan results yet. Use the Batch Report Scanner in the sidebar to start scanning.")
@@ -3131,14 +3201,19 @@ if selected_tab == "📄 Batch Reports":
             elif filter_downloaded == "Not downloaded":
                 filtered = [r for r in filtered if not r.get("downloaded")]
 
-            st.caption(f"Showing {len(filtered)} of {len(all_reports)} reports")
-
             col_a, col_b, col_c = st.columns(3)
             col_a.metric("Total Reports", len(all_reports))
             col_b.metric("Companies Scanned", len(symbols))
             col_c.metric("PDFs Downloaded", sum(1 for r in all_reports if r.get("downloaded")))
 
-            for i, report in enumerate(filtered):
+            PAGE_SIZE = 50
+            total_pages = max(1, (len(filtered) + PAGE_SIZE - 1) // PAGE_SIZE)
+            page = st.number_input("Page", min_value=1, max_value=total_pages, value=1, key="batch_page")
+            page_start = (page - 1) * PAGE_SIZE
+            page_slice = filtered[page_start:page_start + PAGE_SIZE]
+            st.caption(f"Showing {page_start + 1}–{min(page_start + PAGE_SIZE, len(filtered))} of {len(filtered)} reports (page {page}/{total_pages})")
+
+            for i, report in enumerate(page_slice):
                 symbol = report.get("symbol", "?")
                 title = report.get("title", "Untitled")
                 rtype = report.get("type", "unknown")
