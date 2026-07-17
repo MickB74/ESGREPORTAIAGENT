@@ -11,3 +11,4 @@ pandas>=2.1,<4.0
 numpy>=1.26,<3.0
 cloudscraper>=1.2,<2.0
 pytest>=8.0,<10.0
+supabase>=2.0,<3.0

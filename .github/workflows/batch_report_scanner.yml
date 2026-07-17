@@ -38,6 +38,9 @@ jobs:
     - name: Run Batch Scanner
       env:
         MONGO_URI: ${{ secrets.MONGO_URI }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        SUPABASE_BUCKET: ${{ secrets.SUPABASE_BUCKET }}
       run: |
         ARGS="--batch-size ${{ github.event.inputs.batch_size || '50' }}"
         if [ -n "${{ github.event.inputs.company }}" ]; then

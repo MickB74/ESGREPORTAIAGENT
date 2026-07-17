@@ -2,7 +2,7 @@
 Batch ESG Report Scanner
 
 Scans ~50 companies per run, finds ESG report URLs, downloads PDFs,
-stores PDF files in MongoDB GridFS and metadata in esg_reports collection.
+stores PDF files in Supabase Storage and metadata in MongoDB.
 Designed to run as a daily GitHub Action that completes a full cycle
 of all companies over ~11 days.
 
@@ -13,21 +13,17 @@ Usage:
 import os
 import sys
 import time
-import io
 import argparse
 import hashlib
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
 import certifi
-import requests
-import pandas as pd
 from pymongo import MongoClient
-import gridfs
+from supabase import create_client
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import robust_get, is_report_link
-from config import USER_AGENTS
 
 SCAN_INTERVAL_DAYS = 30
 
@@ -53,6 +49,32 @@ def get_mongo_uri():
         print(f"Error reading secrets: {e}")
 
     return None
+
+
+def get_supabase_config():
+    """Get Supabase URL, key, and bucket name from env or secrets."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY")
+    bucket = os.environ.get("SUPABASE_BUCKET", "esg-reports")
+
+    if url and key:
+        return url, key, bucket
+
+    try:
+        import toml
+        secrets_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            ".streamlit", "secrets.toml",
+        )
+        if os.path.exists(secrets_path):
+            data = toml.load(secrets_path)
+            url = url or data.get("SUPABASE_URL")
+            key = key or data.get("SUPABASE_KEY")
+            bucket = data.get("SUPABASE_BUCKET", bucket)
+    except Exception as e:
+        print(f"Error reading Supabase secrets: {e}")
+
+    return url, key, bucket
 
 
 def connect_mongo(uri):
@@ -137,8 +159,8 @@ def search_reports_ddg(company_name, symbol):
     return found
 
 
-def download_and_store_pdf(url, company_symbol, company_name, title, fs):
-    """Download a PDF and store it in MongoDB GridFS. Returns (gridfs_id, file_size) or (None, None)."""
+def download_and_store_pdf(url, company_symbol, company_name, title, supabase_client, bucket_name):
+    """Download a PDF and store it in Supabase Storage. Returns (public_url, file_size) or (None, None)."""
     try:
         resp = robust_get(url, timeout=30, stream=True)
         if resp.status_code != 200:
@@ -154,44 +176,37 @@ def download_and_store_pdf(url, company_symbol, company_name, title, fs):
             resp.close()
             return None, None
 
-        pdf_data = io.BytesIO()
+        pdf_data = b""
         for chunk in resp.iter_content(chunk_size=8192):
-            pdf_data.write(chunk)
+            pdf_data += chunk
 
-        file_size = pdf_data.tell()
+        file_size = len(pdf_data)
         if file_size < 50_000:
             return None, None
 
-        pdf_data.seek(0)
-
         url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
         filename = f"{company_symbol}_{url_hash}.pdf"
+        storage_path = f"{company_symbol}/{filename}"
 
-        # Remove existing file with same filename to avoid duplicates
-        existing = fs.find_one({"filename": filename})
-        if existing:
-            fs.delete(existing._id)
-
-        gridfs_id = fs.put(
+        # Upload to Supabase Storage (upsert to overwrite if exists)
+        supabase_client.storage.from_(bucket_name).upload(
+            storage_path,
             pdf_data,
-            filename=filename,
-            content_type="application/pdf",
-            symbol=company_symbol,
-            company_name=company_name,
-            title=title,
-            source_url=url,
-            uploaded_at=datetime.now(tz=None).strftime("%Y-%m-%d %H:%M:%S"),
+            file_options={"content-type": "application/pdf", "upsert": "true"},
         )
 
-        print(f"    Stored in GridFS: {filename} ({file_size / 1024:.0f} KB)")
-        return gridfs_id, file_size
+        # Get public URL
+        public_url = supabase_client.storage.from_(bucket_name).get_public_url(storage_path)
+
+        print(f"    Stored in Supabase: {storage_path} ({file_size / 1024:.0f} KB)")
+        return public_url, file_size
 
     except Exception as e:
         print(f"    Download/store failed: {e}")
         return None, None
 
 
-def scan_company(company, fs):
+def scan_company(company, supabase_client, bucket_name):
     """Scan a single company for ESG reports."""
     name = company.get("Company Name", "Unknown")
     symbol = company.get("Symbol", "UNK")
@@ -232,7 +247,7 @@ def scan_company(company, fs):
         except Exception as e:
             print(f"    Site scan error: {e}")
 
-    # Download PDFs and store in GridFS
+    # Download PDFs and store in Supabase
     for result in search_results:
         url = result["url"]
         if not url.lower().endswith(".pdf") and "pdf" not in url.lower():
@@ -245,20 +260,22 @@ def scan_company(company, fs):
             })
             continue
 
-        gridfs_id, file_size = download_and_store_pdf(url, symbol, name, result["title"], fs)
+        public_url, file_size = download_and_store_pdf(
+            url, symbol, name, result["title"], supabase_client, bucket_name,
+        )
         reports.append({
             "title": result["title"],
             "url": url,
             "snippet": result.get("snippet", ""),
             "type": "pdf",
-            "downloaded": gridfs_id is not None,
-            "gridfs_id": str(gridfs_id) if gridfs_id else None,
+            "downloaded": public_url is not None,
+            "storage_url": public_url,
             "file_size": file_size,
         })
 
     print(f"  Total reports found: {len(reports)}")
     pdfs_stored = sum(1 for r in reports if r.get("downloaded"))
-    print(f"  PDFs stored in MongoDB: {pdfs_stored}")
+    print(f"  PDFs stored in Supabase: {pdfs_stored}")
 
     return reports
 
@@ -278,7 +295,7 @@ def save_results(db, company, reports):
             "snippet": report.get("snippet", ""),
             "type": report.get("type", "unknown"),
             "downloaded": report.get("downloaded", False),
-            "gridfs_id": report.get("gridfs_id"),
+            "storage_url": report.get("storage_url"),
             "file_size": report.get("file_size"),
             "scanned_at": now,
             "source": "batch_scanner",
@@ -316,19 +333,28 @@ def main():
     print(f"Started: {datetime.now(tz=None).strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
+    # Connect to MongoDB (metadata)
     mongo_uri = get_mongo_uri()
     if not mongo_uri:
-        print("MONGO_URI not found. Set it as an environment variable or in .streamlit/secrets.toml")
+        print("MONGO_URI not found.")
         sys.exit(1)
 
     try:
         client = connect_mongo(mongo_uri)
         db = client.esg_agent
-        fs = gridfs.GridFS(db)
-        print("Connected to MongoDB (GridFS enabled).")
+        print("Connected to MongoDB.")
     except Exception as e:
         print(f"MongoDB connection failed: {e}")
         sys.exit(1)
+
+    # Connect to Supabase (file storage)
+    supa_url, supa_key, bucket_name = get_supabase_config()
+    if not supa_url or not supa_key:
+        print("SUPABASE_URL / SUPABASE_KEY not found.")
+        sys.exit(1)
+
+    supabase_client = create_client(supa_url, supa_key)
+    print(f"Connected to Supabase (bucket: {bucket_name}).")
 
     if args.company:
         company = db.companies.find_one({"Symbol": args.company.upper()}, {"_id": 0})
@@ -345,7 +371,6 @@ def main():
         return
 
     print(f"\nBatch: {len(batch)} companies to scan")
-    print("PDFs will be stored in MongoDB GridFS")
 
     total_reports = 0
     total_pdfs = 0
@@ -353,7 +378,7 @@ def main():
     for i, company in enumerate(batch):
         print(f"\n[{i+1}/{len(batch)}]", end="")
         try:
-            reports = scan_company(company, fs)
+            reports = scan_company(company, supabase_client, bucket_name)
             save_results(db, company, reports)
             total_reports += len(reports)
             total_pdfs += sum(1 for r in reports if r.get("downloaded"))
@@ -369,7 +394,7 @@ def main():
     print(f"SCAN COMPLETE")
     print(f"Companies scanned: {len(batch)}")
     print(f"Total reports found: {total_reports}")
-    print(f"PDFs stored in MongoDB: {total_pdfs}")
+    print(f"PDFs stored in Supabase: {total_pdfs}")
     print(f"{'='*60}")
 
     client.close()
