@@ -355,8 +355,14 @@ def main():
         print("SUPABASE_URL / SUPABASE_KEY not found.")
         sys.exit(1)
 
+    # Strip any invisible/non-ASCII chars from credentials
+    supa_url = supa_url.strip()
+    supa_key = "".join(c for c in supa_key.strip() if ord(c) < 128)
+    bucket_name = bucket_name.strip()
+
+    print(f"Key is_ascii={supa_key.isascii()}, key_len={len(supa_key)}")
     supabase_client = create_client(supa_url, supa_key)
-    print(f"Connected to Supabase (bucket len={len(bucket_name)}, has_hyphen={'_' in bucket_name}).")
+    print(f"Connected to Supabase (bucket len={len(bucket_name)}, has_underscore={'_' in bucket_name}).")
 
     if args.company:
         company = db.companies.find_one({"Symbol": args.company.upper()}, {"_id": 0})
