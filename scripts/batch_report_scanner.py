@@ -189,12 +189,20 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
         filename = f"{company_symbol}_{url_hash}.pdf"
         storage_path = f"{company_symbol}/{filename}"
 
-        # Upload to Supabase Storage (upsert to overwrite if exists)
-        supabase_client.storage.from_(bucket_name).upload(
-            storage_path,
-            pdf_data,
-            file_options={"content-type": "application/pdf", "x-upsert": "true"},
-        )
+        # Write to temp file then upload (avoids encoding issues with bytes)
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(pdf_data)
+            tmp_path = tmp.name
+
+        try:
+            supabase_client.storage.from_(bucket_name).upload(
+                storage_path,
+                tmp_path,
+                file_options={"content-type": "application/pdf", "x-upsert": "true"},
+            )
+        finally:
+            os.unlink(tmp_path)
 
         # Get public URL
         public_url = supabase_client.storage.from_(bucket_name).get_public_url(storage_path)
