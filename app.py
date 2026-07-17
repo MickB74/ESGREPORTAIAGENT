@@ -3105,14 +3105,16 @@ if selected_tab == "📄 Batch Reports":
         # --- Supabase File Browser ---
         st.subheader("Supabase Storage Browser")
         try:
-            supa_url = st.secrets.get("SUPABASE_URL")
-            supa_key = st.secrets.get("SUPABASE_KEY")
+            supa_url = st.secrets.get("SUPABASE_URL", "")
+            supa_key = st.secrets.get("SUPABASE_KEY", "")
             supa_bucket = st.secrets.get("SUPABASE_BUCKET", "esg_reports")
 
             if supa_url and supa_key:
                 from supabase import create_client as _create_supa
-                supa_key_clean = "".join(c for c in supa_key.strip() if ord(c) < 128)
-                supa_client = _create_supa(supa_url.strip(), supa_key_clean)
+                supa_url = supa_url.strip()
+                supa_key = "".join(c for c in supa_key.strip() if ord(c) < 128)
+                supa_bucket = supa_bucket.strip()
+                supa_client = _create_supa(supa_url, supa_key)
 
                 folders = supa_client.storage.from_(supa_bucket).list()
                 company_folders = [f["name"] for f in folders if f.get("id") is None]
