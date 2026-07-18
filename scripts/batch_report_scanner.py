@@ -23,9 +23,33 @@ from pymongo import MongoClient
 from supabase import create_client
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import robust_get, is_report_link
+from utils import robust_get, is_report_link, extract_year
 
 SCAN_INTERVAL_DAYS = 30
+
+# Report-type keywords, checked in priority order (first match wins).
+# The slug becomes part of the stored filename.
+REPORT_TYPE_RULES = [
+    ("sustainability-report", ["sustainability report", "sustainability"]),
+    ("esg-report", ["esg report", "esg"]),
+    ("climate-report", ["climate", "tcfd", "cdp", "decarbonization", "net zero", "net-zero"]),
+    ("environmental-report", ["environmental", "environment"]),
+    ("impact-report", ["impact report", "impact"]),
+    ("csr-report", ["corporate responsibility", "corporate-responsibility", "social responsibility", "csr"]),
+    ("diversity-report", ["diversity", "inclusion", "dei", "human rights", "human-rights"]),
+    ("governance-report", ["governance", "proxy"]),
+    ("data-index", ["data index", "esg index", "sasb index", "gri index", "appendix", "metrics", "databook", "data-index"]),
+    ("annual-report", ["annual report", "annual", "10-k", "10k"]),
+]
+
+
+def classify_report_type(title, url):
+    """Return a short slug describing the report type, from title + URL keywords."""
+    hay = f"{title or ''} {url or ''}".lower()
+    for slug, keywords in REPORT_TYPE_RULES:
+        if any(k in hay for k in keywords):
+            return slug
+    return "report"
 
 
 def get_mongo_uri():
@@ -185,8 +209,15 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
         if file_size < 50_000:
             return None, None
 
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:8]
-        filename = f"{company_symbol}_{url_hash}.pdf"
+        # Build a descriptive filename: SYMBOL_report-type[_year]_hash.pdf
+        report_type = classify_report_type(title, url)
+        year = extract_year(f"{title} {url}")
+        url_hash = hashlib.md5(url.encode()).hexdigest()[:6]
+        parts = [company_symbol, report_type]
+        if year:
+            parts.append(year)
+        parts.append(url_hash)
+        filename = "_".join(parts) + ".pdf"
         storage_path = f"{company_symbol}/{filename}"
 
         supabase_client.storage.from_(bucket_name).upload(
@@ -342,6 +373,8 @@ def scan_company(company, supabase_client, bucket_name):
             "url": result["url"],
             "snippet": result.get("snippet", ""),
             "type": "pdf",
+            "report_type": classify_report_type(result["title"], result["url"]),
+            "report_year": extract_year(f"{result['title']} {result['url']}"),
             "downloaded": public_url is not None,
             "storage_url": public_url,
             "file_size": file_size,
@@ -378,6 +411,8 @@ def save_results(db, company, reports):
             "url": report["url"],
             "snippet": report.get("snippet", ""),
             "type": report.get("type", "unknown"),
+            "report_type": report.get("report_type"),
+            "report_year": report.get("report_year"),
             "downloaded": report.get("downloaded", False),
             "storage_url": report.get("storage_url"),
             "file_size": report.get("file_size"),
