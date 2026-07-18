@@ -1214,7 +1214,7 @@ with st.sidebar:
 # Using radio instead of tabs to ensure state persistence across reruns
 selected_tab = st.radio(
     "Navigation", 
-    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "📄 Batch Reports", "RE100 List", "🌿 SBTi Targets", "❓ FAQs"],
+    ["🔍 Search & Analyze", "📊 All Resources", "✅ Verified ESG Sites", "📂 User Saved Links", "📄 Batch Reports", "📈 ESG Benchmark", "RE100 List", "🌿 SBTi Targets", "❓ FAQs"],
     horizontal=True,
     label_visibility="collapsed"
 )
@@ -3252,3 +3252,98 @@ if selected_tab == "📄 Batch Reports":
                     "text/csv",
                     key="download-batch-reports"
                 )
+
+# ====================
+# TAB: ESG Benchmark
+# ====================
+if selected_tab == "📈 ESG Benchmark":
+    st.header("📈 ESG Metric Benchmark")
+    st.caption("Standardized metrics extracted from company ESG reports, for cross-company comparison.")
+
+    if "mongo" not in st.session_state or not st.session_state.mongo.client:
+        st.warning("Database not connected.")
+    else:
+        db = st.session_state.mongo.db
+        records = list(db.esg_metrics.find({}, {"_id": 0}))
+
+        if not records:
+            st.info("No extracted metrics yet. Run the metric extraction pipeline to populate this view.")
+        else:
+            # Column display config: field -> (label, unit)
+            METRIC_COLS = [
+                ("reporting_year", "Year", ""),
+                ("scope1_emissions_tco2e", "Scope 1", "tCO₂e"),
+                ("scope2_emissions_tco2e", "Scope 2", "tCO₂e"),
+                ("scope3_emissions_tco2e", "Scope 3", "tCO₂e"),
+                ("renewable_energy_pct", "Renewable", "%"),
+                ("net_zero_target_year", "Net-Zero Yr", ""),
+                ("interim_target_pct", "Interim Tgt", "%"),
+                ("interim_target_year", "Interim Yr", ""),
+                ("water_withdrawal_m3", "Water", "m³"),
+                ("waste_diverted_pct", "Waste Div.", "%"),
+                ("board_diversity_pct", "Board Div.", "%"),
+                ("workforce_diversity_pct", "Workforce Div.", "%"),
+                ("reporting_framework", "Framework", ""),
+            ]
+
+            rows = []
+            for r in records:
+                m = r.get("metrics", {})
+                row = {"Company": r.get("symbol", "?"), "Name": r.get("company_name", "")}
+                for field, label, _unit in METRIC_COLS:
+                    row[label] = m.get(field)
+                rows.append(row)
+
+            df_bench = pd.DataFrame(rows)
+
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("Companies", len(df_bench))
+            disclosed = df_bench["Net-Zero Yr"].notna().sum() if "Net-Zero Yr" in df_bench else 0
+            col_b.metric("With Net-Zero Target", int(disclosed))
+            renew = df_bench["Renewable"].dropna()
+            col_c.metric("Avg Renewable %", f"{renew.mean():.0f}%" if len(renew) else "—")
+
+            # Metric picker for focused comparison
+            metric_labels = [label for _f, label, _u in METRIC_COLS]
+            chosen = st.multiselect(
+                "Metrics to show",
+                metric_labels,
+                default=["Year", "Scope 1", "Scope 2", "Scope 3", "Renewable", "Net-Zero Yr", "Interim Tgt"],
+                key="bench_metric_pick",
+            )
+            show_cols = ["Company", "Name"] + [c for c in chosen if c in df_bench.columns]
+
+            st.dataframe(df_bench[show_cols], use_container_width=True, hide_index=True)
+
+            # Bar chart comparison for a single numeric metric
+            numeric_metrics = [
+                lbl for f, lbl, _u in METRIC_COLS
+                if lbl in df_bench and pd.api.types.is_numeric_dtype(df_bench[lbl]) and df_bench[lbl].notna().any()
+            ]
+            if numeric_metrics:
+                st.subheader("Compare a metric across companies")
+                pick = st.selectbox("Metric", numeric_metrics, key="bench_chart_metric")
+                chart_df = df_bench[["Company", pick]].dropna().set_index("Company").sort_values(pick, ascending=False)
+                if len(chart_df):
+                    st.bar_chart(chart_df)
+                else:
+                    st.caption("No companies disclose this metric yet.")
+
+            # Per-company detail with extraction notes
+            with st.expander("📋 Extraction details & notes"):
+                for r in records:
+                    m = r.get("metrics", {})
+                    st.markdown(f"**{r.get('symbol')} — {r.get('company_name','')}**  ·  "
+                                f"model: `{r.get('model','?')}`  ·  extracted: {r.get('extracted_at','')}")
+                    if m.get("data_notes"):
+                        st.caption(m["data_notes"])
+                    st.markdown("---")
+
+            csv_bench = df_bench.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "⬇️ Download Benchmark CSV",
+                csv_bench,
+                "esg_benchmark.csv",
+                "text/csv",
+                key="download-esg-benchmark",
+            )
