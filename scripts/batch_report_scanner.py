@@ -16,7 +16,7 @@ import time
 import argparse
 import hashlib
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import certifi
 from pymongo import MongoClient
@@ -208,6 +208,60 @@ def download_and_store_pdf(url, company_symbol, company_name, title, supabase_cl
         return None, None
 
 
+def _is_direct_pdf(url):
+    """True if a URL points directly at a PDF file."""
+    u = url.lower().split("?")[0]
+    return u.endswith(".pdf")
+
+
+def find_pdfs_on_page(page_url, company_name):
+    """Fetch a landing/hub page and return direct PDF links found on it.
+
+    Big companies host their ESG report behind a landing page rather than
+    linking the PDF directly. This follows that page one level deep and
+    pulls out the actual report PDFs.
+    Returns a list of {title, url} dicts.
+    """
+    found = []
+    try:
+        resp = robust_get(page_url, timeout=12)
+        if resp.status_code != 200 or "html" not in resp.headers.get("Content-Type", "").lower():
+            return found
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(resp.text, "html.parser")
+        parsed = urlparse(page_url)
+        base = f"{parsed.scheme}://{parsed.netloc}"
+
+        seen = set()
+        for link in soup.find_all("a", href=True):
+            href = link["href"].strip()
+            text = link.get_text(strip=True)
+
+            # Resolve relative URLs
+            if href.startswith("//"):
+                href = f"{parsed.scheme}:{href}"
+            elif href.startswith("/"):
+                href = base + href
+            elif not href.startswith("http"):
+                # relative to current path
+                href = urljoin(page_url, href)
+
+            if not _is_direct_pdf(href) or href in seen:
+                continue
+            seen.add(href)
+
+            # Keep only links that look like a report (by anchor text or URL)
+            if is_report_link(text or href, href):
+                found.append({"title": text or f"{company_name} ESG Report", "url": href})
+
+        # Cap per page to avoid grabbing dozens of ancillary PDFs
+        return found[:5]
+    except Exception as e:
+        print(f"      Landing-page scan error ({page_url[:60]}): {e}")
+        return found
+
+
 def scan_company(company, supabase_client, bucket_name):
     """Scan a single company for ESG reports."""
     name = company.get("Company Name", "Unknown")
@@ -239,7 +293,7 @@ def scan_company(company, supabase_client, bucket_name):
                     if href.startswith("/"):
                         parsed = urlparse(website)
                         href = f"{parsed.scheme}://{parsed.netloc}{href}"
-                    if href.lower().endswith(".pdf") and is_report_link(text or href, href):
+                    if _is_direct_pdf(href) and is_report_link(text or href, href):
                         if href not in [r["url"] for r in search_results]:
                             search_results.append({
                                 "title": text or "ESG Report",
@@ -249,30 +303,58 @@ def scan_company(company, supabase_client, bucket_name):
         except Exception as e:
             print(f"    Site scan error: {e}")
 
-    # Download PDFs and store in Supabase
+    # Split candidates into direct PDFs vs landing pages
+    direct_pdfs = []   # list of {title, url, snippet}
+    landing_pages = [] # list of {title, url, snippet}
+    seen_pdf_urls = set()
+
     for result in search_results:
         url = result["url"]
-        if not url.lower().endswith(".pdf") and "pdf" not in url.lower():
-            reports.append({
-                "title": result["title"],
-                "url": url,
-                "snippet": result.get("snippet", ""),
-                "type": "webpage",
-                "downloaded": False,
-            })
-            continue
+        if _is_direct_pdf(url) or "pdf" in url.lower():
+            if url not in seen_pdf_urls:
+                seen_pdf_urls.add(url)
+                direct_pdfs.append(result)
+        else:
+            landing_pages.append(result)
 
+    # Strategy 3: Follow landing pages to find embedded PDFs
+    if landing_pages:
+        print(f"  Strategy 3: Following {min(len(landing_pages), 5)} landing page(s) for embedded PDFs...")
+        for lp in landing_pages[:5]:
+            for pdf in find_pdfs_on_page(lp["url"], name):
+                if pdf["url"] not in seen_pdf_urls:
+                    seen_pdf_urls.add(pdf["url"])
+                    direct_pdfs.append({
+                        "title": pdf["title"],
+                        "url": pdf["url"],
+                        "snippet": f"Found on landing page: {lp['url'][:80]}",
+                    })
+            time.sleep(0.5)
+        print(f"  PDF candidates after following pages: {len(direct_pdfs)}")
+
+    # Download all direct-PDF candidates and store in Supabase
+    for result in direct_pdfs:
         public_url, file_size = download_and_store_pdf(
-            url, symbol, name, result["title"], supabase_client, bucket_name,
+            result["url"], symbol, name, result["title"], supabase_client, bucket_name,
         )
         reports.append({
             "title": result["title"],
-            "url": url,
+            "url": result["url"],
             "snippet": result.get("snippet", ""),
             "type": "pdf",
             "downloaded": public_url is not None,
             "storage_url": public_url,
             "file_size": file_size,
+        })
+
+    # Keep landing pages as webpage records (useful even if no PDF was extractable)
+    for lp in landing_pages:
+        reports.append({
+            "title": lp["title"],
+            "url": lp["url"],
+            "snippet": lp.get("snippet", ""),
+            "type": "webpage",
+            "downloaded": False,
         })
 
     print(f"  Total reports found: {len(reports)}")
